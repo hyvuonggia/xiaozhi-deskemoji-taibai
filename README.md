@@ -1,37 +1,26 @@
-# Desk-Emoji
+# Desk-Emoji XiaoZhi Firmware
 
-## Reference Source
+This repository is a maintained copy of the XiaoZhi firmware customization published by [TranBinh2311](https://github.com/TranBinh2311/xiaozhi-deskemoji-taibai). It includes the `ESP32-S3N16R8-Emoji` board configuration and firmware changes for a Desk-Emoji-style desktop robot.
 
-This repository contains reference source code. Original project: [https://gitee.com/apolloz](https://gitee.com/apolloz)
+The Desk-Emoji hardware project and its assembly/software guides are maintained upstream by [Uncle Mark](https://github.com/uncle-mark/desk-emoji). This firmware repository is a separate codebase; the upstream hardware assembly diagrams may target different controller boards, so follow the ESP32-S3 pin map in `main/boards/esp32-s3n16r8-emoji/README.md` when wiring this firmware.
 
-* The first industrial-style desktop robot with a sleek and cool appearance, perfect as a desk decoration.
-* Unparalleled cost-effectiveness, delivering the performance of a thousand-dollar desktop robot at a fraction of the price.
-* Features a 2-degree-of-freedom gimbal and versatile head movements, making it a truly dynamic desktop robot.
-* Finely tuned emoji animations and motion algorithms deliver smooth and lively interactions, offering maximum emotional appeal.
-* Capable of responding with corresponding actions based on the emotional tone of the replies.
-* Supports gesture recognition for interactive engagement.
-* Compatible with large-scale model voice conversations.
+![Desk-Emoji](https://raw.githubusercontent.com/uncle-mark/desk-emoji/main/desk-emoji-v3/doc/image/readme/photo1.png "Desk-Emoji")
+![Desk-Emoji robot](https://raw.githubusercontent.com/uncle-mark/desk-emoji/main/desk-emoji-v3/doc/image/readme/photo2.png "Desk-Emoji robot")
+![Desk-Emoji render](https://raw.githubusercontent.com/uncle-mark/desk-emoji/main/desk-emoji-v3/doc/image/readme/main_rendergraph.png "Desk-Emoji render")
 
-![img](doc/image/readme/photo1.png "photo1")
-![img](doc/image/readme/photo2.png "photo2")
-![img](doc/image/readme/main_rendergraph.png "main_rendergraph")
+## Upstream resources
 
-## Resource
+- [Desk-Emoji project and source](https://github.com/uncle-mark/desk-emoji)
+- [Desk-Emoji releases and firmware downloads](https://github.com/uncle-mark/desk-emoji/releases)
+- [English documentation and assembly guide](https://github.com/uncle-mark/desk-emoji/tree/main/desk-emoji-v3/doc/en)
+- [Chinese documentation](https://github.com/uncle-mark/desk-emoji/tree/main/desk-emoji-v3/doc/zh)
+- [Bilibili videos](https://space.bilibili.com/3546754517567616)
 
-* [Bilibili Videos](https://space.bilibili.com/3546754517567616)
-* [Firmware Download](https://github.com/ideamark/desk-emoji/releases)
-* [Documents](https://github.com/ideamark/desk-emoji/tree/main/doc/en)
+## Project links
 
-## Buy it !
+- [Taobao shop](https://m.tb.cn/h.TclZzcV4aOoAzmj)
+- [Xiaohongshu profile](https://www.xiaohongshu.com/user/profile/6470bd26000000002a034397)
 
-* [Taobao Shop](https://m.tb.cn/h.TclZzcV4aOoAzmj)
-* [Red Note](https://www.xiaohongshu.com/user/profile/6470bd26000000002a034397)
+## Attribution and license
 
-## Author
-
-* Obilab
-* Email: binhlinh473@gmail.com
-
-## Copyright Notice
-
-* The open-source components of this project are licensed under the **GPLv3** . Users are permitted to freely study, modify, and engage in non-commercial DIY activities within the terms of the license.** ****Unauthorized** commercial use of the open-source content is strictly prohibited, and violators will be held legally accountable.
+The Desk-Emoji project is authored by Mark Yang (Uncle Mark). See the [upstream project](https://github.com/uncle-mark/desk-emoji) for its current attribution, license, hardware resources, and project history. This repository retains its upstream firmware history and licensing notices; consult `LICENSE` before redistributing or using modified versions.

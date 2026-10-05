@@ -17,6 +17,6 @@ Selection Display LCD Type  `Xiaozhi Assistant --> LCD Type`
 
 
 
-| [ESP32-P4-WIFI6-Touch-LCD-3.4C](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-3.4c.htm) | [ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-4c.htm) |
+| [ESP32-P4-WIFI6-Touch-LCD-3.4C](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-3.4c.htm) | ESP32-P4-WIFI6-Touch-LCD-4C (official product URL currently unavailable) |
 |----------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------|
 |     <img style="width: 150px; height: auto; display: block; margin: 0 auto;" src= "https://www.waveshare.com/media/catalog/product/cache/1/image/800x800/9df78eab33525d08d6e5fb8d27136e95/e/s/esp32-p4-wifi6-touch-lcd-3.4c-1.jpg">                                                                                         |                <img style="width: 150px; height: auto; display: block; margin: 0 auto;" src= "https://www.waveshare.com/media/catalog/product/cache/1/image/800x800/9df78eab33525d08d6e5fb8d27136e95/e/s/esp32-p4-wifi6-touch-lcd-4c-1.jpg">                                                                          |
