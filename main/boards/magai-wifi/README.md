@@ -1,147 +1,147 @@
-# Magai-WiFi 模块
+# Magai-WiFi Module
 
-## 概述
+## Overview
 
-Magai-WiFi 是一个基于 ESP32 的智能设备模块，集成了WiFi连接、天气显示、触摸控制和LED灯效等功能。该模块主要用于提供智能语音助手界面，并在空闲状态下自动切换为天气时钟显示模式。
+Magai-WiFi is an ESP32-based smart device module integrating Wi-Fi connectivity, weather display, touch controls, and LED effects. It primarily provides a smart voice-assistant interface and automatically switches to a weather-clock display when idle.
 
-## 硬件规格
+## Hardware Specifications
 
-- **主控芯片**：ESP32系列
-- **显示屏**：NV303b LCD显示屏 (240x280分辨率)
-- **按键**：
-  - 触摸按钮 (GPIO 0)
-  - 音量增加按钮 (GPIO 1)
-  - 音量减小按钮 (GPIO 43)
-- **LED**：内置12个LED灯 (GPIO 2)
-- **音频接口**：I2S接口
-  - 麦克风：GPIO 4(WS), 5(SCK), 6(DIN)
-  - 扬声器：GPIO 7(DOUT), 15(BCLK), 16(LRCK)
-- **显示屏接口**：
-  - 8位并行数据线 (GPIO 14, 21, 47, 48, 45, 38, 39, 40)
-  - 控制信号线：GPIO 8(PCLK), 13(DC)
-  - 背光控制：GPIO 44
-- **I2C接口**：GPIO 18(SDA), 17(SCL)
+- **Main chip**：ESP32 series
+- **Display**：NV303b LCDDisplay (240x280resolution)
+- **Buttons**：
+  - Touch button (GPIO 0)
+  - Volume-up button (GPIO 1)
+  - Volume-down button (GPIO 43)
+- **LED**：12 built-in LEDs (GPIO 2)
+- **Audio interface**：I2S interface
+  - Microphone：GPIO 4(WS), 5(SCK), 6(DIN)
+  - Speaker：GPIO 7(DOUT), 15(BCLK), 16(LRCK)
+- **Display interface**：
+  - 8-bit parallel data bus (GPIO 14, 21, 47, 48, 45, 38, 39, 40)
+  - Control signals：GPIO 8(PCLK), 13(DC)
+  - Backlight control：GPIO 44
+- **I2C interface**：GPIO 18(SDA), 17(SCL)
 
-## 软件功能
+## Software Features
 
-### 1. 天气时钟功能
+### 1. Weather Clock
 
-- **自动城市检测**：通过公网IP自动获取当前城市
-- **中文城市名显示**：从心知天气API返回的数据中提取中文城市名进行显示
-- **天气数据获取**：使用心知天气API获取实时天气信息
-- **定时更新**：每60分钟自动更新一次天气数据
-- **空闲模式切换**：设备在空闲状态时自动切换到天气时钟显示模式
-- **智能天气图标显示**：
-  - 使用内存映射文件系统加载PNG格式天气图标
-- 支持天气代码自动映射（如代码9映射到154.png阴天图标）
-  - 图标大小自适应（32x32像素）
-  - 加载失败时自动使用默认晴天图标
-  - 支持实时天气代码更新和图标切换
+- **Automatic city detection**：Automatically detects the current city using the public IP address
+- **Chinese city-name display**：Extracts and displays the Chinese city name from the Seniverse Weather API response
+- **Weather data retrieval**：Retrieves real-time weather information using the Seniverse Weather API
+- **Scheduled updates**：Automatically refreshes weather data every 60 minutes
+- **Idle-mode switching**：Automatically switches to weather-clock display while idle
+- **Smart weather icon display**：
+  - Loads PNG weather icons using a memory-mapped filesystem
+- Supports automatic weather-code mapping (for example, code 9 maps to the cloudy icon 154.png)
+  - Icons scale to 32 × 32 pixels
+  - Uses the default sunny icon if loading fails
+  - Supports real-time weather-code updates and icon changes
 
-### 2. 语音交互功能
+### 2. Voice Interaction
 
-- **触摸控制**：按下触摸按钮开始语音监听，松开停止
-- **音量控制**：通过音量按钮调节设备音量
-  - 短按：增加/减少10%音量
-  - 长按：设置为最大/最小音量
+- **Touch controls**：Press the touch button to start voice listening; release it to stop
+- **Volume control**：Adjusts device volume using the volume buttons
+  - Short press: increase/decrease volume by 10%
+  - Long press: set volume to maximum/minimum
 
-### 3. IoT功能
+### 3. IoT Features
 
-- **设备管理**：集成了Speaker、Lamp、Screen等虚拟设备
-- **状态监控**：监控设备状态变化并触发相应动作
+- **Device management**：Integrates virtual devices such as Speaker, Lamp, and Screen
+- **Status monitoring**：Monitors device state changes and triggers corresponding actions
 
-## 代码结构
+## Code Structure
 
-### 主要类
+### Main Classes
 
-1. **NV303bDisplay**：显示屏控制类
-   - 继承自SpiLcdDisplay
-   - 实现天气时钟UI的创建和更新
-   - 管理UI元素的显示和隐藏
+1. **NV303bDisplay**：Display control class
+   - Inherits fromSpiLcdDisplay
+   - Creates and updates the weather-clock UI
+   - Manages UI element visibility
 
-2. **magai_wifi**：主板类
-   - 继承自WifiBoard
-   - 初始化各硬件组件
-   - 管理设备状态和模式切换
-   - 包含MagaiLed内部类，用于处理LED状态变化
+2. **magai_wifi**：Board class
+   - Inherits fromWifiBoard
+   - Initializes hardware components
+   - Manages device states and mode switching
+   - Contains the MagaiLed inner class for handling LED state changes
 
-3. **Weather**：天气服务类
-   - 继承自Thing
-   - 提供天气数据获取和更新功能
-   - 支持自动城市检测和定时更新
-   - 从API响应中提取并显示中文城市名
+3. **Weather**：Weather service class
+   - Inherits fromThing
+   - Retrieves and updates weather data
+   - Supports automatic city detection and scheduled updates
+   - Extracts and displays the Chinese city name from the API response
 
-4. **WeatherDisplayNew**：天气图标显示模块
-   - 管理天气图标的创建、加载和显示
-   - 实现天气代码到图标文件的智能映射
-   - 使用内存映射文件系统优化图标加载性能
-   - 提供图标可见性和位置管理功能
+4. **WeatherDisplayNew**：Weather icon display module
+   - Manages weather icon creation, loading, and display
+   - Maps weather codes to icon files
+   - Uses a memory-mapped filesystem to optimize icon loading
+   - Manages icon visibility and positioning
 
-### 主要文件
+### Key Files
 
-- **magai_wifi.cc**：主要实现文件，包含NV303bDisplay和magai_wifi类的实现
-- **weather.h/cc**：天气服务相关功能实现
-- **weather_display_new.h/c**：新版天气图标显示模块实现
-- **config.h**：硬件配置和引脚定义
-- **weather目录**：天气图标PNG文件存储目录
+- **magai_wifi.cc**：Main implementation file for NV303bDisplay and magai_wifi
+- **weather.h/cc**：Weather service implementation
+- **weather_display_new.h/c**：New weather icon display module implementation
+- **config.h**：Hardware configuration and pin definitions
+- **weather directory**：Directory containing PNG weather icons
 
-## 使用方法
+## Usage
 
-### 初始化流程
+### Initialization
 
-1. 创建magai_wifi实例时会自动执行以下初始化：
-   - 初始化按钮和回调函数
-   - 初始化IoT设备和天气服务
-   - 初始化I2C总线
-   - 初始化NV303b显示屏
-   - 恢复背光亮度
-   - 检查初始设备状态并更新UI
+1. Creating a magai_wifi instance automatically performs the following initialization:
+   - Initializes buttons and callbacks
+   - Initializes IoT devices and the weather service
+   - Initializes the I2C bus
+   - Initializes the NV303b display
+   - Restores the backlight brightness
+   - Checks initial device states and updates the UI
 
-### 天气时钟模式
+### Weather-clock mode
 
-- 设备在空闲状态时自动切换到天气时钟模式
-- 显示当前城市、时间、温度和天气状况
-- 设备退出空闲状态时自动切换回正常UI
+- Automatically switches to weather-clock mode while idle
+- Displays the current city, time, temperature, and weather conditions
+- Automatically returns to the normal UI when the device leaves idle state
 
-### 状态变化处理
+### Handling state changes
 
-- 通过MagaiLed类的OnStateChanged方法监控设备状态变化
-- 在状态变为空闲时自动触发天气数据更新
-- 更新天气时钟UI显示
+- Monitors device state changes through the MagaiLed class OnStateChanged method
+- Automatically refreshes weather data when the state becomes idle
+- Updates the weather-clock UI
 
-## 维护注意事项
+## Maintenance Notes
 
-1. **天气API**：如需更换天气API，需修改weather.cc中的相关URL和解析逻辑
-2. **城市检测**：城市检测依赖于公网IP服务，如服务不可用需提供备选方案
-3. **中文城市名**：中文城市名从心知天气API的location.name字段获取，如API返回格式变化需相应调整解析代码
-4. **UI定制**：天气时钟UI的布局和样式可在NV303bDisplay::SetupWeatherClockUI方法中修改
-5. **定时更新**：天气数据更新频率可在Weather类的StartPeriodicUpdate方法中调整
-6. **内存管理**：注意在析构函数中释放动态分配的资源，避免内存泄漏
-7. **天气图标管理**：
-   - 天气图标文件存储在内存映射分区中，格式为PNG
-   - 天气代码映射逻辑在weather_display_new.c的weather_icon_new_update函数中
-   - 如需添加新的天气图标，直接将PNG文件放入weather目录即可
-   - 图标大小和位置可在weather_display_new.c和magai_wifi.cc中调整
+1. **Weather API**：To change the weather API, update the relevant URLs and parsing logic in weather.cc
+2. **City detection**：City detection depends on a public-IP service; provide an alternative if the service is unavailable
+3. **Chinese city name**：The Chinese city name comes from the location.name field in the Seniverse Weather API response; adjust parsing if the API response format changes
+4. **UI customization**：Edit the weather-clock UI layout and style in NV303bDisplay::SetupWeatherClockUI
+5. **Scheduled updates**：Adjust the weather refresh interval in Weather::StartPeriodicUpdate
+6. **Memory management**：Release dynamically allocated resources in the destructor to avoid memory leaks
+7. **Weather icon management**：
+   - Weather icon files are stored as PNGs in the memory-mapped partition
+   - Weather-code mapping is implemented in weather_icon_new_update in weather_display_new.c
+   - To add an icon, place its PNG file in the weather directory
+   - Adjust icon size and position in weather_display_new.c and magai_wifi.cc
 
-## 故障排除
+## Troubleshooting
 
-- **天气数据获取失败**：检查WiFi连接状态和API服务可用性
-- **城市名显示异常**：检查心知天气API返回的JSON数据格式，确认location.name字段是否存在
-- **天气图标不显示**：
-  - 检查内存映射文件系统是否正确初始化
-  - 确认天气代码映射是否正确（查看日志中的映射信息）
-  - 检查图标文件是否存在于内存映射分区中
-  - 验证图标对象的可见性标志是否正确设置
-- **显示异常**：检查显示屏初始化参数和引脚配置
-- **按钮无响应**：检查按钮引脚配置和回调函数注册
-- **LED不工作**：检查LED引脚配置和数量设置
-- **编译错误**：注意printf格式化字符串与参数类型匹配，使用适当的类型转换
+- **Weather data retrieval fails**：Check the Wi-Fi connection and API availability
+- **City name displays incorrectly**：Check the JSON response from the Seniverse Weather API and confirm that location.name exists
+- **Weather icons do not display**：
+  - Check that the memory-mapped filesystem initialized correctly
+  - Confirm that weather-code mapping is correct (check the mapping details in the log)
+  - Check that the icon files exist in the memory-mapped partition
+  - Verify that the icon object visibility flags are set correctly
+- **Display behaves incorrectly**：Check the display initialization parameters and pin configuration
+- **Buttons do not respond**：Check the button pin configuration and callback registration
+- **LEDs do not work**：Check the LED pin configuration and count
+- **Compilation errors**：Ensure printf format specifiers match the argument types; use appropriate type conversions
 
-## 未来改进
+## Future Improvements
 
-1. 添加更多天气数据显示（如湿度、风速等）
-2. 优化天气图标和UI布局
-3. 增加用户自定义城市设置功能
-4. 添加多语言支持
-5. 优化网络连接和数据获取的稳定性
-6. 增强城市名称本地化显示，支持更多地区的本地语言
+1. Add more weather data (such as humidity and wind speed)
+2. Improve weather icons and UI layout
+3. Add a user-defined city setting
+4. Add multilingual support
+5. Improve network connection and data retrieval reliability
+6. Improve localized city-name display to support more regional languages

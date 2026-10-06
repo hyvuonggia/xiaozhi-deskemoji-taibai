@@ -1,25 +1,25 @@
 # jiuchuan-xiaozhi-sound
-九川科技小智AI音箱
+Jiuchuan Technology Xiaozhi AI Speaker
 
-## 🛠️ 编译指南
-**开发环境**：ESP-IDF v5.4.1
+## 🛠️ Build Guide
+**Development environment**：ESP-IDF v5.4.1
 
-### 编译步骤：
-> ⚠️ **提示**：若在编译过程中访问在线库失败，可以尝试切换加速器状态，或修改 [idf_component.yml] 文件，替换为国内镜像源。
+### Build steps：
+> ⚠️ **Note**：If accessing online libraries fails during compilation, try changing the accelerator setting or editing [idf_component.yml] to use a domestic mirrors.
 
-1. 使用 VSCode 打开项目文件夹；
-2. 清除工程（Clean Project）；
-3. 设置 ESP-IDF 版本为 `v5.4.1`；
-4. 点击 VSCode 右下角提示，生成 [compile_commands.json] 文件；
-5. 设置目标设备为 `[esp32s3] -> [JTAG]`；
-6. 打开 **SDK Configuration Editor**；
-7. 配置自定义分区表路径为：`partitions/v1/16m.csv`；
-8. 设置 **Board Type** 为 **九川科技**；
-9. 保存配置并开始编译。
+1. Open the project folder in VSCode;
+2. Clean the project（Clean Project）；
+3. Set the ESP-IDF version to `v5.4.1`；
+4. Click the prompt in the bottom-right corner of VSCode to generate [compile_commands.json];
+5. Set the target device to `[esp32s3] -> [JTAG]`；
+6. Open **SDK Configuration Editor**；
+7. Set the custom partition table path to：`partitions/v1/16m.csv`；
+8. Set **Board Type** to **Jiuchuan Technology** (the original menu label is in Chinese);
+9. Save the configuration and start building.
 
-## 🔌 烧录步骤
-1. 使用数据线连接电脑与音箱；
-2. 关闭设备电源后，长按电源键不松手；
-3. 在烧录工具中选择对应的串口（COM Port）；
-4. 点击烧录按钮，选择 UART 模式；
-5. 烧录完成前请勿松开电源键。
+## 🔌 Flashing Steps
+1. Connect the computer and speaker with a USB cable;
+2. With the device powered off, press and hold the power button;
+3. In the flashing tool, select the corresponding serial port (COM Port);
+4. Click Flash and select UART mode;
+5. Do not release the power button until flashing is complete.

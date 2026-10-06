@@ -1,61 +1,61 @@
 # ESP32-S3N16R8-Emoji 
 
-## 硬件要求
+## Hardware requirements
 
-- ESP32 S3 N16R8开发板
-- INMP441 MEMS麦克风
-- Max98357A I2S音频放大器
-- SSD1306 OLED显示屏 (128x64)
-- 2个SG90舵机 (水平和垂直)
-- 扬声器
-- 面包板和连接线
+- ESP32 S3 N16R8 development board
+- INMP441 MEMS Microphone
+- Max98357A I2S audio amplifier
+- SSD1306 OLED display (128x64)
+- 2 SG90 servos (horizontal and vertical)
+- Speaker
+- Breadboard and connecting wires
 
-## 功能特性
+## Features
 
-### 1. 对话功能
-- 支持语音对话
-- 支持文字显示
-- 支持音量调节
-  - 支持按键调节：音量+/音量-按钮
-  - 支持语音调节：如"音量设为50"、"音量调到80"等命令
-  - 支持多种音量控制命令格式：
-    - "音量设为xx"
-    - "音量调到xx"
-    - "把音量设为xx"
-    - "将声音设置为xx"
-    - "音量增加"/"音量加大"
-    - "音量减小"/"音量降低"
-    - "静音"/"关闭声音"
-- 支持WiFi连接
-- 支持IoT设备控制
+### 1. Dialogue function
+- Support voice conversation
+-Support text display
+-Support volume adjustment
+-Supports key adjustment: volume +/volume- button
+- Support voice adjustment: commands such as "Set volume to 50", "Volume to 80" etc.
+- Supports multiple volume control command formats:
+- "Set volume to xx"
+- "Turn the volume to xx"
+- "Set volume to xx"
+- "Set sound to xx"
+- "Volume up"/"Volume up"
+- "Volume down"/"Volume down"
+- "Mute"/"Turn off sound"
+- Support WiFi connection
+-Support IoT device control
 
-### 2. 表情模式
-- 长按BOOT按钮进入表情模式
-- 显示可爱的眨眼动画
-- 支持自动眨眼效果（随机单次眨眼或连续快速眨眼两次）
-- 支持多种表情动画：开心、伤心、愤怒、惊讶等
-- 支持舵机控制头部动作：点头、摇头、摆动等
-- 当前固件不支持PAJ7620U2手势识别；不要按旧说明购买该传感器并期待即插即用。
-- 所有动画均采用专用任务处理，确保流畅自然
-- 再次长按BOOT按钮返回对话模式
+### 2. Expression mode
+- Long press the BOOT button to enter expression mode
+- Show cute blinking animation
+- Support automatic blink effect (random single blink or two rapid blinks in succession)
+- Supports a variety of expression animations: happy, sad, angry, surprised, etc.
+- Supports servo control of head movements: nodding, shaking head, swinging, etc.
+- The current firmware does not support PAJ7620U2 gesture recognition; do not buy this sensor based on the old instructions and expect plug and play.
+- All animations are processed using dedicated tasks to ensure smoothness and naturalness
+- Long press the BOOT button again to return to conversation mode
 
-### 表情动画优化
-- 开心表情：优化三角形位置、大小和角度，使表情更加自然
-- 悲伤表情：实现为开心表情的精确垂直翻转，确保完美对称
-- 点头动作：改进为多次上下点头，更符合自然表达
-- 眨眼动画：随机单次眨眼或连续快速眨眼两次，更加生动自然
-- 使用LVGL图形库实现高质量的表情动画效果
-- 通过精确计算三角形坐标，确保表情一致性
-- 优化旋转角度和旋转中心点，使三角形形状更加准确
-- 调整动画参数，使表情变化更加流畅自然
+### Expression animation optimization
+- Happy expression: optimize the position, size and angle of the triangle to make the expression more natural
+- Sad emoticon: achieves precise vertical flipping into a happy emoticon, ensuring perfect symmetry
+- Nodding action: improved to nodding up and down multiple times, more in line with natural expression
+- Blink animation: Random single blink or two rapid blinks in succession, more vivid and natural
+- Use the LVGL graphics library to achieve high-quality expression animation effects
+- Ensure expression consistency by accurately calculating triangle coordinates
+- Optimize the rotation angle and rotation center point to make the triangle shape more accurate
+- Adjust animation parameters to make expression changes more smooth and natural
 
-## 硬件连接  
+## Hardware connection
 
-### INMP441麦克风连接
+### INMP441 microphone connection
 
-INMP441是一款高质量的I2S数字麦克风，连接方式如下：
+INMP441 is a high-quality I2S digital microphone. The connection method is as follows:
 
-| INMP441引脚 | ESP32 S3 N16R8引脚 |
+| INMP441 pin | ESP32 S3 N16R8 pin |
 |------------|---------------------|
 | VDD        | 3.3V                |
 | GND        | GND                 |
@@ -64,11 +64,11 @@ INMP441是一款高质量的I2S数字麦克风，连接方式如下：
 | WS         | GPIO4             |
 | SCK        | GPIO5             |
 
-### Max98357A音频放大器连接
+### Max98357A audio amplifier connection
 
-Max98357A是一款I2S音频放大器，连接方式如下：
+Max98357A is an I2S audio amplifier, the connection method is as follows:
 
-| Max98357A引脚 | ESP32 S3 N16R8引脚 |
+| Max98357A pin | ESP32 S3 N16R8 pin |
 |-------------|---------------------|
 | VIN         | 3.3V          |
 | GND         | GND                 |
@@ -78,182 +78,182 @@ Max98357A是一款I2S音频放大器，连接方式如下：
 | GAIN        | GND           |
 | SD          | 3.3V          |
 
-### SSD1306 OLED显示屏连接
+### SSD1306 OLED display connection
 
-| SSD1306引脚 | ESP32 S3 N16R8引脚 |
+| SSD1306 pin | ESP32 S3 N16R8 pin |
 |------------|---------------------|
 | VCC        | 3.3V                |
 | GND        | GND                 |
 | SCL        | GPIO42              |
 | SDA        | GPIO41              |
 
-### PAJ7620U2手势识别（当前未实现）
+### PAJ7620U2 gesture recognition (currently not implemented)
 
-旧版文档曾列出PAJ7620U2的I2C接线，但当前固件已移除手势识别初始化与处理代码，相关引脚配置也已注释。因此，GPIO41/42目前只用于OLED显示屏，不要把这份旧接线表当成可用功能说明。
+The old version of the document once listed the I2C wiring of PAJ7620U2, but the current firmware has removed the gesture recognition initialization and processing code, and the relevant pin configuration has also been commented. Therefore, GPIO41/42 are currently only used in OLED displays, do not regard this old wiring table as a description of the available functions.
 
-### 舵机连接
+### Servo connection
 
-| 舵机       | ESP32 S3 N16R8引脚 |
+| Servo | ESP32 S3 N16R8 pins |
 |-----------|---------------------|
-| 水平舵机信号线 | GPIO11             |
-| 垂直舵机信号线 | GPIO12             |
+| Horizontal servo signal line | GPIO11 |
+| Vertical servo signal line | GPIO12 |
 | VCC        | 5V                  |
 | GND        | GND                 |
 
-### 按钮配置
+### Button configuration
 
-| 按钮       | ESP32 S3 N16R8引脚 | 功能描述 |
+| Button | ESP32 S3 N16R8 Pin | Functional Description |
 |-----------|---------------------|---------|
-| BOOT按钮   | GPIO0              | 短按：切换对话状态<br>长按：切换表情模式 |
-| 音量增加按钮 | GPIO40             | 短按：音量+10<br>长按：最大音量 |
-| 音量减少按钮 | GPIO39             | 短按：音量-10<br>长按：静音 |
+| BOOT button | GPIO0 | Short press: switch conversation state<br> Long press: switch expression mode |
+| Volume up button | GPIO40 | Short press: Volume +10<br> Long press: Maximum volume |
+| Volume down button | GPIO39 | Short press: Volume-10<br> Long press: Mute |
 
-## 使用说明
+## Instructions for use
 
-### 对话模式
-1. 开机后自动进入对话模式
-2. 短按BOOT按钮开始对话
-3. 使用音量按钮调节音量
-4. 支持WiFi连接和IoT设备控制
+### Conversation mode
+1. Automatically enter conversation mode after powering on
+2. Short press the BOOT button to start the conversation
+3. Use the volume buttons to adjust the volume
+4. Support WiFi connection and IoT device control
 
-### 表情模式
-1. 长按BOOT按钮进入表情模式
-2. 屏幕将显示两个白色眼睛（黑底白眼）
-3. 眼睛会自动每5秒眨眼一次
-4. 再次长按BOOT按钮返回对话模式
-5. 在表情模式下，音量按钮仍然可以调节音量
-6. 短按BOOT按钮仍然可以进入录音模式
+### Expression mode
+1. Press and hold the BOOT button to enter expression mode
+2. The screen will display two white eyes (white eyes on black background)
+3. The eyes will automatically blink every 5 seconds.
+4. Press and hold the BOOT button again to return to conversation mode
+5. In expression mode, the volume buttons can still adjust the volume
+6. Short press the BOOT button to still enter recording mode
 
-## 表情动画系统
+## Expression animation system
 
-### 眨眼动画
-- 自动每5秒眨眼一次
-- 眨眼动画模拟自然眨眼效果
-- 眨眼速度和幅度可调整
+### Blink animation
+- Automatically blink every 5 seconds
+- Blink animation simulates natural blink effect
+- Blink speed and amplitude are adjustable
 
-### 表情动画
-- 开心表情：眼睛下方显示微笑效果
-- 伤心表情：眼睛上方显示悲伤效果
-- 愤怒表情：眼睛上方显示愤怒效果
-- 惊讶表情：眼睛逐渐缩小，模拟惊讶效果
-- 疑惑表情：眼睛上下移动，模拟疑惑效果
-- 向左看表情：眼睛向左移动
-- 向右看表情：眼睛向右移动
-- 睡眠表情：眼睛变为水平线
-- 唤醒表情：从睡眠状态逐渐恢复正常
+### Expression animation
+- Happy emoticon: smile effect is displayed under the eyes
+- Sad emoticon: Displays sad effect above the eyes
+- Angry expression: Angry effect is displayed above the eyes
+- Surprise expression: eyes gradually shrink to simulate surprise effect
+- Doubtful expression: Move the eyes up and down to simulate a doubtful effect
+- Look left expression: Eyes move to the left
+- Look right expression: Eyes move to the right
+- Sleep expression: eyes become horizontal lines
+- Wake-up expression: gradually returns to normal from sleep state
 
-### 舵机控制
-- 头部居中：将舵机恢复到中心位置
-- 头部点头：模拟点头动作
-- 头部摇头：模拟摇头动作
-- 头部转圈：模拟头部转圈效果
-- 头部向左：模拟向左看动作
-- 头部向右：模拟向右看动作
-- 所有舵机动作均采用平滑过渡，确保自然流畅
+### Servo control
+- Head Center: Return the servo to the center position
+- Head nod: simulate nodding action
+- Head shaking: simulates shaking head movement
+- Head rotation: simulates the effect of head rotation
+- Head left: simulates looking left
+- Head right: simulates looking to the right
+- All servo movements adopt smooth transitions to ensure natural flow
 
-### 随机表情和动作
-系统会每10秒随机执行以下表情和动作组合，使表情板更加生动有趣：
+### Random expressions and actions
+The system will randomly execute the following combination of expressions and actions every 10 seconds to make the expression board more lively and interesting:
 
-1. 眨眼（眨眼表情+无动作）- 60%概率
-2. 向左看（向左表情+舵机向左）- 15%概率
-3. 向右看（向右表情+舵机向右）- 15%概率
-4. 高兴（高兴表情+无动作）- 5%概率
-5. 转圈（默认眼睛+转圈动作）- 5%概率
+1. Blink (wink emoticon + no action) - 60% probability
+2. Look left (left expression + servo left) - 15% probability
+3. Look to the right (right expression + servo to the right) - 15% probability
+4. Happy (happy expression + no action) - 5% probability
+5. Turn in circles (default eyes + turning in circles) - 5% probability
 
 
-### 手势识别
+### Gesture recognition
 
-手势识别目前未实现。此前版本说明中的PAJ7620U2手势功能和对应更新记录已移除，避免与当前固件行为不符。
+Gesture recognition is currently not implemented. The PAJ7620U2 gesture function and corresponding update record in the previous version notes have been removed to avoid inconsistency with the current firmware behavior.
 
-## 功能更新历史 (2025-05-12)
+## Function update history (2025-05-12)
 
-### 情感响应系统优化
+### Emotional response system optimization
 
-#### 随机动画控制
-- **对话过程中禁用随机动画**：在用户与AI对话期间（包括用户说话和AI回复阶段），系统会自动禁用随机表情动画，确保交互过程不被随机动画打断
-- **对话结束后恢复随机动画**：当对话结束3秒后，系统会自动恢复随机表情动画，使表情板在空闲状态下保持生动有趣
-- **动画队列清理**：在禁用随机动画时，系统会清空所有已排队的动画消息，确保不会有残留的随机动画在对话过程中执行
+#### Random animation control
+- **Random animations are disabled during the conversation**: During the conversation between the user and the AI ​​(including the user speaking and AI reply phases), the system will automatically disable random expression animations to ensure that the interaction process is not interrupted by random animations
+- **Resume random animation after the conversation ends**: When the conversation ends 3 seconds later, the system will automatically restore the random expression animation to keep the expression board lively and interesting in idle state
+- **Animation Queue Cleanup**: When disabling random animations, the system will clear all queued animation messages to ensure that there will be no residual random animations executed during the conversation.
 
-#### AI情感响应增强
-- **AI回复开始时触发积极情感**：当AI开始回复时，系统会随机触发开心或惊讶的表情，增强交互的生动性
-- **AI回复结束时触发随机情感**：当AI回复结束时，系统会根据回复内容触发相应的情感表情，使表情板能够更好地表达AI的情感
-- **对话结束时恢复中性情感**：当对话完全结束时，系统会恢复到中性表情状态，为下一次交互做准备
+#### AI emotional response enhancement
+- **Trigger positive emotions when AI replies start**: When AI starts replying, the system will randomly trigger happy or surprised expressions to enhance the vividness of the interaction
+- **Random emotions triggered at the end of AI reply**: When the AI ​​reply ends, the system will trigger corresponding emotional expressions based on the reply content, so that the expression board can better express the AI's emotions
+- **Restore neutral emotion when conversation ends**: When the conversation is completely over, the system will return to the neutral expression state to prepare for the next interaction
 
-#### 状态监控优化
-- **精确的状态转换检测**：优化了设备状态监控逻辑，能够准确检测对话的开始、继续和结束
-- **减少对话结束判断延迟**：将对话结束的判断延迟从10秒减少到3秒，使系统能够更快地恢复到空闲状态
-- **增强的日志记录**：添加了详细的状态变化和动画控制日志，便于调试和监控系统行为
+#### Status monitoring optimization
+- **Accurate state transition detection**: Optimized the device status monitoring logic to accurately detect the start, continuation and end of the conversation
+- **Reduce conversation end judgment delay**: Reduce the conversation end judgment delay from 10 seconds to 3 seconds, allowing the system to return to idle state faster
+- **Enhanced logging**: Added detailed status change and animation control logs to facilitate debugging and monitoring system behavior
 
-### 技术实现
-- 使用状态监控任务实时检测设备状态变化
-- 通过情感响应控制器分析AI回复内容并触发相应的情感表情
-- 采用消息队列管理动画请求，确保动画执行的可靠性和顺序性
-- 实现了随机动画的启用/禁用控制接口，可根据上下文灵活控制随机动画行为
+### Technical implementation
+- Use status monitoring tasks to detect device status changes in real time
+- Analyze AI reply content and trigger corresponding emotional expressions through emotional response controller
+- Use message queue to manage animation requests to ensure the reliability and sequence of animation execution
+- Implemented the enable/disable control interface of random animation, which can flexibly control random animation behavior according to context.
 
-## 最近更新
+##Latest updates
 
-### 情感响应系统优化 (2025-05-13)
+### Emotional response system optimization (2025-05-13)
 
-1. **栈溢出问题修复**：
-   - 优化了情感命令处理逻辑，将正则表达式替换为简单的字符串查找，大幅减少栈使用
-   - 增加了`ai_response`任务的栈大小从4096字节到8192字节，确保有足够的栈空间
-   - 修复了在处理特殊字符时可能导致的栈溢出问题
+1. **Stack overflow problem repair**:
+- Optimized the emotion command processing logic, replacing regular expressions with simple string searches, significantly reducing stack usage
+- Increased the stack size of `ai_response` task from 4096 bytes to 8192 bytes to ensure sufficient stack space
+- Fixed a stack overflow issue that may occur when processing special characters
 
-2. **舵机动作执行优化**：
-   - 改进了舵机动作执行逻辑，确保即使屏幕或眼睛对象不存在，也能执行舵机动作
-   - 优化了向左看和向右看动作的执行顺序，先执行舵机动作，再执行表情动画
+2. **Optimization of steering gear action execution**:
+- Improved the servo action execution logic to ensure that the servo action can be executed even if the screen or eye object does not exist
+- Optimized the order of execution of the look left and right actions. The servo action is executed first, and then the expression animation is executed.
 
-3. **情感词汇识别增强**：
-   - 扩充了情感关键词列表，提高情感识别的准确性
-   - 添加了更多中英文情感表达词汇，使系统能够识别更多的情感表达方式
-   - 优化了情感命令处理逻辑，支持更多自然语言表达
+3. **Emotional word recognition enhancement**:
+- Expanded the list of emotional keywords to improve the accuracy of emotion recognition
+- Added more Chinese and English emotional expression words to enable the system to recognize more emotional expressions
+- Optimized the emotional command processing logic to support more natural language expressions
 
-4. **技术实现**：
-   - 使用友元函数解决类之间的访问限制问题
-   - 优化了任务处理逻辑，避免重复创建任务，减少资源消耗
-   - 使用简单高效的字符串处理方法，提高系统性能和稳定性
+4. **Technical Implementation**:
+- Use friend functions to solve access restriction issues between classes
+- Optimized task processing logic to avoid repeated task creation and reduce resource consumption
+- Use simple and efficient string processing methods to improve system performance and stability
 
-### 音量控制功能修复 (2025-05-12)
+### Volume control function repair (2025-05-12)
 
-1. **问题修复**：
-   - 修复了通过语音命令控制音量无效的问题
-   - 修复了物联网功能初始化导致系统崩溃的问题
+1. **Bug fix**:
+- Fixed an issue where volume control via voice commands was ineffective
+-Fixed the problem of system crash caused by initialization of IoT function
 
-2. **音量控制增强**：
-   - 支持多种音量控制命令格式：
-     - "音量设为xx"（如"音量设为50"）
-     - "音量调到xx"（如"音量调到80"）
-     - "把音量设为xx"
-     - "将声音设置为xx"
-     - "音量增加"/"音量加大"
-     - "音量减小"/"音量降低"
-     - "静音"/"关闭声音"
-   - 同时支持按键控制和语音控制两种方式
+2. **Volume control enhancement**:
+- Supports multiple volume control command formats:
+- "Set the volume to xx" (such as "Set the volume to 50")
+- "Volume up to xx" (such as "Volume up to 80")
+- "Set volume to xx"
+- "Set sound to xx"
+- "Volume up"/"Volume up"
+- "Volume down"/"Volume down"
+- "Mute"/"Turn off sound"
+-Supports both button control and voice control
 
-3. **技术实现**：
-   - 通过正则表达式识别多种音量控制命令格式
-   - 同时使用AudioCodec和物联网接口(Speaker Thing)两种方式设置音量
-   - 安全初始化物联网功能，避免系统崩溃
-   - 添加异常处理，提高系统稳定性
+3. **Technical Implementation**:
+- Identify multiple volume control command formats through regular expressions
+- Use AudioCodec and IoT interface (Speaker Thing) to set the volume at the same time
+- Safely initialize IoT functions to avoid system crashes
+- Add exception handling to improve system stability
 
-4. **使用方法**：
-   - 直接对小智AI说出音量控制命令，如"音量设为50"
-   - 或使用设备上的音量+/音量-按钮手动调节
+4. **How ​​to use**:
+- Directly speak volume control commands to Xiaozhi AI, such as "Set volume to 50"
+- Or adjust manually using the Volume +/Volume - buttons on your device
 
-## 技术实现
+## Technical implementation
 
-### 动画管理系统
-- 采用专用任务处理所有动画效果
-- 使用消息队列管理动画请求
-- 支持多种动画类型和参数
-- 安全处理延迟和动画执行
+### Animation management system
+- Use dedicated tasks to handle all animation effects
+- Use message queue to manage animation requests
+- Supports multiple animation types and parameters
+- Safe handling of delays and animation execution
 
-### 舵机控制系统
-- 采用PWM控制舵机
-- 支持平滑过渡和精确控制
-- 舵机角度范围和速度可配置
+### Steering gear control system
+- Using PWM to control the steering gear
+- Supports smooth transitions and precise control
+- Configurable steering gear angle range and speed
 
-### 显示系统
-- 使用LVGL图形库实现表情显示
-- 支持动态调整表情大小和位置
-- 黑底白眼设计，确保视觉效果
+### Display system
+- Use LVGL graphics library to realize expression display
+-Support dynamically adjusting the size and position of emoticons
+- Black background with white eyes design to ensure visual effect

@@ -1,36 +1,36 @@
-# DFRobot 行空板 K10
+# DFRobot UNIHIKER K10
 
-## 按键配置
-* A：短按-打断/唤醒，长按1s-音量调大
-* B：短按-打断/唤醒，长按1s-音量调小
+## Button Configuration
+* A: Short press — interrupt/wake up; hold for 1 s — increase volume
+* B: Short press — interrupt/wake up; hold for 1 s — decrease volume
 
-## 编译配置命令
+## Build Configuration Commands
 
-**配置编译目标为 ESP32S3：**
+**Set the build target to ESP32S3:**
 
 ```bash
 idf.py set-target esp32s3
 ```
 
-**打开 menuconfig：**
+**Open menuconfig:**
 
 ```bash
 idf.py menuconfig
 ```
 
-**选择板子：**
+**Select the board:**
 
 ```
-Xiaozhi Assistant -> Board Type -> DFRobot 行空板 K10
+Xiaozhi Assistant -> Board Type -> DFRobot Unihiker K10
 ```
 
-**修改 psram 配置：**
+**Change the PSRAM configuration:**
 
 ```
 Component config -> ESP PSRAM -> SPI RAM config -> Mode (QUAD/OCT) -> Octal Mode PSRAM
 ```
 
-**编译：**
+**Build:**
 
 ```bash
 idf.py build

@@ -1,41 +1,41 @@
-# 四博智联AI陪伴盒子
+# DOIT Smart Companion Box
 
-# 特性
-* 使用PDM麦克风
-* 使用共阳极LED
+# Features
+* Uses a PDM microphone
+* Uses a common-anode LED
 
-## 按键配置
-* BUTTON3：短按-打断/唤醒
-* BUTTON1：音量+
-* BUTTON2：音量-
+## Button Configuration
+* BUTTON3: Short press — interrupt/wake up
+* BUTTON1: Volume up
+* BUTTON2: Volume down
 
-## 编译配置命令
+## Build Configuration Commands
 
-**配置编译目标为 ESP32S3：**
+**Set the build target to ESP32S3:**
 
 ```bash
 idf.py set-target esp32s3
 ```
 
-**打开 menuconfig：**
+**Open menuconfig:**
 
 ```bash
 idf.py menuconfig
 ```
 
-**选择板子：**
+**Select the board:**
 
 ```
-Xiaozhi Assistant -> Board Type -> 四博智联AI陪伴盒子
+Xiaozhi Assistant -> Board Type -> `四博智联AI陪伴盒子` (Doit AI companion box)
 ```
 
-**修改 psram 配置：**
+**Change the PSRAM configuration:**
 
 ```
 Component config -> ESP PSRAM -> SPI RAM config -> Mode (QUAD/OCT) -> Octal Mode PSRAM
 ```
 
-**编译：**
+**Build:**
 
 ```bash
 idf.py build

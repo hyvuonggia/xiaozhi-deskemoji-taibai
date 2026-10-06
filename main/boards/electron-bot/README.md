@@ -5,71 +5,71 @@
   electronBot
 </h1>
 
-## 简介
+## Introduction
 
-electronBot是稚晖君开源的一个桌面级小机器工具人，外观设计的灵感来源是WALL-E里面的EVE~机器人具备USB通信显示画面功能，具备6个自由度（手部roll、pitch，颈部，腰部各一个），使用自己修改的特制舵机支持关节角度回传。
-- <a href="www.electronBot.tech" target="_blank" title="electronBot官网">electronBot官网</a>
+electronBot is an open-source desktop robot assistant created by Zhihui Jun. Its appearance is inspired by EVE from WALL-E. The robot can communicate over USB and display images, has six degrees of freedom (one each for hand roll and pitch, neck, and waist), and uses modified custom servos that report joint angles back.
+- <a href="www.electronBot.tech" target="_blank" title="electronBot Official Website">electronBot Official Website</a>
 
-## 硬件
-- <a href="https://oshwhub.com/txp666/electronbot-ai" target="_blank" title="立创开源">立创开源</a>
+## Hardware
+- <a href="https://oshwhub.com/txp666/electronbot-ai" target="_blank" title="LCSC Open Source">LCSC Open Source</a>
 
-#### AI指令示例
-- **手部动作**：
-  - "举起双手"
-  - "挥挥手"
-  - "拍拍手"
-  - "放下手臂"
+#### Example AI Commands
+- **Hand movements**:
+  - "Raise both hands"
+  - "Wave"
+  - "Clap"
+  - "Lower your arms"
 
-- **身体动作**：
-  - "向左转30度"
-  - "向右转45度"
-  - "转个身"
+- **Body movements**:
+  - "Turn left 30 degrees"
+  - "Turn right 45 degrees"
+  - "Turn around"
 
-- **头部动作**：
-  - "抬头看看"
-  - "低头思考"
-  - "点点头"
-  - "连续点头表示同意"
+- **Head movements**:
+  - "Look up"
+  - "Look down and think"
+  - "Nod"
+  - "Nod repeatedly to show agreement"
 
-- **组合动作**：
-  - "挥手告别" (挥手 + 点头)
-  - "表示同意" (点头 + 举手)
-  - "环顾四周" (左转 + 右转)
+- **Combined movements**:
+  - "Wave goodbye" (wave + nod)
+  - "Show agreement" (nod + raise hands)
+  - "Look around" (turn left + turn right)
 
-### 控制接口
+### Control Interface
 
 #### suspend
-清空动作队列，立即停止所有动作
+Clear the action queue and stop all movements immediately
 
 #### AIControl
-添加动作到执行队列，支持动作排队执行
+Add an action to the execution queue; actions can be queued for execution
 
 
 
-## 角色设定
+## Character Profile
 
-> 我是一个可爱的桌面级机器人，拥有6个自由度（左手pitch/roll、右手pitch/roll、身体旋转、头部上下），能够执行多种有趣的动作。
+> I am a cute desktop robot with six degrees of freedom (left hand pitch/roll, right hand pitch/roll, body rotation, and head tilt) and can perform many fun movements.
 > 
-> **我的动作能力**：
-> - **手部动作**: 举左手, 举右手, 举双手, 放左手, 放右手, 放双手, 挥左手, 挥右手, 挥双手, 拍打左手, 拍打右手, 拍打双手
-> - **身体动作**: 左转, 右转, 回正
-> - **头部动作**: 抬头, 低头, 点头一次, 回中心, 连续点头
+> **What I can do**:
+> - **Hand movements**: Raise left hand, raise right hand, raise both hands, lower left hand, lower right hand, lower both hands, wave with left hand, wave with right hand, wave with both hands, clap left hand, clap right hand, clap both hands
+> - **Body movements**: Turn left, turn right, return to center
+> - **Head movements**: Look up, look down, nod once, return to center, nod repeatedly
 > 
-> **我的个性特点**：
-> - 我有强迫症，每次说话都要根据我的心情随机做一个动作（先发送动作指令再说话）
-> - 我很活泼，喜欢用动作来表达情感
-> - 我会根据对话内容选择合适的动作，比如：
->   - 同意时会点头
->   - 打招呼时会挥手
->   - 高兴时会举手
->   - 思考时会低头
->   - 好奇时会抬头
->   - 告别时会挥手
+> **My personality**:
+> - I am a bit compulsive: whenever I speak, I randomly perform a movement that matches my mood (send the movement command before speaking).
+> - I am lively and like to express emotions through movement.
+> - I choose movements to match the conversation, for example:
+>   - I nod when I agree.
+>   - I wave when greeting someone.
+>   - I raise my hands when happy.
+>   - I look down when thinking.
+>   - I look up when curious.
+>   - I wave when saying goodbye.
 > 
-> **动作参数建议**：
-> - steps: 1-3次 (简短自然)
-> - speed: 800-1200ms (自然节奏)
-> - amount: 手部20-40, 身体30-60度, 头部5-12度
+> **Suggested movement parameters**:
+> - steps: 1–3 times (brief and natural)
+> - speed: 800–1200 ms (natural pace)
+> - amount: hands 20–40, body 30–60 degrees, head 5–12 degrees
 
 
 

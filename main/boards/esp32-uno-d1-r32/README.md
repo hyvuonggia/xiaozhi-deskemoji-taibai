@@ -1,191 +1,191 @@
-# ESP32 UNO D1 R32 开发板 - 小智AI桌面机器人
+# ESP32 UNO D1 R32 Development Board - Xiaozhi AI Desktop Robot
 
-本目录包含ESP32 UNO D1 R32开发板的配置文件和实现代码，用于构建小智AI桌面机器人。
+This directory contains the configuration files and implementation code for building a Xiaozhi AI desktop robot with the ESP32 UNO D1 R32 development board.
 
-## 硬件要求
+## Hardware Requirements
 
-- ESP32 UNO D1 R32开发板
-- INMP441 MEMS麦克风
-- Max98357A I2S音频放大器
-- SSD1306 OLED显示屏 (128x64)
-- 2个SG90舵机 (水平和垂直)
-- 扬声器
-- 面包板和连接线
+- ESP32 UNO D1 R32 development board
+- INMP441 MEMS microphone
+- Max98357A I2S audio amplifier
+- SSD1306 OLED display (128x64)
+- 2 SG90 servos (horizontal and vertical)
+- Speaker
+- Breadboard and jumper wires
 
-## 硬件连接
+## Hardware Connections
 
-### INMP441麦克风连接
+### INMP441 Microphone Connections
 
-INMP441是一款高质量的I2S数字麦克风，连接方式如下：
+The INMP441 is a high-quality I2S digital microphone. Connect it as follows:
 
-| INMP441引脚 | ESP32 UNO D1 R32引脚 |
+| INMP441 Pin | ESP32 UNO D1 R32 Pin |
 |------------|---------------------|
 | VDD        | 3.3V                |
 | GND        | GND                 |
 | SD         | GPIO17              |
-| L/R        | GND (左声道) 或 3.3V (右声道) |
+| L/R        | GND (left channel) or 3.3V (right channel) |
 | WS         | GPIO16              |
 | SCK        | GPIO14              |
 
-### Max98357A音频放大器连接
+### Max98357A Audio Amplifier Connections
 
-Max98357A是一款I2S音频放大器，连接方式如下：
+Max98357A is an I2S audio amplifier. Connect it as follows:
 
-| Max98357A引脚 | ESP32 UNO D1 R32引脚 |
+| Max98357A Pin | ESP32 UNO D1 R32 Pin |
 |-------------|---------------------|
-| VIN         | 5V 或 3.3V          |
+| VIN         | 5V or 3.3V |
 | GND         | GND                 |
 | DIN         | GPIO25              |
 | BCLK        | GPIO26              |
 | LRC         | GPIO27              |
-| GAIN        | 悬空 (默认0dB增益)    |
-| SD          | 悬空 (不要接GND)      |
+| GAIN        | Unconnected (default 0 dB gain) |
+| SD          | Unconnected (do not connect to GND) |
 
-**注意**：经测试，MAX98357A的SD引脚不接（悬空）才能正常发声。如果接GND反而没有声音输出。
+**Note**: Testing showed that the MAX98357A produces sound only when its SD pin is left unconnected. Connecting it to GND results in no audio output.
 
-### SSD1306 OLED显示屏连接
+### SSD1306 OLED Display Connections
 
-| SSD1306引脚 | ESP32 UNO D1 R32引脚 |
+| SSD1306 Pin | ESP32 UNO D1 R32 Pin |
 |------------|---------------------|
 | VCC        | 3.3V                |
 | GND        | GND                 |
 | SCL        | GPIO22              |
 | SDA        | GPIO21              |
 
-### 舵机连接
+### Servo Connections
 
-| 舵机       | ESP32 UNO D1 R32引脚 |
+| Servo       | ESP32 UNO D1 R32 Pin |
 |-----------|---------------------|
-| 水平舵机信号线 | GPIO19             |
-| 垂直舵机信号线 | GPIO18             |
+| Horizontal servo signal wire | GPIO19 |
+| Vertical servo signal wire | GPIO18 |
 | VCC        | 5V                  |
 | GND        | GND                 |
 
-### 触摸传感器连接
+### Touch Sensor Connections
 
-#### 方案1：使用ESP32内置触摸传感器功能
+#### Option 1: Use the ESP32’s Built-In Touch Sensor
 
-| 连接项 | ESP32 UNO D1 R32引脚 |
+| Connection | ESP32 UNO D1 R32 Pin |
 |-------|---------------------|
-| 金属片/导电材料 | GPIO4 (通过10K欧姆电阻) |
-| 上拉电阻 | 3.3V 到 GPIO4 (10K欧姆) |
+| Metal plate/conductive material | GPIO4 (through a 10 kΩ resistor) |
+| Pull-up resistor | 3.3V to GPIO4 (10 kΩ) |
 
-连接示意图：
+Wiring diagram:
 ```
-3.3V ---- 10K电阻 ---- GPIO4 ---- 金属片/导电材料
+3.3V ---- 10K resistor ---- GPIO4 ---- metal plate/conductive material
 ```
 
-#### 方案2：使用三线式触摸开关模块（当前默认配置）
+#### Option 2: Use a Three-Wire Touch Switch Module (Default Configuration)
 
-| 触摸模块引脚 | ESP32 UNO D1 R32引脚 |
+| Touch Module Pin | ESP32 UNO D1 R32 Pin |
 |------------|---------------------|
-| VCC (红线)  | 5V 或 3.3V          |
-| GND (黑线)  | GND                 |
-| OUT (黄线)  | GPIO4               |
+| VCC (red wire)  | 5V or 3.3V |
+| GND (black wire)  | GND |
+| OUT (yellow wire)  | GPIO4 |
 
-连接示意图：
+Wiring diagram:
 ```
-ESP32 5V/3.3V ---- 触摸模块 VCC (红线)
-ESP32 GND    ---- 触摸模块 GND (黑线)
-ESP32 GPIO4  ---- 触摸模块 OUT (黄线)
+ESP32 5V/3.3V ---- touch module VCC (red wire)
+ESP32 GND    ---- touch module GND (black wire)
+ESP32 GPIO4  ---- touch module OUT (yellow wire)
 ```
 
-**注意**：
-- 触摸模块的VCC可以连接到5V或3.3V，两者都可以正常工作
-- 当前代码默认配置为使用三线式触摸开关模块
-- 如需使用ESP32内置触摸传感器功能，请修改config.h中的TOUCH_SENSOR_TYPE为0
+**Note**:
+- The touch module’s VCC can be connected to 5V or 3.3V; either works.
+- The code is currently configured to use the three-wire touch switch module by default.
+- To use the ESP32’s built-in touch sensor, set TOUCH_SENSOR_TYPE to 0 in config.h.
 
-## 功能特点
+## Features
 
-1. **语音交互**：通过INMP441麦克风和Max98357A音频放大器实现语音输入和输出
-2. **表情显示**：在SSD1306 OLED显示屏上显示不同的表情和文字
-3. **舵机控制**：通过双舵机云台实现头部动作，如点头、摇头等
-4. **小智AI集成**：与小智AI服务器通信，实现智能对话和交互
+1. **Voice interaction**: Voice input and output via the INMP441 microphone and Max98357A audio amplifier
+2. **Expression display**: Shows different expressions and text on the SSD1306 OLED display
+3. **Servo control**: A two-servo gimbal enables head movements such as nodding and shaking
+4. **Xiaozhi AI integration**: Communicates with the Xiaozhi AI server for intelligent conversation and interaction
 
-## 音频配置优化
+## Audio Configuration Optimizations
 
-为了解决音频播放卡顿和滋滋声问题，我们对音频配置进行了以下优化：
+The following audio configuration optimizations address playback stuttering and crackling:
 
-1. **采样率匹配**：将输出采样率设置为16000Hz，与输入采样率保持一致，避免重采样带来的不稳定性。
+1. **Sample rate matching**: Set the output sample rate to 16000 Hz to match the input rate and avoid instability from resampling.
 
-2. **DMA缓冲区优化**：
-   - 增加DMA描述符数量(AUDIO_DMA_DESC_NUM)到12
-   - 增加DMA帧数(AUDIO_DMA_FRAME_NUM)到600
-   - 这些调整可以提供更大的缓冲区，减少缓冲区不足导致的卡顿
+2. **DMA buffer optimization**:
+   - Increase the number of DMA descriptors (AUDIO_DMA_DESC_NUM) to 12
+   - Increase the number of DMA frames (AUDIO_DMA_FRAME_NUM) to 600
+   - These changes provide larger buffers and reduce stuttering caused by insufficient buffering
 
-3. **批处理优化**：
-   - 减小批处理大小(AUDIO_BATCH_SIZE)到60
-   - 较小的批处理大小可以使音频处理更平滑，减少卡顿感
+3. **Batch processing optimization**:
+   - Reduce the batch size (AUDIO_BATCH_SIZE) to 60
+   - A smaller batch size can make audio processing smoother and reduce perceived stuttering
 
-4. **时钟稳定性提升**：
-   - 增加主时钟倍数(AUDIO_MCLK_MULTIPLE)到384
-   - 提高时钟稳定性，减少滋滋声
+4. **Improved clock stability**:
+   - Increase the master clock multiplier (AUDIO_MCLK_MULTIPLE) to 384
+   - This improves clock stability and reduces crackling
 
-5. **MAX98357A连接注意事项**：
-   - SD引脚需要保持悬空，不要接GND
-   - GAIN引脚可以悬空，默认为0dB增益
+5. **MAX98357A connection notes**:
+   - Leave the SD pin unconnected; do not connect it to GND.
+   - The GAIN pin can be left unconnected; the default gain is 0 dB.
 
-这些优化参数可以在`config.h`文件中进行调整，以适应不同的硬件配置和音频需求。
+These optimization parameters can be adjusted in `config.h` to suit different hardware configurations and audio requirements.
 
-## 音频问题排查指南
+## Audio Troubleshooting Guide
 
-### MAX98357A放大器噪音和卡顿问题
+### MAX98357A Amplifier Noise and Stuttering
 
-如果在使用MAX98357A放大器时遇到噪音或卡顿问题，可以尝试以下解决方案：
+If you experience noise or stuttering with the MAX98357A amplifier, try the following solutions:
 
-1. **硬件连接检查**：
-   - 确保MAX98357A的VDD连接到稳定的3.3V电源
-   - 确保GND连接牢固，最好直接连接到ESP32的GND
-   - 如果有SD引脚，确保它处于高电平状态（启用放大器）
-   - 检查I2S连接：BCLK、LRCLK和DIN连接是否正确
+1. **Check hardware connections**:
+   - Make sure MAX98357A VDD is connected to a stable 3.3V supply.
+   - Ensure a secure GND connection, preferably directly to ESP32 GND.
+   - If there is an SD pin, ensure it is high (amplifier enabled).
+   - Check that the I2S connections (BCLK, LRCLK, and DIN) are correct.
 
-2. **电源噪声问题**：
-   - 尝试为MAX98357A提供单独的电源滤波，添加100μF电解电容和0.1μF陶瓷电容并联在VDD和GND之间
-   - 确保电源线路短且粗，减少阻抗
-   - 如果使用USB供电，尝试使用外部电源适配器
+2. **Power supply noise**:
+   - Try adding separate power filtering for MAX98357A: connect a 100 μF electrolytic capacitor and a 0.1 μF ceramic capacitor in parallel between VDD and GND.
+   - Keep power wires short and thick to reduce impedance.
+   - If using USB power, try an external power adapter.
 
-3. **接地问题**：
-   - 确保所有组件共地，但避免接地环路
-   - 尝试星型接地拓扑，所有接地点连接到一个中心点
+3. **Grounding**:
+   - Ensure all components share a common ground, but avoid ground loops.
+   - Try a star-ground topology, with all ground connections joined at a single point.
 
-4. **软件配置**：
-   - 当前配置：
-     - DMA描述符数量：4
-     - DMA帧数：128
-     - 批处理大小：32
-   - 如果声音仍然卡顿，可以尝试以下配置：
-     - 增加DMA描述符数量到8
-     - 增加DMA帧数到256
-     - 调整批处理大小到64
+4. **Software configuration**:
+   - Current settings:
+     - DMA descriptor count:4
+     - DMA frame count:128
+     - Batch size:32
+   - If audio still stutters, try the following settings:
+     - Increase the number of DMA descriptors to 8.
+     - Increase the number of DMA frames to 256.
+     - Set the batch size to 64.
 
-5. **音频线路**：
-   - 使用屏蔽音频线连接扬声器
-   - 保持音频线远离电源线和数字信号线
-   - 尝试添加铁氧体磁环在音频线上减少干扰
+5. **Audio wiring**:
+   - Use shielded audio cable to connect the speaker.
+   - Keep audio cables away from power and digital signal wires.
+   - Try adding a ferrite bead to the audio cable to reduce interference.
 
-### 音频参数调整建议
+### Suggested Audio Parameter Settings
 
-根据不同的使用场景，可以尝试以下参数组合：
+Depending on the use case, try the following parameter combinations:
 
-| 场景 | DMA描述符 | DMA帧数 | 批处理大小 | 备注 |
+| Scenario | DMA descriptors | DMA frames | Batch size | Notes |
 |------|----------|---------|------------|------|
-| 低延迟 | 4 | 128 | 32 | 适合需要快速响应的场景 |
-| 平衡 | 8 | 256 | 64 | 平衡延迟和稳定性 |
-| 高稳定性 | 16 | 512 | 128 | 适合长时间播放，但延迟较高 |
+| Low latency | 4 | 128 | 32 | For applications requiring a fast response |
+| Balanced | 8 | 256 | 64 | Balances latency and stability |
+| High stability | 16 | 512 | 128 | For long playback, with higher latency |
 
-## 使用方法
+## Usage
 
-1. 按照硬件连接说明连接各个组件
-2. 编译并烧录固件到ESP32 UNO D1 R32开发板
-3. 通过小智AI后台配置设备
-4. 使用触摸传感器控制设备：
-   - **短触GPIO4引脚**：切换聊天状态（开启/关闭）
-   - **长触GPIO4引脚**：开始录音，松开结束录音并发送语音
-5. BOOT按钮保留其原始功能（进入bootloader模式），仅在设备启动且WiFi未连接时用于重置WiFi配置
+1. Connect the components according to the hardware wiring instructions.
+2. Build and flash the firmware to the ESP32 UNO D1 R32 development board.
+3. Configure the device through the Xiaozhi AI backend.
+4. Use the touch sensor to control the device:
+   - **Briefly touch GPIO4**: Toggle chat mode on or off.
+   - **Touch and hold GPIO4**: Start recording; release to stop recording and send the audio.
+5. The BOOT button retains its original function (entering bootloader mode); it resets Wi-Fi settings only when the device has started and is not connected to Wi-Fi.
 
-## 注意事项
+## Notes
 
-1. 舵机需要使用5V电源供电，确保电源能够提供足够的电流
-2. OLED显示屏和INMP441麦克风使用3.3V供电
-3. 确保I2C和I2S连接正确，否则可能导致显示或音频问题
-4. 首次使用时需要配置WiFi连接和小智AI账号
+1. Servos require a 5V supply; make sure the supply can provide sufficient current.
+2. The OLED display and INMP441 microphone use 3.3V power.
+3. Ensure I2C and I2S are connected correctly to avoid display or audio issues.
+4. Configure the Wi-Fi connection and Xiaozhi AI account before first use.

@@ -1,36 +1,36 @@
-# 编译配置命令
+# Build Configuration Commands
 
-**配置编译目标为 ESP32：**
+**Set the build target to ESP32:**
 
 ```bash
 idf.py set-target esp32
 ```
 
-**打开 menuconfig：**
+**Open menuconfig:**
 
 ```bash
 idf.py menuconfig
 ```
 
-**选择板子：**
+**Select the board:**
 
 ```
 Xiaozhi Assistant -> Board Type -> AtomMatrix + Echo Base
 ```
 
-**修改 flash 大小：**
+**Change the flash size:**
 
 ```
 Serial flasher config -> Flash size -> 4 MB
 ```
 
-**修改分区表：**
+**Change the partition table:**
 
 ```
 Partition Table -> Custom partition CSV file -> partitions/v1/4m.csv
 ```
 
-**编译：**
+**Build:**
 
 ```bash
 idf.py build

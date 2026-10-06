@@ -1,45 +1,45 @@
 # ESP-Spot S3
 
-## 简介
+## Introduction
 
 <div align="center">
-    <a href="https://oshwhub.com/esp-college/esp-spot"><b> 立创开源平台 </b></a>
+    <a href="https://oshwhub.com/esp-college/esp-spot"><b> LCSC Open-Source Platform </b></a>
     |
     <a href="https://www.bilibili.com/video/BV1ekRAYVEZ1/"><b> Bilibili Demo </b></a>
 </div>
 
-ESP-Spot 是 ESP Friends 开源的一款智能语音交互盒子，内置麦克风、扬声器、IMU 惯性传感器，可使用电池供电。ESP-Spot 不带屏幕，带有一个 RGB 指示灯和两个按钮。硬件详情可查看[立创开源项目](https://oshwhub.com/esp-college/esp-spot)。
+ESP-Spot is a smart voice-interaction box open-sourced by ESP Friends. It includes a microphone, speaker, and IMU inertial sensor, and can run on battery power. ESP-Spot has no display, but includes an RGB indicator and two buttons. See the [LCSC open-source project](https://oshwhub.com/esp-college/esp-spot) for hardware details.
 
-ESP-Spot 开源项目采用 ESP32-S3-WROOM-1-N16R8 模组。如在复刻时使用了其他大小的 Flash，需修改对应的参数。
+The ESP-Spot open-source project uses an ESP32-S3-WROOM-1-N16R8 module. If you use a different flash size when building your own version, update the corresponding settings.
 
 
-## 配置、编译命令
+## Build Configuration Commands
 
-**配置编译目标为 ESP32S3**
+**Set the build target to ESP32S3**
 
 ```bash
 idf.py set-target esp32s3
 ```
 
-**打开 menuconfig 并配置**
+**Open and configure menuconfig**
 
 ```bash
 idf.py menuconfig
 ```
 
-分别配置如下选项：
+Configure the following options:
 
-- `Xiaozhi Assistant` → `Board Type` → 选择 `ESP-Spot-S3`
+- `Xiaozhi Assistant` → `Board Type` → select `ESP-Spot-S3`
 
-按 `S` 保存，按 `Q` 退出。
+Press `S` to save and `Q` to exit.
 
-**编译**
+**Build**
 
 ```bash
 idf.py build
 ```
 
-**烧录**
+**Flash**
 
 ```bash
 idf.py flash
@@ -47,9 +47,9 @@ idf.py flash
 
 > [!TIP]
 >
-> **若电脑始终无法找到 ESP-Spot 串口，可尝试如下步骤**
-> 1. 打开前盖；
-> 2. 拔出带有模组的 PCB 板；
-> 3. 按住 <kbd>BOOT</kbd> 同时插回 PCB 版，注意不要颠倒；
+> **If the computer cannot detect the ESP-Spot serial port, try the following:**
+> 1. Open the front cover.
+> 2. Remove the PCB with the module.
+> 3. Hold <kbd>BOOT</kbd> while reinserting the PCB, taking care not to reverse its orientation.
 > 
-> 此时， ESP-Spot 应当已进入下载模式。在烧录完成后，可能需要重新插拔 PCB 板。
+> ESP-Spot should now be in download mode. After flashing, you may need to disconnect and reconnect the PCB.

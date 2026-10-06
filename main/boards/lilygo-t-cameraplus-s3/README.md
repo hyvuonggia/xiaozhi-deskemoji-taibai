@@ -1,30 +1,30 @@
-# 编译配置命令
+# Build configuration commands
 
-**配置编译目标为 ESP32S3：**
+**Set the build target to ESP32S3：**
 
 ```bash
 idf.py set-target esp32s3
 ```
 
-**打开 menuconfig：**
+**Open menuconfig：**
 
 ```bash
 idf.py menuconfig
 ```
 
-**选择板子：**
+**Select board：**
 
 ```
-Xiaozhi Assistant -> Board Type -> LILYGO T-CameraPlus-S3_V1_0_V1_1或LILYGO T-CameraPlus-S3_V1_2
+Xiaozhi Assistant -> Board Type -> LILYGO T-CameraPlus-S3_V1_0_V1_1 or LILYGO T-CameraPlus-S3_V1_2
 ```
 
-**修改 psram 配置：**
+**Change the PSRAM configuration：**
 
 ```
 Component config -> ESP PSRAM -> SPI RAM config -> Mode (QUAD/OCT) -> Quad Mode PSRAM
 ```
 
-**编译：**
+**Build：**
 
 ```bash
 idf.py build
