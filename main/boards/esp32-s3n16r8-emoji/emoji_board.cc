@@ -5,6 +5,7 @@
 #include "application.h"
 #include "button.h"
 #include "board_config.h"
+#include "sh1106_panel.h"
 #include "mcp_server.h"
 #include "led/single_led.h"
 #include "assets/lang_config.h"
@@ -161,27 +162,17 @@ private:
         io_config.lcd_param_bits = 8;
         io_config.flags.dc_low_on_data = 0;
         io_config.flags.disable_control_phase = 0;
-        io_config.scl_speed_hz = 400 * 1000;
+        io_config.scl_speed_hz = 100 * 1000;
 
         // 使用新版I2C面板IO API
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_));
         ESP_LOGI(TAG, "LCD面板IO初始化成功");
 
-        ESP_LOGI(TAG, "安装SSD1306驱动");
-        esp_lcd_panel_dev_config_t panel_config = {};
-        panel_config.reset_gpio_num = -1;
-        panel_config.bits_per_pixel = 1;
-
-        esp_lcd_panel_ssd1306_config_t ssd1306_config = {
-            .height = static_cast<uint8_t>(DISPLAY_HEIGHT),
-        };
-        panel_config.vendor_config = &ssd1306_config;
-
-        ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(panel_io_, &panel_config, &panel_));
-        ESP_LOGI(TAG, "SSD1306驱动安装成功");
+        ESP_LOGI(TAG, "安装SH1106兼容页寻址驱动");
+        ESP_ERROR_CHECK(esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_));
+        ESP_LOGI(TAG, "SH1106兼容驱动安装成功");
 
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
-        
         if (esp_lcd_panel_init(panel_) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize display");
             display_ = new NoDisplay();
