@@ -26,6 +26,7 @@ extern "C" {
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 #include <esp_lcd_nv303b.h>
 
 
@@ -59,7 +60,7 @@ private:
         city_label_ = lv_label_create(weather_clock_container_);
         lv_obj_set_style_text_font(city_label_, fonts_.text_font, 0);
         lv_obj_set_style_text_color(city_label_, current_theme_.text, 0);
-        lv_label_set_text(city_label_, "武汉市");
+        lv_label_set_text(city_label_, "Thành phố Vũ Hán");
         lv_obj_align(city_label_, LV_ALIGN_TOP_MID, 0, 10);
         
         // 创建时间标签（中间大字）
@@ -113,7 +114,7 @@ private:
         weather_text_label_ = lv_label_create(weather_clock_container_);
         lv_obj_set_style_text_font(weather_text_label_, fonts_.text_font, 0);
         lv_obj_set_style_text_color(weather_text_label_, current_theme_.text, 0);
-        lv_label_set_text(weather_text_label_, "晴");
+        lv_label_set_text(weather_text_label_, "Nắng");
         lv_obj_align(weather_text_label_, LV_ALIGN_BOTTOM_MID, 0, -10);
     }
     
@@ -452,7 +453,7 @@ private:
         if (idle_mode_) {
             // 检查天气数据是否已就绪
             bool weather_ready = weather_ && weather_->IsDataReady();
-            ESP_LOGI(TAG, "天气时钟模式检查: weather_=%p, IsDataReady=%s", weather_, weather_ready ? "true" : "false");
+            ESP_LOGI(TAG, "Weather clock mode check: weather_=%p, IsDataReady=%s", weather_, weather_ready ? "true" : "false");
             if (weather_ready) {
             // 获取当前时间
             time_t now;
@@ -503,16 +504,16 @@ private:
                 
                 // 如果天气数据有效，主动更新一次天气数据
                 if (city == "未知" || weather_text == "未知" || temperature == 0.0f) {
-                    ESP_LOGI(TAG, "天气数据无效，尝试更新天气数据");
+                    ESP_LOGI(TAG, "Weather data is invalid; attempting to refresh it");
                     // 创建任务来更新天气，避免阻塞主线程
                     xTaskCreate(
                         [](void* arg) {
                             iot::Weather* w = static_cast<iot::Weather*>(arg);
                             // 先尝试通过公网IP自动获取城市
                             if (w->AutoDetectCity()) {
-                                ESP_LOGI(TAG, "已通过公网IP自动获取城市: %s", w->GetCity().c_str());
+                                ESP_LOGI(TAG, "Automatically detected city via public IP: %s", w->GetCity().c_str());
                             } else {
-                                ESP_LOGI(TAG, "无法通过公网IP获取城市，使用默认城市");
+                                ESP_LOGI(TAG, "Could not detect city via public IP; using the default city");
                             }
                             // 更新天气数据
                             w->UpdateWeather();
@@ -528,10 +529,26 @@ private:
             }
             
             // 更新天气时钟显示
-            display_->UpdateWeatherClock(city, time_ss.str(), temperature, weather_text, weather_code);
+            // Translate known Chinese API descriptions only on the display path; retain the API value elsewhere.
+            static const std::pair<const char*, const char*> weather_labels[] = {
+                {"未知", "Không rõ"}, {"晴", "Nắng"}, {"多云", "Nhiều mây"}, {"少云", "Ít mây"},
+                {"晴间多云", "Nắng, đôi lúc nhiều mây"}, {"阴", "Âm u"}, {"阵雨", "Mưa rào"},
+                {"雷阵雨", "Mưa dông"}, {"小雨", "Mưa nhỏ"}, {"中雨", "Mưa vừa"},
+                {"大雨", "Mưa to"}, {"暴雨", "Mưa rất to"}, {"小雪", "Tuyết nhẹ"},
+                {"中雪", "Tuyết vừa"}, {"大雪", "Tuyết dày"}, {"雨夹雪", "Mưa tuyết"},
+                {"雾", "Sương mù"}, {"霾", "Sương khói"}
+            };
+            std::string display_weather = weather_text;
+            for (const auto& label : weather_labels) {
+                if (weather_text == label.first) {
+                    display_weather = label.second;
+                    break;
+                }
+            }
+            display_->UpdateWeatherClock(city, time_ss.str(), temperature, display_weather, weather_code);
             
             // 记录日志，便于调试
-            ESP_LOGI(TAG, "天气时钟UI已更新: 城市=%s, 时间=%s, 温度=%.1f°C, 天气=%s, 天气代码=%s", 
+            ESP_LOGI(TAG, "Weather clock UI updated: city=%s, time=%s, temperature=%.1f°C, weather=%s, weather code=%s",
                      city.c_str(), time_ss.str().c_str(), temperature, weather_text.c_str(), weather_code.c_str());
             }
             else {
@@ -547,8 +564,8 @@ private:
                         << std::setfill('0') << std::setw(2) << timeinfo.tm_min;
                 
                 // 显示加载中的提示
-                display_->UpdateWeatherClock("加载中...", time_ss.str(), 0.0f, "正在获取天气数据", "");
-                ESP_LOGI(TAG, "天气数据未就绪，显示加载中提示");
+                display_->UpdateWeatherClock("Đang tải...", time_ss.str(), 0.0f, "Đang lấy dữ liệu thời tiết", "");
+                ESP_LOGI(TAG, "Weather data is not ready; showing the loading message");
             }
         }
     }
@@ -598,7 +615,7 @@ public:
             
             // 启动C数组格式天气图标测试
             start_c_array_test();
-            ESP_LOGI(TAG, "C数组格式天气图标测试已启动");
+            ESP_LOGI(TAG, "C-array weather icon test started");
     }
     
     ~magai_wifi() {
@@ -641,9 +658,9 @@ public:
                             iot::Weather* w = static_cast<iot::Weather*>(arg);
                             // 先尝试通过公网IP自动获取城市
                             if (w->AutoDetectCity()) {
-                                ESP_LOGI(TAG, "已通过公网IP自动获取城市: %s", w->GetCity().c_str());
+                                ESP_LOGI(TAG, "Automatically detected city via public IP: %s", w->GetCity().c_str());
                             } else {
-                                ESP_LOGI(TAG, "无法通过公网IP获取城市，使用默认城市");
+                                ESP_LOGI(TAG, "Could not detect city via public IP; using the default city");
                             }
                             // 更新天气数据
                             w->UpdateWeather();
@@ -655,7 +672,7 @@ public:
                             magai_wifi* board = static_cast<magai_wifi*>(w->GetUserData());
                             if (board && w->IsDataReady()) {
                                 board->UpdateWeatherClock();
-                                ESP_LOGI(TAG, "天气数据已就绪，触发UI更新");
+                                ESP_LOGI(TAG, "Weather data is ready; triggering UI update");
                             }
                             
                             vTaskDelete(NULL);
@@ -666,7 +683,7 @@ public:
                         5,                       // 任务优先级
                         NULL                     // 任务句柄
                     );
-                    ESP_LOGI(TAG, "在设备状态变为idle后触发天气数据更新");
+                    ESP_LOGI(TAG, "Triggered weather data update after device entered idle state");
                 }
                 
                 // 不再直接调用UpdateWeatherClock，而是在天气数据就绪后由任务触发更新

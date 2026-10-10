@@ -163,7 +163,7 @@ public:
             switch(newState) {
                 case PowerState::SHUTDOWN: {
 
-                    ESP_LOGD(TAG, "关机");
+                    ESP_LOGD(TAG, "Shutting down");
                     
                 //取消 PWR_EN 使能
                     /* 防止关机后误唤醒 */

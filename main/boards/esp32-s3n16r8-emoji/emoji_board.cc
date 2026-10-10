@@ -77,7 +77,7 @@ public:
                 int width, int height, bool flip_x, bool flip_y, 
                 DisplayFonts fonts) 
         : OledDisplay(io, panel, width, height, flip_x, flip_y, fonts), board_(board) {
-        ESP_LOGI(TAG, "创建EmojiDisplay实例");
+        ESP_LOGI(TAG, "Created EmojiDisplay instance");
     }
 
     // 重写SetChatMessage方法，在显示AI回复时同时触发表情和动作
@@ -117,7 +117,7 @@ private:
             return;
         }
         
-        ESP_LOGI(TAG, "处理AI回复: %s", message);
+        ESP_LOGI(TAG, "Processing AI response: %s", message);
         
         // 检查是否与上一次相同，如果相同则不处理
         if (last_ai_response_ == message) {
@@ -129,7 +129,7 @@ private:
         
         // 检查是否包含特殊字符标记，如果有则立即处理
         if (message[0] && strchr("{}<>/\\$!?^*#~", message[0]) != nullptr) {
-            ESP_LOGI(TAG, "检测到特殊字符标记: %c", message[0]);
+            ESP_LOGI(TAG, "Detected special character marker: %c", message[0]);
             emotion_controller_->ProcessAIResponse(message);
         } else {
             // 如果没有特殊字符标记，则正常处理AI回复
@@ -148,7 +148,7 @@ private:
         bus_config.flags.enable_internal_pullup = true;
         
         ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &display_i2c_bus_));
-        ESP_LOGI(TAG, "I2C总线初始化成功");
+        ESP_LOGI(TAG, "I2C bus initialized successfully");
     }
 
     void InitializeSsd1306Display() {
@@ -166,11 +166,11 @@ private:
 
         // 使用新版I2C面板IO API
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_));
-        ESP_LOGI(TAG, "LCD面板IO初始化成功");
+        ESP_LOGI(TAG, "LCD panel I/O initialized successfully");
 
-        ESP_LOGI(TAG, "安装SH1106兼容页寻址驱动");
+        ESP_LOGI(TAG, "Installing SH1106-compatible page-addressing driver");
         ESP_ERROR_CHECK(esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_));
-        ESP_LOGI(TAG, "SH1106兼容驱动安装成功");
+        ESP_LOGI(TAG, "SH1106-compatible driver installed successfully");
 
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
         if (esp_lcd_panel_init(panel_) != ESP_OK) {
@@ -211,7 +211,7 @@ private:
                 SwitchScreen(true);
                 emoji_controller_->StartBlinkTimer();
                 emoji_controller_->EyeCenter();
-                GetDisplay()->ShowNotification("表情模式");
+                GetDisplay()->ShowNotification("Chế độ biểu cảm");
                 
                 // 初始化舵机位置
                 servo_controller_->HeadCenter();
@@ -219,7 +219,7 @@ private:
                 // 退出表情模式
                 emoji_controller_->StopBlinkTimer();
                 SwitchScreen(false);
-                GetDisplay()->ShowNotification("对话模式");
+                GetDisplay()->ShowNotification("Chế độ trò chuyện");
                 emoji_controller_->CleanupEmojiScreen();
                 
                 // 舵机回到中心位置
@@ -264,7 +264,7 @@ private:
 
     void InitializeIot() {
         // 新的MCP架构不再需要手动初始化Thing，由框架自动管理
-        ESP_LOGI(TAG, "新版MCP架构已自动管理设备功能");
+        ESP_LOGI(TAG, "Device functions are managed automatically by the new MCP architecture");
     }
     
     // 切换屏幕
@@ -314,7 +314,7 @@ public:
         emotion_controller_->Initialize();
         
         // 手势识别功能已移除
-        ESP_LOGI(TAG, "手势识别功能已移除");
+        ESP_LOGI(TAG, "Gesture recognition has been removed");
         
         // 新版MCP架构不再需要设置全局情感控制器指针
         // iot::SetGlobalEmotionController(emotion_controller_);
@@ -369,13 +369,13 @@ public:
         if (emotion_controller_) {
             // 检查是否是表情动作命令
             if (emotion_controller_->ProcessEmotionCommand(message)) {
-                ESP_LOGI(TAG, "用户输入的表情动作命令已处理: %s", message);
+                ESP_LOGI(TAG, "Processed user-entered expression action command: %s", message);
                 return;
             }
             
             // 检查是否是音量控制命令
             if (emotion_controller_->ProcessVolumeCommand(message)) {
-                ESP_LOGI(TAG, "用户输入的音量控制命令已处理: %s", message);
+                ESP_LOGI(TAG, "Processed user-entered volume control command: %s", message);
                 return;
             }
         }
@@ -404,7 +404,7 @@ void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
     
     // 如果是AI回复，则处理内容
     if (role && strcmp(role, "assistant") == 0 && content && content[0] != '\0') {
-        ESP_LOGI(TAG, "EmojiDisplay捕获AI回复: %s", content);
+        ESP_LOGI(TAG, "EmojiDisplay captured AI response: %s", content);
         
         // 调用EmojiBoard的ProcessAIResponse方法处理AI回复
         if (board_ && board_->emotion_controller_) {
@@ -414,7 +414,7 @@ void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
                 
                 // 检查是否包含特殊字符标记，如果有则直接处理
                 if (content[0] && strchr("{}<>/\\$!?^*#~", content[0]) != nullptr) {
-                    ESP_LOGI(TAG, "检测到特殊字符标记: %c", content[0]);
+                    ESP_LOGI(TAG, "Detected special character marker: %c", content[0]);
                     
                     // 直接调用情感控制器处理特殊字符
                     board_->emotion_controller_->ProcessAIResponse(content);
@@ -462,7 +462,7 @@ static void StateMonitorTask(void* arg) {
     // 确保初始状态下随机动画是启用的
     if (board->emoji_controller_) {
         board->emoji_controller_->SetRandomAnimationEnabled(true);
-        ESP_LOGI(TAG, "初始化：启用随机表情动画");
+        ESP_LOGI(TAG, "Initialization: random expression animation enabled");
     }
     
     // 监控设备状态
@@ -472,7 +472,7 @@ static void StateMonitorTask(void* arg) {
         
         // 如果设备状态发生变化，记录日志
         if (current_state != last_state) {
-            ESP_LOGI(TAG, "设备状态变化: %d -> %d", last_state, current_state);
+            ESP_LOGI(TAG, "Device state changed: %d -> %d", last_state, current_state);
         }
         
         // 如果设备状态从idle变为speaking或listening，说明对话开始
@@ -485,7 +485,7 @@ static void StateMonitorTask(void* arg) {
             if (board->emoji_controller_) {
                 board->emoji_controller_->SetRandomAnimationEnabled(false);
                 board->emoji_controller_->ClearAnimationQueue();
-                ESP_LOGI(TAG, "对话开始，停止随机表情动画");
+                ESP_LOGI(TAG, "Conversation started; stopping random expression animation");
             }
             
             // 如果是AI开始回复
@@ -497,7 +497,7 @@ static void StateMonitorTask(void* arg) {
                 int random_index = rand() % (sizeof(positive_emotions) / sizeof(positive_emotions[0]));
                 emotion_controller->TriggerEmotion(positive_emotions[random_index]);
                 
-                ESP_LOGI(TAG, "AI开始回复，触发积极情感: %s", positive_emotions[random_index]);
+                ESP_LOGI(TAG, "AI started responding; triggering positive emotion: %s", positive_emotions[random_index]);
             }
         }
         // 如果设备状态变为speaking或listening，但不是从idle变过来，说明对话继续
@@ -510,7 +510,7 @@ static void StateMonitorTask(void* arg) {
             if (board->emoji_controller_) {
                 board->emoji_controller_->SetRandomAnimationEnabled(false);
                 board->emoji_controller_->ClearAnimationQueue();
-                ESP_LOGI(TAG, "对话继续，停止随机表情动画");
+                ESP_LOGI(TAG, "Conversation continued; stopping random expression animation");
             }
         }
         
@@ -524,7 +524,7 @@ static void StateMonitorTask(void* arg) {
             
             // 如果有AI回复内容，则基于内容分析情感
             if (!ai_response.empty()) {
-                ESP_LOGI(TAG, "AI回复结束，基于内容分析情感: %s", ai_response.c_str());
+                ESP_LOGI(TAG, "AI response ended; analyzing emotion from content: %s", ai_response.c_str());
                 
                 // 直接处理AI回复内容，触发相应的表情和动作
                 emotion_controller->ProcessAIResponse(ai_response);
@@ -536,7 +536,7 @@ static void StateMonitorTask(void* arg) {
                 int random_index = rand() % (sizeof(emotions) / sizeof(emotions[0]));
                 emotion_controller->TriggerEmotion(emotions[random_index]);
                 
-                ESP_LOGI(TAG, "AI回复结束，无内容，使用随机情感: %s", emotions[random_index]);
+                ESP_LOGI(TAG, "AI response ended with no content; using random emotion: %s", emotions[random_index]);
             }
         }
         
@@ -558,7 +558,7 @@ static void StateMonitorTask(void* arg) {
             
             for (const auto& cmd : common_commands) {
                 if (emotion_controller->ProcessEmotionCommand(cmd)) {
-                    ESP_LOGI(TAG, "用户输入结束，尝试处理常见表情动作命令: %s", cmd.c_str());
+                    ESP_LOGI(TAG, "User input ended; attempting to process common expression action command: %s", cmd.c_str());
                     break;
                 }
             }
@@ -577,12 +577,12 @@ static void StateMonitorTask(void* arg) {
                 // 恢复随机表情动画
                 if (board->emoji_controller_) {
                     board->emoji_controller_->SetRandomAnimationEnabled(true);
-                    ESP_LOGI(TAG, "对话结束，恢复随机表情动画");
+                    ESP_LOGI(TAG, "Conversation ended; resuming random expression animation");
                 }
                 
                 // 触发中性情感
                 emotion_controller->TriggerEmotion("neutral");
-                ESP_LOGI(TAG, "对话结束，恢复中性情感");
+                ESP_LOGI(TAG, "Conversation ended; restoring neutral emotion");
             }
         }
         
@@ -609,14 +609,14 @@ static void ProcessAIResponseTask(void* arg) {
         if (g_board_instance) {
             // 由于ProcessAIResponseTask是EmojiBoard的友元函数，可以直接访问私有成员
             emotion_controller = g_board_instance->emotion_controller_;
-            ESP_LOGI("AIResponseTask", "从EmojiBoard获取情感控制器");
+            ESP_LOGI("AIResponseTask", "Retrieved emotion controller from EmojiBoard");
         }
         
         if (emotion_controller) {
-            ESP_LOGI("AIResponseTask", "处理AI回复: %s", message);
+            ESP_LOGI("AIResponseTask", "Processing AI response: %s", message);
             emotion_controller->ProcessAIResponse(message);
         } else {
-            ESP_LOGW("AIResponseTask", "无法获取情感控制器，无法处理AI回复");
+            ESP_LOGW("AIResponseTask", "Could not retrieve emotion controller; unable to process AI response");
         }
     }
     
@@ -631,7 +631,7 @@ static void ProcessAIResponseTask(void* arg) {
 
 // 实现EmojiDisplay::SetEmotion方法
 void EmojiDisplay::SetEmotion(const char* emotion) {
-    ESP_LOGI(TAG, "小智AI框架识别到表情: %s", emotion);
+    ESP_LOGI(TAG, "Xiaozhi AI framework recognized emotion: %s", emotion);
     
     // 调用父类的SetEmotion方法，保持原有功能
     OledDisplay::SetEmotion(emotion);
@@ -723,10 +723,10 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         // 对于其他表情，使用默认的中性表情
         else {
             mapped_emotion = "neutral";
-            ESP_LOGW(TAG, "未识别的表情类型: %s，使用默认的中性表情", emotion_str.c_str());
+            ESP_LOGW(TAG, "Unrecognized emotion type: %s; using the default neutral expression", emotion_str.c_str());
         }
         
-        ESP_LOGI(TAG, "映射到我们的表情动作: %s", mapped_emotion.c_str());
+        ESP_LOGI(TAG, "Mapped to our expression action: %s", mapped_emotion.c_str());
         
         // 创建一个单独的任务来执行表情动作，避免阻塞主线程
         // 复制表情字符串，因为它将在任务中使用

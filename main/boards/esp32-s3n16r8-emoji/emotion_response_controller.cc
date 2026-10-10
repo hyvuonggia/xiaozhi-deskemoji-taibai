@@ -48,19 +48,19 @@ void EmotionResponseController::Initialize() {
 // 处理AI回复
 void EmotionResponseController::ProcessAIResponse(const std::string& message) {
     // 添加详细日志
-    ESP_LOGI(TAG, "处理AI回复: %s", message.c_str());
+    ESP_LOGI(TAG, "Processing AI response: %s", message.c_str());
     
     // 首先检查是否是音量控制命令
     if (ProcessVolumeCommand(message)) {
         // 如果是音量控制命令，已经处理完毕，直接返回
-        ESP_LOGI(TAG, "识别为音量控制命令，处理完毕");
+        ESP_LOGI(TAG, "Recognized as a volume control command; processing complete");
         return;
     }
     
     // 检查是否是表情动作命令
     if (ProcessEmotionCommand(message)) {
         // 如果是表情动作命令，已经处理完毕，直接返回
-        ESP_LOGI(TAG, "识别为表情动作命令，处理完毕");
+        ESP_LOGI(TAG, "Recognized as an expression action command; processing complete");
         return;
     }
     
@@ -74,29 +74,29 @@ void EmotionResponseController::ProcessAIResponse(const std::string& message) {
     // 根据消息内容判断是否需要执行特定动作
     if (ShouldNod(message)) {
         action = "nod";
-        ESP_LOGI(TAG, "内容表示同意或肯定，执行点头动作");
+        ESP_LOGI(TAG, "Content indicates agreement or affirmation; performing nod action");
     } else if (ShouldShake(message)) {
         action = "shake";
-        ESP_LOGI(TAG, "内容表示否定或拒绝，执行摇头动作");
+        ESP_LOGI(TAG, "Content indicates disagreement or refusal; performing head shake action");
     } else if (ShouldDance(message)) {
         action = "dance";
-        ESP_LOGI(TAG, "内容表示高兴或庆祝，执行跳舞动作");
+        ESP_LOGI(TAG, "Content indicates happiness or celebration; performing dance action");
     } else if (ShouldLookLeft(message)) {
         action = "look_left";
-        ESP_LOGI(TAG, "内容提到左边，执行向左看动作");
+        ESP_LOGI(TAG, "Content mentions the left; looking left");
     } else if (ShouldLookRight(message)) {
         action = "look_right";
-        ESP_LOGI(TAG, "内容提到右边，执行向右看动作");
+        ESP_LOGI(TAG, "Content mentions the right; looking right");
     } else if (ShouldLookUp(message)) {
         action = "look_up";
-        ESP_LOGI(TAG, "内容提到上方，执行抬头动作");
+        ESP_LOGI(TAG, "Content mentions above; looking up");
     } else if (ShouldLookDown(message)) {
         action = "look_down";
-        ESP_LOGI(TAG, "内容提到下方，执行低头动作");
+        ESP_LOGI(TAG, "Content mentions below; looking down");
     }
     
     // 执行情感动作
-    ESP_LOGI(TAG, "通过文本分析得到情感: %s", emotion.c_str());
+    ESP_LOGI(TAG, "Emotion inferred from text: %s", emotion.c_str());
     
     // 如果有特定动作，优先执行动作
     if (!action.empty()) {
@@ -124,7 +124,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
     if (!codec) {
         codec = Board::GetInstance().GetAudioCodec();
         if (!codec) {
-            ESP_LOGE(TAG, "无法获取AudioCodec实例");
+            ESP_LOGE(TAG, "Failed to get the AudioCodec instance");
             return false;
         }
     }
@@ -172,7 +172,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
         
         // 设置音量
         codec->SetOutputVolume(volume);
-        ESP_LOGI(TAG, "设置音量为: %d", volume);
+        ESP_LOGI(TAG, "Setting volume to: %d", volume);
         
         // 触发开心表情
         ExecuteEmotionAction("happy");
@@ -199,7 +199,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
         
         // 设置新音量
         codec->SetOutputVolume(volume);
-        ESP_LOGI(TAG, "增加音量到: %d", volume);
+        ESP_LOGI(TAG, "Increasing volume to: %d", volume);
         
         // 触发开心表情
         ExecuteEmotionAction("happy");
@@ -226,7 +226,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
         
         // 设置新音量
         codec->SetOutputVolume(volume);
-        ESP_LOGI(TAG, "减小音量到: %d", volume);
+        ESP_LOGI(TAG, "Decreasing volume to: %d", volume);
         
         // 触发开心表情
         ExecuteEmotionAction("happy");
@@ -249,7 +249,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
     if (mute) {
         // 设置音量为0
         codec->SetOutputVolume(0);
-        ESP_LOGI(TAG, "静音");
+        ESP_LOGI(TAG, "Muted");
         
         // 触发开心表情
         ExecuteEmotionAction("happy");
@@ -272,7 +272,7 @@ bool EmotionResponseController::ProcessVolumeCommand(const std::string& message)
     if (max_volume) {
         // 设置音量为100
         codec->SetOutputVolume(100);
-        ESP_LOGI(TAG, "设置最大音量");
+        ESP_LOGI(TAG, "Setting volume to maximum");
         
         // 触发开心表情
         ExecuteEmotionAction("happy");
@@ -314,11 +314,11 @@ void EmotionResponseController::SetDefaultEmotion(const std::string& emotion) {
 
 // 手动触发情感响应
 void EmotionResponseController::TriggerEmotion(const std::string& emotion) {
-    ESP_LOGI(TAG, "触发情感: %s", emotion.c_str());
+    ESP_LOGI(TAG, "Triggered emotion: %s", emotion.c_str());
     current_emotion_ = emotion;
     
     // 使用情绪动作映射
-    ESP_LOGI(TAG, "执行情绪动作: %s", emotion.c_str());
+    ESP_LOGI(TAG, "Performing emotion action: %s", emotion.c_str());
     ExecuteEmotionAction(emotion);
 }
 
@@ -528,7 +528,7 @@ void EmotionResponseController::InitializeEmotionKeywords() {
     };
     RegisterEmotionKeywords("wakeup", wakeup_keywords);
     
-    ESP_LOGI(TAG, "情感关键词初始化完成");
+    ESP_LOGI(TAG, "Emotion keywords initialized");
 }
 
 // 分析文本内容
@@ -557,7 +557,7 @@ std::string EmotionResponseController::AnalyzeText(const std::string& text) {
 
 // 执行情感动作
 void EmotionResponseController::ExecuteEmotionAction(const std::string& emotion) {
-    ESP_LOGI(TAG, "执行情感动作: %s", emotion.c_str());
+    ESP_LOGI(TAG, "Performing emotion action: %s", emotion.c_str());
     
     // 更新当前情感
     current_emotion_ = emotion;
@@ -582,7 +582,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     std::transform(lower_text.begin(), lower_text.end(), lower_text.begin(),
                    [](unsigned char c){ return std::tolower(c); });
     
-    ESP_LOGI(TAG, "检查是否包含表情动作命令: %s", message.c_str());
+    ESP_LOGI(TAG, "Checking for an expression action command: %s", message.c_str());
     
     // 检查是否包含小智框架识别的情绪
     // 小智框架识别的情绪通常以特定的格式出现，如 "[emotion:happy]"
@@ -597,10 +597,10 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
         if (end_pos != std::string::npos) {
             // 提取小智框架识别的情绪
             std::string recognized_emotion = lower_text.substr(start_pos, end_pos - start_pos);
-            ESP_LOGI(TAG, "检测到小智框架识别的情绪: %s", recognized_emotion.c_str());
+            ESP_LOGI(TAG, "Detected emotion recognized by the Xiaozhi framework: %s", recognized_emotion.c_str());
             
             // 直接使用原有的情绪动作映射
-            ESP_LOGI(TAG, "使用原有情绪动作映射: %s", recognized_emotion.c_str());
+            ESP_LOGI(TAG, "Using the existing emotion-to-action mapping: %s", recognized_emotion.c_str());
             ExecuteEmotionAction(recognized_emotion);
             return true;
         }
@@ -612,7 +612,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* look_left_keywords[] = {"看向左边", "向左看", "左转", "往左看", "左看", "看左边"};
     for (const char* keyword : look_left_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到向左看命令");
+            ESP_LOGI(TAG, "Detected look-left command");
             ExecuteEmotionAction("look_left");
             return true;
         }
@@ -622,7 +622,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* look_right_keywords[] = {"看向右边", "向右看", "右转", "往右看", "右看", "看右边"};
     for (const char* keyword : look_right_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到向右看命令");
+            ESP_LOGI(TAG, "Detected look-right command");
             ExecuteEmotionAction("look_right");
             return true;
         }
@@ -632,7 +632,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* look_up_keywords[] = {"抬头", "向上看", "看上面", "抬头看"};
     for (const char* keyword : look_up_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到抬头命令");
+            ESP_LOGI(TAG, "Detected look-up command");
             ExecuteEmotionAction("look_up");
             return true;
         }
@@ -642,7 +642,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* look_down_keywords[] = {"低头", "向下看", "看下面", "低头看"};
     for (const char* keyword : look_down_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到低头命令");
+            ESP_LOGI(TAG, "Detected look-down command");
             ExecuteEmotionAction("look_down");
             return true;
         }
@@ -652,7 +652,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* look_center_keywords[] = {"居中", "回正", "恢复正常", "回到中心"};
     for (const char* keyword : look_center_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到居中命令");
+            ESP_LOGI(TAG, "Detected center command");
             ExecuteEmotionAction("look_center");
             return true;
         }
@@ -662,7 +662,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* nod_keywords[] = {"点头", "点下头", "说是", "表示同意", "说是的"};
     for (const char* keyword : nod_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到点头命令");
+            ESP_LOGI(TAG, "Detected nod command");
             ExecuteEmotionAction("nod");
             return true;
         }
@@ -672,7 +672,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* shake_keywords[] = {"摇头", "摇下头", "说不是", "表示否定", "说不是的"};
     for (const char* keyword : shake_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到摇头命令");
+            ESP_LOGI(TAG, "Detected head-shake command");
             ExecuteEmotionAction("shake");
             return true;
         }
@@ -682,7 +682,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* spin_keywords[] = {"转圈", "圈圈", "绕圈", "转个圈", "转一圈"};
     for (const char* keyword : spin_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到转圈命令");
+            ESP_LOGI(TAG, "Detected spin command");
             ExecuteEmotionAction("spin");
             return true;
         }
@@ -692,7 +692,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* dance_keywords[] = {"跳舞", "舞蹈", "跳个舞", "来支舞", "跳一段"};
     for (const char* keyword : dance_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到跳舞命令");
+            ESP_LOGI(TAG, "Detected dance command");
             ExecuteEmotionAction("dance");
             return true;
         }
@@ -702,7 +702,7 @@ bool EmotionResponseController::ProcessEmotionCommand(const std::string& message
     const char* blink_keywords[] = {"眨眼", "眨一下", "眨一眨", "眨", "眨眼了"};
     for (const char* keyword : blink_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到眨眼命令");
+            ESP_LOGI(TAG, "Detected blink command");
             ExecuteEmotionAction("blink");
             return true;
         }
@@ -727,7 +727,7 @@ bool EmotionResponseController::ShouldNod(const std::string& message) {
     for (const char* keyword : negative_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
             // 包含否定词，不应该点头
-            ESP_LOGI(TAG, "检测到否定词 '%s'，不执行点头动作", keyword);
+            ESP_LOGI(TAG, "Detected negative word '%s'; not performing nod action", keyword);
             return false;
         }
     }
@@ -740,7 +740,7 @@ bool EmotionResponseController::ShouldNod(const std::string& message) {
     
     for (const char* keyword : nod_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到肯定词 '%s'，执行点头动作", keyword);
+            ESP_LOGI(TAG, "Detected affirmative word '%s'; performing nod action", keyword);
             return true;
         }
     }
@@ -765,7 +765,7 @@ bool EmotionResponseController::ShouldShake(const std::string& message) {
     // 先检查完整的否定短语
     for (const char* keyword : shake_keywords) {
         if (lower_text.find(keyword) != std::string::npos) {
-            ESP_LOGI(TAG, "检测到否定短语 '%s'，执行摇头动作", keyword);
+            ESP_LOGI(TAG, "Detected negative phrase '%s'; performing head-shake action", keyword);
             return true;
         }
     }
@@ -778,7 +778,7 @@ bool EmotionResponseController::ShouldShake(const std::string& message) {
     for (const char* keyword : simple_negatives) {
         // 如果消息只有这个词，或者以这个词开头后跟空格或标点符号
         if (lower_text == keyword) {
-            ESP_LOGI(TAG, "检测到单独否定词 '%s'，执行摇头动作", keyword);
+            ESP_LOGI(TAG, "Detected standalone negative word '%s'; performing head-shake action", keyword);
             return true;
         }
         
@@ -788,7 +788,7 @@ bool EmotionResponseController::ShouldShake(const std::string& message) {
             char next_char = lower_text[strlen(keyword)];
             // 检查是否为空格或英文标点
             if (next_char == ' ' || next_char == '.' || next_char == ',') {
-                ESP_LOGI(TAG, "检测到单独否定词 '%s'，执行摇头动作", keyword);
+                ESP_LOGI(TAG, "Detected standalone negative word '%s'; performing head-shake action", keyword);
                 return true;
             }
         }

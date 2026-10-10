@@ -188,7 +188,7 @@ private:
         ESP_LOGI(TAG, "Power button long press detected (high-active)");
 
             if (pwrbutton_unreleased){
-                ESP_LOGI(TAG, "开机后电源键未松开,取消关机");
+                ESP_LOGI(TAG, "Power button was not released after startup; canceling shutdown");
                 return;
             }
             
@@ -214,30 +214,30 @@ private:
             auto &app = Application::GetInstance();
             auto current_state = app.GetDeviceState();
 
-            ESP_LOGI(TAG, "当前设备状态: %d", current_state);
+            ESP_LOGI(TAG, "Current device state: %d", current_state);
             
             if (current_state == kDeviceStateIdle) {
                 // 如果当前是待命状态，切换到聆听状态
-                ESP_LOGI(TAG, "从待命状态切换到聆听状态");
+                ESP_LOGI(TAG, "Switching from standby to listening state");
                 app.ToggleChatState(); // 切换到聆听状态
             } else if (current_state == kDeviceStateListening) {
                 // 如果当前是聆听状态，切换到待命状态
-                ESP_LOGI(TAG, "从聆听状态切换到待命状态");
+                ESP_LOGI(TAG, "Switching from listening to standby state");
                 app.ToggleChatState(); // 切换到待命状态
             } else if (current_state == kDeviceStateSpeaking) {
                 // 如果当前是说话状态，终止说话并切换到待命状态
-                ESP_LOGI(TAG, "从说话状态切换到待命状态");
+                ESP_LOGI(TAG, "Switching from speaking to standby state");
                 app.ToggleChatState(); // 终止说话
             } else {
                 // 其他状态下只唤醒设备
-                ESP_LOGI(TAG, "唤醒设备");
+                ESP_LOGI(TAG, "Waking device");
                 power_save_timer_->WakeUp();
             } });
 
         // 电源键三击：重置WiFi
         pwr_button_.OnMultipleClick([this]()
                                     {
-            ESP_LOGI(TAG, "Power button triple click: 重置WiFi");
+            ESP_LOGI(TAG, "Power button triple click: resetting Wi-Fi");
             power_save_timer_->WakeUp();
             ResetWifiConfiguration(); }, 3);
 

@@ -198,7 +198,7 @@ private:
 
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_));
 
-        ESP_LOGI(TAG, "安装SSD1306驱动");
+        ESP_LOGI(TAG, "Installing SSD1306 driver");
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = -1;
         panel_config.bits_per_pixel = 1;
@@ -209,18 +209,18 @@ private:
         panel_config.vendor_config = &ssd1306_config;
 
         ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(panel_io_, &panel_config, &panel_));
-        ESP_LOGI(TAG, "SSD1306驱动安装完成");
+        ESP_LOGI(TAG, "SSD1306 driver installed");
 
         // 重置显示屏
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
         if (esp_lcd_panel_init(panel_) != ESP_OK) {
-            ESP_LOGE(TAG, "初始化显示屏失败");
+            ESP_LOGE(TAG, "Failed to initialize display");
             display_ = new NoDisplay();
             return;
         }
 
         // 打开显示屏
-        ESP_LOGI(TAG, "打开显示屏");
+        ESP_LOGI(TAG, "Turning on display");
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_, true));
 
         display_ = new OledDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y,
@@ -229,7 +229,7 @@ private:
 
     // 初始化舵机
     void InitializeServos() {
-        ESP_LOGI(TAG, "初始化舵机...");
+        ESP_LOGI(TAG, "Initializing servos...");
 
         // 配置LEDC定时器
         ledc_timer_config_t ledc_timer = {
@@ -263,7 +263,7 @@ private:
             SetServoAngle((servo_type_t)i, SERVO_MID_ANGLE);
         }
 
-        ESP_LOGI(TAG, "舵机初始化成功");
+        ESP_LOGI(TAG, "Servo initialization successful");
     }
 
     // 设置舵机角度
@@ -288,7 +288,7 @@ private:
 
     // 执行点头动作
     void PerformNodAction() {
-        ESP_LOGI(TAG, "执行点头动作");
+        ESP_LOGI(TAG, "Performing nodding motion");
         
         for (int i = 0; i < sizeof(nod_sequence) / sizeof(nod_sequence[0]); i++) {
             SetServoAngle(SERVO_HORIZONTAL, nod_sequence[i].horizontal_angle);
@@ -299,7 +299,7 @@ private:
 
     // 执行摇头动作
     void PerformShakeAction() {
-        ESP_LOGI(TAG, "执行摇头动作");
+        ESP_LOGI(TAG, "Performing head-shaking motion");
         
         for (int i = 0; i < sizeof(shake_sequence) / sizeof(shake_sequence[0]); i++) {
             SetServoAngle(SERVO_HORIZONTAL, shake_sequence[i].horizontal_angle);
@@ -352,11 +352,11 @@ private:
 
     // 初始化触摸传感器
     void InitializeTouchSensor() {
-        ESP_LOGI(TAG, "初始化触摸传感器...");
+        ESP_LOGI(TAG, "Initializing touch sensor...");
         
 #if TOUCH_SENSOR_TYPE == 0
         // 使用ESP32内置电容式触摸传感器
-        ESP_LOGI(TAG, "使用ESP32内置电容式触摸传感器 (GPIO%d)", TOUCH_SENSOR_GPIO);
+        ESP_LOGI(TAG, "Using built-in ESP32 capacitive touch sensor (GPIO%d)", TOUCH_SENSOR_GPIO);
         
         // 初始化触摸传感器
         touch_pad_init();
@@ -387,7 +387,7 @@ private:
                         
                         // 显示中性表情，表示准备中
                         board->DisplayEmotion(EMOTION_NEUTRAL);
-                        ESP_LOGI(TAG, "触摸开始，准备中...");
+                        ESP_LOGI(TAG, "Touch started, preparing...");
                     } else {
                         // 触摸结束
                         board->is_touch_active_ = false;
@@ -403,7 +403,7 @@ private:
                             
                             // 显示思考表情
                             board->DisplayEmotion(EMOTION_NEUTRAL);
-                            ESP_LOGI(TAG, "停止录音，发送语音");
+                            ESP_LOGI(TAG, "Stopping recording and sending audio");
                         } else if (touch_duration < BUTTON_LONG_PRESS_TIME) {
                             // 短触 - 切换聊天状态
                             Application::GetInstance().ToggleChatState();
@@ -411,7 +411,7 @@ private:
                             // 执行点头动作并显示开心表情
                             board->PerformNodAction();
                             board->DisplayEmotion(EMOTION_HAPPY);
-                            ESP_LOGI(TAG, "短触，切换聊天状态");
+                            ESP_LOGI(TAG, "Short touch, toggling chat state");
                         }
                     }
                     
@@ -430,7 +430,7 @@ private:
                         
                         // 显示录音表情
                         board->DisplayEmotion(EMOTION_SURPRISED);
-                        ESP_LOGI(TAG, "长触，开始录音");
+                        ESP_LOGI(TAG, "Long touch, starting recording");
                     }
                 }
                 
@@ -439,7 +439,7 @@ private:
         }, "touch_monitor", 4096, this, 5, &touch_task_handle_);
 #else
         // 使用外部三线式触摸开关模块（数字输入）
-        ESP_LOGI(TAG, "使用外部三线式触摸开关模块 (GPIO%d)", TOUCH_SENSOR_GPIO);
+        ESP_LOGI(TAG, "Using external three-wire touch switch module (GPIO%d)", TOUCH_SENSOR_GPIO);
         
         // 配置GPIO为输入
         gpio_config_t io_conf = {
@@ -470,7 +470,7 @@ private:
                         
                         // 显示中性表情，表示准备中
                         board->DisplayEmotion(EMOTION_NEUTRAL);
-                        ESP_LOGI(TAG, "触摸开始，准备中...");
+                        ESP_LOGI(TAG, "Touch started, preparing...");
                     } else {
                         // 触摸结束
                         board->is_touch_active_ = false;
@@ -486,7 +486,7 @@ private:
                             
                             // 显示思考表情
                             board->DisplayEmotion(EMOTION_NEUTRAL);
-                            ESP_LOGI(TAG, "停止录音，发送语音");
+                            ESP_LOGI(TAG, "Stopping recording and sending audio");
                         } else if (touch_duration < BUTTON_LONG_PRESS_TIME) {
                             // 短触 - 切换聊天状态
                             Application::GetInstance().ToggleChatState();
@@ -494,7 +494,7 @@ private:
                             // 执行点头动作并显示开心表情
                             board->PerformNodAction();
                             board->DisplayEmotion(EMOTION_HAPPY);
-                            ESP_LOGI(TAG, "短触，切换聊天状态");
+                            ESP_LOGI(TAG, "Short touch, toggling chat state");
                         }
                     }
                     
@@ -513,7 +513,7 @@ private:
                         
                         // 显示录音表情
                         board->DisplayEmotion(EMOTION_SURPRISED);
-                        ESP_LOGI(TAG, "长触，开始录音");
+                        ESP_LOGI(TAG, "Long touch, starting recording");
                     }
                 }
                 
@@ -522,7 +522,7 @@ private:
         }, "touch_monitor", 4096, this, 5, &touch_task_handle_);
 #endif
         
-        ESP_LOGI(TAG, "触摸传感器初始化完成");
+        ESP_LOGI(TAG, "Touch sensor initialization complete");
     }
 
     // 初始化按钮
@@ -542,7 +542,7 @@ private:
             auto& app = Application::GetInstance();
             if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
                 ResetWifiConfiguration();
-                ESP_LOGI(TAG, "重置WiFi配置");
+                ESP_LOGI(TAG, "Resetting Wi-Fi configuration");
             }
         });
     }
@@ -556,7 +556,7 @@ private:
 
     // 初始化音频系统
     void InitializeAudio() {
-        ESP_LOGI(TAG, "初始化音频系统...");
+        ESP_LOGI(TAG, "Initializing audio system...");
         
         // 配置MAX98357A放大器的GPIO
         gpio_config_t io_conf = {};
@@ -579,7 +579,7 @@ private:
         // 增加一些延迟，确保I2S和放大器初始化完成
         vTaskDelay(pdMS_TO_TICKS(500));  // 增加延迟时间，确保初始化完全
         
-        ESP_LOGI(TAG, "音频系统初始化完成");
+        ESP_LOGI(TAG, "Audio system initialization complete");
     }
 
     // 处理自定义命令
@@ -613,7 +613,7 @@ private:
 public:
     ESP32UnoD1R32Board() : boot_button_(BOOT_BUTTON_GPIO)
     {
-        ESP_LOGI(TAG, "初始化ESP32 UNO D1 R32开发板...");
+        ESP_LOGI(TAG, "Initializing ESP32 UNO D1 R32 board...");
         
         InitializeDisplayI2c();
         InitializeSsd1306Display();
@@ -627,13 +627,13 @@ public:
         AudioCodec* audio_codec = GetAudioCodec();
         if (audio_codec) {
             audio_codec->SetOutputVolume(AUDIO_VOLUME);
-            ESP_LOGI(TAG, "音频音量已设置为 %d", AUDIO_VOLUME);
+            ESP_LOGI(TAG, "Audio volume set to %d", AUDIO_VOLUME);
         }
 
         // 初始化完成后显示开心表情
         DisplayEmotion(EMOTION_HAPPY);
         
-        ESP_LOGI(TAG, "ESP32 UNO D1 R32开发板初始化完成");
+        ESP_LOGI(TAG, "ESP32 UNO D1 R32 board initialization complete");
     }
 
     // 获取优化后的音频编解码器
@@ -660,7 +660,7 @@ public:
         );
         
         // 应用音频优化
-        ESP_LOGI(TAG, "应用音频优化设置");
+        ESP_LOGI(TAG, "Applying audio optimization settings");
         
         // 缓存编解码器实例
         cached_audio_codec = &audio_codec;

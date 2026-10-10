@@ -17,7 +17,7 @@ static const char *TAG = "test_c_array";
  */
 void test_c_array_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "开始C数组格式天气图标测试");
+    ESP_LOGI(TAG, "Starting C-array weather icon test");
     
     // 等待系统初始化完成
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -25,7 +25,7 @@ void test_c_array_task(void *pvParameters)
     // 调用C数组测试函数
     weather_icon_test_c_array();
     
-    ESP_LOGI(TAG, "C数组格式天气图标测试完成");
+    ESP_LOGI(TAG, "C-array weather icon test complete");
     
     // 删除任务
     vTaskDelete(NULL);

@@ -120,13 +120,13 @@ void ElectronEmojiDisplay::SetEmotion(const char* emotion) {
     for (const auto& map : emotion_maps_) {
         if (map.name && strcmp(map.name, emotion) == 0) {
             lv_gif_set_src(emotion_gif_, map.gif);
-            ESP_LOGI(TAG, "设置表情: %s", emotion);
+            ESP_LOGI(TAG, "Setting emotion: %s", emotion);
             return;
         }
     }
 
     lv_gif_set_src(emotion_gif_, &staticstate);
-    ESP_LOGI(TAG, "未知表情'%s'，使用默认", emotion);
+    ESP_LOGI(TAG, "Unknown emotion '%s'; using default", emotion);
 }
 
 void ElectronEmojiDisplay::SetChatMessage(const char* role, const char* content) {
@@ -143,7 +143,7 @@ void ElectronEmojiDisplay::SetChatMessage(const char* role, const char* content)
     lv_label_set_text(chat_message_label_, content);
     lv_obj_remove_flag(chat_message_label_, LV_OBJ_FLAG_HIDDEN);
 
-    ESP_LOGI(TAG, "设置聊天消息 [%s]: %s", role, content);
+    ESP_LOGI(TAG, "Setting chat message [%s]: %s", role, content);
 }
 
 void ElectronEmojiDisplay::SetIcon(const char* icon) {
@@ -157,14 +157,14 @@ void ElectronEmojiDisplay::SetIcon(const char* icon) {
         std::string icon_message = std::string(icon) + " ";
 
         if (strcmp(icon, FONT_AWESOME_DOWNLOAD) == 0) {
-            icon_message += "正在升级...";
+            icon_message += "Đang cập nhật...";
         } else {
-            icon_message += "系统状态";
+            icon_message += "Trạng thái hệ thống";
         }
 
         lv_label_set_text(chat_message_label_, icon_message.c_str());
         lv_obj_remove_flag(chat_message_label_, LV_OBJ_FLAG_HIDDEN);
 
-        ESP_LOGI(TAG, "设置图标: %s", icon);
+        ESP_LOGI(TAG, "Setting icon: %s", icon);
     }
 }

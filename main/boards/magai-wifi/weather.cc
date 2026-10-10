@@ -85,15 +85,15 @@ int HTTP_Read_Data(const char *URL, std::string &response_buffer) {
         // 检查WiFi连接状态
         wifi_ap_record_t ap_info;
         if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
-            ESP_LOGE(TAG, "WiFi未连接，无法发送HTTP请求");
+            ESP_LOGE(TAG, "Wi-Fi is not connected; cannot send HTTP request");
             return -4;  // WiFi未连接错误码
         }
         
-        ESP_LOGI(TAG, "尝试HTTP请求 (尝试 %d/%d): %s", retry_count + 1, max_retries, URL);
+        ESP_LOGI(TAG, "HTTP request attempt %d/%d: %s", retry_count + 1, max_retries, URL);
         
         esp_http_client_handle_t client = esp_http_client_init(&config);
         if (!client) {
-            ESP_LOGE(TAG, "HTTP客户端初始化失败");
+            ESP_LOGE(TAG, "Failed to initialize HTTP client");
             retry_count++;
             vTaskDelay(pdMS_TO_TICKS(1000 * retry_count));  // 指数退避
             continue;
@@ -109,16 +109,16 @@ int HTTP_Read_Data(const char *URL, std::string &response_buffer) {
         if (err == ESP_OK && status_code == 200) {
             // 请求成功
             esp_http_client_cleanup(client);
-            ESP_LOGI(TAG, "HTTP请求成功，状态码: %d", status_code);
+            ESP_LOGI(TAG, "HTTP request succeeded; status code: %d", status_code);
             return 0;
         }
         
         // 请求失败，记录错误并清理
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "HTTP请求失败 (尝试 %d/%d): %s", 
+            ESP_LOGE(TAG, "HTTP request failed (attempt %d/%d): %s",
                     retry_count + 1, max_retries, esp_err_to_name(err));
         } else {
-            ESP_LOGE(TAG, "HTTP请求返回错误状态码 (尝试 %d/%d): %d", 
+            ESP_LOGE(TAG, "HTTP request returned an error status code (attempt %d/%d): %d",
                     retry_count + 1, max_retries, status_code);
         }
         
@@ -133,10 +133,10 @@ int HTTP_Read_Data(const char *URL, std::string &response_buffer) {
     
     // 所有重试都失败
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "HTTP请求最终失败: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "HTTP request ultimately failed: %s", esp_err_to_name(err));
         return -2;
     } else {
-        ESP_LOGE(TAG, "HTTP请求最终返回错误状态码: %d", status_code);
+        ESP_LOGE(TAG, "HTTP request ultimately returned an error status code: %d", status_code);
         return -3;
     }
 }
@@ -148,11 +148,11 @@ int HTTP_Get_IP(char* read_buf) {
     }
     
     std::string response_buffer;
-    ESP_LOGI(TAG, "开始获取IP地址");
+    ESP_LOGI(TAG, "Starting public IP address lookup");
     
     int res = HTTP_Read_Data(HTTPS_HuoQuIP, response_buffer);
     if (res != 0) {
-        ESP_LOGE(TAG, "获取IP地址失败: %d", res);
+        ESP_LOGE(TAG, "Failed to get public IP address: %d", res);
         return -1;
     }
     
@@ -161,14 +161,14 @@ int HTTP_Get_IP(char* read_buf) {
         // 解析JSON响应
         cJSON *root = cJSON_Parse(response_buffer.c_str());
         if (!root) {
-            ESP_LOGE(TAG, "JSON解析失败");
+            ESP_LOGE(TAG, "JSON parsing failed");
             return -2;
         }
         
         // 获取IP字段
         cJSON *ip = cJSON_GetObjectItem(root, "ip");
         if (!ip || !cJSON_IsString(ip)) {
-            ESP_LOGE(TAG, "获取IP字段失败");
+            ESP_LOGE(TAG, "Failed to get IP field");
             cJSON_Delete(root);
             return -3;
         }
@@ -177,19 +177,19 @@ int HTTP_Get_IP(char* read_buf) {
         strncpy(read_buf, ip->valuestring, 30 - 1);
         read_buf[30 - 1] = '\0'; // 确保字符串以null结尾
         
-        ESP_LOGI(TAG, "获取到的IP地址: %s", read_buf);
+        ESP_LOGI(TAG, "Public IP address: %s", read_buf);
         
         // 如果有city字段，可以直接获取城市信息
         cJSON *city = cJSON_GetObjectItem(root, "city");
         if (city && cJSON_IsString(city)) {
-            ESP_LOGI(TAG, "ipinfo.io直接返回的城市: %s", city->valuestring);
+            ESP_LOGI(TAG, "City returned directly by ipinfo.io: %s", city->valuestring);
         }
         
         cJSON_Delete(root);
         return 0;
     }
     
-    ESP_LOGE(TAG, "获取IP地址失败: 响应为空");
+    ESP_LOGE(TAG, "Failed to get public IP address: empty response");
     return -2;
 }
 
@@ -202,26 +202,26 @@ int HTTP_Get_ChengShi(const char* ip_buf, char* read_buf) {
     std::string response_buffer;
     char url[128];
     
-    ESP_LOGI(TAG, "开始获取城市");
+    ESP_LOGI(TAG, "Starting city lookup");
     snprintf(url, sizeof(url), "%s%s", HTTPS_DingWei, ip_buf);
     
     int res = HTTP_Read_Data(url, response_buffer);
     if (res != 0) {
-        ESP_LOGE(TAG, "获取城市信息失败: %d", res);
+        ESP_LOGE(TAG, "Failed to get city information: %d", res);
         return -1;
     }
     
     // 解析JSON响应
     cJSON *root = cJSON_Parse(response_buffer.c_str());
     if (!root) {
-        ESP_LOGE(TAG, "JSON解析失败");
+        ESP_LOGE(TAG, "JSON parsing failed");
         return -2;
     }
     
     // 检查状态码
     cJSON *status = cJSON_GetObjectItem(root, "status");
     if (!status || strcmp(status->valuestring, "1") != 0) {
-        ESP_LOGE(TAG, "定位失败，状态码不为1");
+        ESP_LOGE(TAG, "Location lookup failed: status code is not 1");
         cJSON_Delete(root);
         return -3;
     }
@@ -229,7 +229,7 @@ int HTTP_Get_ChengShi(const char* ip_buf, char* read_buf) {
     // 获取城市信息
     cJSON *city = cJSON_GetObjectItem(root, "city");
     if (!city || !cJSON_IsString(city)) {
-        ESP_LOGE(TAG, "获取城市时返回空");
+        ESP_LOGE(TAG, "City lookup returned an empty value");
         cJSON_Delete(root);
         return -4;
     }
@@ -238,7 +238,7 @@ int HTTP_Get_ChengShi(const char* ip_buf, char* read_buf) {
     strncpy(read_buf, city->valuestring, 30 - 1);
     read_buf[30 - 1] = '\0'; // 确保字符串以null结尾
     
-    ESP_LOGI(TAG, "获取到的城市: %s", read_buf);
+    ESP_LOGI(TAG, "City: %s", read_buf);
     cJSON_Delete(root);
     return 0;
 }
@@ -252,7 +252,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     std::string response_buffer;
     char url[256];
     
-    ESP_LOGI(TAG, "开始获取天气");
+    ESP_LOGI(TAG, "Starting weather lookup");
     
     // URL编码城市名称
     std::string encoded_city_str;
@@ -274,7 +274,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     
     int res = HTTP_Read_Data(url, response_buffer);
     if (res != 0) {
-        ESP_LOGE(TAG, "获取天气数据失败: %d", res);
+        ESP_LOGE(TAG, "Failed to get weather data: %d", res);
         return -1;
     }
     
@@ -284,14 +284,14 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     // 初始化结构体，确保所有字段都有默认值
     memset(read_buf, 0, sizeof(_Weather_Data) * 3);
     if (!root) {
-        ESP_LOGE(TAG, "JSON解析失败");
+        ESP_LOGE(TAG, "JSON parsing failed");
         return -2;
     }
     
     // 获取results数组
     cJSON *results = cJSON_GetObjectItem(root, "results");
     if (!results || !cJSON_IsArray(results) || cJSON_GetArraySize(results) == 0) {
-        ESP_LOGE(TAG, "天气数据格式错误: 无results数组");
+        ESP_LOGE(TAG, "Invalid weather data format: missing results array");
         cJSON_Delete(root);
         return -3;
     }
@@ -299,7 +299,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     // 获取第一个结果
     cJSON *result = cJSON_GetArrayItem(results, 0);
     if (!result) {
-        ESP_LOGE(TAG, "天气数据格式错误: 无结果项");
+        ESP_LOGE(TAG, "Invalid weather data format: missing result item");
         cJSON_Delete(root);
         return -4;
     }
@@ -316,7 +316,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
             static char chinese_city_name[30];
             strncpy(chinese_city_name, city_name->valuestring, sizeof(chinese_city_name) - 1);
             chinese_city_name[sizeof(chinese_city_name) - 1] = '\0';
-            ESP_LOGI(TAG, "获取到中文城市名: %s", chinese_city_name);
+            ESP_LOGI(TAG, "Retrieved Chinese city name: %s", chinese_city_name);
             
             // 将中文城市名保存到read_buf的一个未使用字段中，方便外部获取
             strncpy(read_buf[0].city, city_name->valuestring, sizeof(read_buf[0].city) - 1);
@@ -327,7 +327,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     // 获取now对象
     cJSON *now = cJSON_GetObjectItem(result, "now");
     if (!now || !cJSON_IsObject(now)) {
-        ESP_LOGE(TAG, "天气数据格式错误: 无now对象");
+        ESP_LOGE(TAG, "Invalid weather data format: missing now object");
         cJSON_Delete(root);
         return -5;
     }
@@ -361,7 +361,7 @@ int HTTP_Get_TianQi(const char* city_name_buf, _Weather_Data read_buf[3]) {
     // 风向、风速、湿度等字段已移除，不再需要获取和处理这些数据
     
     cJSON_Delete(root);
-    ESP_LOGI(TAG, "天气数据获取成功");
+    ESP_LOGI(TAG, "Weather data retrieved successfully");
     return 0;
 }
 
@@ -371,29 +371,29 @@ int https_get_TianQi(char* city, _Weather_Data weather_data[3]) {
     
     // 如果城市为空，通过Weather类的GetCityByIP获取城市
     if (city[0] == 0) {
-        ESP_LOGI(TAG, "城市为空，尝试通过IP定位城市...");
+        ESP_LOGI(TAG, "City is empty; attempting IP-based city lookup...");
         
         // 直接从ipinfo.io获取IP和城市信息
         std::string response_buffer;
-        ESP_LOGI(TAG, "尝试获取公网IP和城市信息: %s", HTTPS_HuoQuIP);
+        ESP_LOGI(TAG, "Attempting to retrieve public IP and city information: %s", HTTPS_HuoQuIP);
         
         res = HTTP_Read_Data(HTTPS_HuoQuIP, response_buffer);
         if (res != 0) {
-            ESP_LOGE(TAG, "获取IP和城市信息失败: %d", res);
+            ESP_LOGE(TAG, "Failed to retrieve IP and city information: %d", res);
             return -1;
         }
         
         // 解析JSON响应
         cJSON *root = cJSON_Parse(response_buffer.c_str());
         if (!root) {
-            ESP_LOGE(TAG, "JSON解析失败");
+            ESP_LOGE(TAG, "JSON parsing failed");
             return -1;
         }
         
         // 获取城市字段
         cJSON *city_json = cJSON_GetObjectItem(root, "city");
         if (!city_json || !cJSON_IsString(city_json) || strlen(city_json->valuestring) == 0) {
-            ESP_LOGE(TAG, "获取城市字段失败");
+            ESP_LOGE(TAG, "Failed to get city field");
             cJSON_Delete(root);
             return -2;
         }
@@ -402,22 +402,22 @@ int https_get_TianQi(char* city, _Weather_Data weather_data[3]) {
         strncpy(city, city_json->valuestring, 30 - 1);
         city[30 - 1] = '\0'; // 确保字符串以null结尾
         
-        ESP_LOGI(TAG, "通过ipinfo.io获取到城市: %s", city);
+        ESP_LOGI(TAG, "City retrieved via ipinfo.io: %s", city);
         cJSON_Delete(root);
     }
     
     // 获取天气数据
-    ESP_LOGI(TAG, "正在获取天气数据，城市: %s...", city);
+    ESP_LOGI(TAG, "Retrieving weather data for city: %s...", city);
     res = HTTP_Get_TianQi(city, weather_data);
     if (res) {
-        ESP_LOGE(TAG, "获取天气失败: %d", res);
+        ESP_LOGE(TAG, "Failed to retrieve weather: %d", res);
         return -3;
     }
     
     // 打印获取到的天气数据，便于调试
-    ESP_LOGI(TAG, "天气数据获取成功: %s", city);
-    ESP_LOGI(TAG, "天气: %s (代码: %s)", weather_data[0].text, weather_data[0].code);
-    ESP_LOGI(TAG, "温度: %s°C", weather_data[0].temperature);
+    ESP_LOGI(TAG, "Weather data retrieved successfully for %s", city);
+    ESP_LOGI(TAG, "Weather: %s (code: %s)", weather_data[0].text, weather_data[0].code);
+    ESP_LOGI(TAG, "Temperature: %s°C", weather_data[0].temperature);
     return 0;
 }
 
@@ -431,31 +431,31 @@ std::string Weather::GetPublicIP() {
     
     // 如果已经成功获取过IP，直接返回缓存的IP
     if (ip_obtained && !cached_ip.empty()) {
-        ESP_LOGI(TAG, "使用已获取的公网IP: %s", cached_ip.c_str());
+        ESP_LOGI(TAG, "Using previously retrieved public IP: %s", cached_ip.c_str());
         return cached_ip;
     }
     
     // 直接从ipinfo.io获取IP信息
     std::string response_buffer;
-    ESP_LOGI(TAG, "尝试获取公网IP: %s", HTTPS_HuoQuIP);
+    ESP_LOGI(TAG, "Attempting to retrieve public IP: %s", HTTPS_HuoQuIP);
     
     int res = HTTP_Read_Data(HTTPS_HuoQuIP, response_buffer);
     if (res != 0) {
-        ESP_LOGE(TAG, "获取IP信息失败: %d", res);
+        ESP_LOGE(TAG, "Failed to retrieve IP information: %d", res);
         return "";
     }
     
     // 解析JSON响应
     cJSON *root = cJSON_Parse(response_buffer.c_str());
     if (!root) {
-        ESP_LOGE(TAG, "JSON解析失败");
+        ESP_LOGE(TAG, "JSON parsing failed");
         return "";
     }
     
     // 获取IP字段
     cJSON *ip_json = cJSON_GetObjectItem(root, "ip");
     if (!ip_json || !cJSON_IsString(ip_json)) {
-        ESP_LOGE(TAG, "获取IP字段失败");
+        ESP_LOGE(TAG, "Failed to get IP field");
         cJSON_Delete(root);
         return "";
     }
@@ -464,7 +464,7 @@ std::string Weather::GetPublicIP() {
     cached_ip = ip_json->valuestring;
     ip_obtained = true; // 标记已成功获取IP
     
-    ESP_LOGI(TAG, "成功获取到公网IP: %s", cached_ip.c_str());
+    ESP_LOGI(TAG, "Successfully retrieved public IP: %s", cached_ip.c_str());
     cJSON_Delete(root);
     return cached_ip;
 }
@@ -477,32 +477,32 @@ bool Weather::GetCityByIP() {
     
     // 如果已有缓存的城市信息且IP未更新，直接使用缓存
     if (!cached_city.empty() && !city_for_ip.empty()) {
-        ESP_LOGI(TAG, "使用缓存的城市信息: %s (IP: %s)", cached_city.c_str(), city_for_ip.c_str());
+        ESP_LOGI(TAG, "Using cached city information: %s (IP: %s)", cached_city.c_str(), city_for_ip.c_str());
         city_ = cached_city;
         return true;
     }
     
     // 直接从ipinfo.io获取IP和城市信息
     std::string response_buffer;
-    ESP_LOGI(TAG, "尝试获取公网IP和城市信息: %s", HTTPS_HuoQuIP);
+    ESP_LOGI(TAG, "Attempting to retrieve public IP and city information: %s", HTTPS_HuoQuIP);
     
     int res = HTTP_Read_Data(HTTPS_HuoQuIP, response_buffer);
     if (res != 0) {
-        ESP_LOGE(TAG, "获取IP和城市信息失败: %d", res);
+        ESP_LOGE(TAG, "Failed to retrieve IP and city information: %d", res);
         return false;
     }
     
     // 解析JSON响应
     cJSON *root = cJSON_Parse(response_buffer.c_str());
     if (!root) {
-        ESP_LOGE(TAG, "JSON解析失败");
+        ESP_LOGE(TAG, "JSON parsing failed");
         return false;
     }
     
     // 获取IP字段
     cJSON *ip_json = cJSON_GetObjectItem(root, "ip");
     if (!ip_json || !cJSON_IsString(ip_json)) {
-        ESP_LOGE(TAG, "获取IP字段失败");
+        ESP_LOGE(TAG, "Failed to get IP field");
         cJSON_Delete(root);
         return false;
     }
@@ -512,7 +512,7 @@ bool Weather::GetCityByIP() {
     // 获取城市字段
     cJSON *city_json = cJSON_GetObjectItem(root, "city");
     if (!city_json || !cJSON_IsString(city_json) || strlen(city_json->valuestring) == 0) {
-        ESP_LOGE(TAG, "获取城市字段失败，尝试使用高德地图API");
+        ESP_LOGE(TAG, "Failed to get city field; trying the Amap API");
         cJSON_Delete(root);
         
         // 如果ipinfo.io没有返回城市信息，尝试使用高德地图API
@@ -525,11 +525,11 @@ bool Weather::GetCityByIP() {
             cached_city = city_;
             city_for_ip = ip;
             
-            ESP_LOGI(TAG, "通过高德API获取到城市: %s", city_.c_str());
+            ESP_LOGI(TAG, "City retrieved via Amap API: %s", city_.c_str());
             return true;
         }
         
-        ESP_LOGE(TAG, "通过高德API获取城市数据失败，错误码: %d", result);
+        ESP_LOGE(TAG, "Failed to retrieve city data via Amap API; error code: %d", result);
         return false;
     }
     
@@ -538,7 +538,7 @@ bool Weather::GetCityByIP() {
     cached_city = city_;
     city_for_ip = ip;
     
-    ESP_LOGI(TAG, "通过ipinfo.io获取到城市: %s (IP: %s)", city_.c_str(), ip.c_str());
+    ESP_LOGI(TAG, "City retrieved via ipinfo.io: %s (IP: %s)", city_.c_str(), ip.c_str());
     cJSON_Delete(root);
     return true;
 }
@@ -561,7 +561,7 @@ void Weather::UpdateWeather() {
     // 检查缓存是否有效
     uint32_t current_time = esp_timer_get_time() / 1000; // 转换为毫秒
     if (city_ == cached_city && (current_time - last_update_time < CACHE_VALID_TIME)) {
-        ESP_LOGI(TAG, "使用缓存的天气数据: %s, %.1f°C, %s", 
+        ESP_LOGI(TAG, "Using cached weather data: %s, %.1f°C, %s",
                  cached_city.c_str(), cached_temperature, cached_weather.c_str());
         temperature_ = cached_temperature;
         weather_ = cached_weather;
@@ -573,14 +573,14 @@ void Weather::UpdateWeather() {
     // 检查WiFi连接状态
     wifi_ap_record_t ap_info;
     if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) {
-        ESP_LOGE(TAG, "WiFi未连接，无法获取天气数据");
+        ESP_LOGE(TAG, "Wi-Fi is not connected; cannot retrieve weather data");
         is_updating_ = false;
         return;
     }
     
     // 检查城市名称是否为空
     if (city_.empty()) {
-        ESP_LOGE(TAG, "城市名称为空，使用默认城市");
+        ESP_LOGE(TAG, "City name is empty; using the default city");
         city_ = "武汉市";
     }
     
@@ -594,7 +594,7 @@ void Weather::UpdateWeather() {
     
     // 记录天气更新结果
     if (result != 0) {
-        ESP_LOGE(TAG, "天气更新失败，错误码: %d", result);
+        ESP_LOGE(TAG, "Weather update failed; error code: %d", result);
         // 如果更新失败，使用默认值或保持原值
         is_updating_ = false;
         return;
@@ -606,7 +606,7 @@ void Weather::UpdateWeather() {
     // 如果API返回了中文城市名，则使用API返回的中文城市名
     if (strlen(weather_data[0].city) > 0) {
         city_ = weather_data[0].city;
-        ESP_LOGI(TAG, "使用API返回的中文城市名: %s", city_.c_str());
+        ESP_LOGI(TAG, "Using Chinese city name returned by the API: %s", city_.c_str());
     } else {
         city_ = city_buffer; // 使用可能更新后的城市名称
     }
@@ -626,7 +626,7 @@ void Weather::UpdateWeather() {
         weather_code_ = weather_data[0].code;
     }
     
-    ESP_LOGI(TAG, "天气数据解析: 城市=%s, 天气=%s, 温度=%.1f°C, 天气代码=%s",
+    ESP_LOGI(TAG, "Parsed weather data: city=%s, weather=%s, temperature=%.1f°C, weather code=%s",
              city_.c_str(), weather_.c_str(), temperature_, weather_code_.c_str());
     
     // 更新缓存
@@ -639,7 +639,7 @@ void Weather::UpdateWeather() {
     // 设置数据就绪标志
     is_data_ready_ = true;
     
-    ESP_LOGI(TAG, "天气更新成功: %s, %.1f°C, %s, 代码: %s", 
+    ESP_LOGI(TAG, "Weather update succeeded: %s, %.1f°C, %s, code: %s",
              city_.c_str(), temperature_, weather_.c_str(), weather_code_.c_str());
     
     is_updating_ = false;
@@ -661,7 +661,7 @@ void Weather::WeatherUpdateTask(void* arg) {
     // 确保数据已就绪
     if (weather->is_data_ready_) {
         // 通知应用程序更新UI
-        ESP_LOGI(TAG, "天气数据已更新且已就绪，准备更新天气时钟UI");
+        ESP_LOGI(TAG, "Weather data has been updated and is ready; preparing to refresh the weather clock UI");
         
         // 增加短暂延迟，确保数据完全准备好
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -672,14 +672,14 @@ void Weather::WeatherUpdateTask(void* arg) {
             Board& board = Board::GetInstance();
             // 检查板子类型
             if (board.GetBoardType() == "magai-wifi") {
-                ESP_LOGI("Weather", "直接更新天气时钟UI");
+                ESP_LOGI("Weather", "Refreshing the weather clock UI directly");
                 // 由于我们无法直接访问 magai_wifi 类的方法，我们需要通过设备状态变化来触发更新
                 // 但是我们不使用之前的方法，而是使用一个更简单的方法：
                 // 先设置为非空闲状态，然后立即设置回空闲状态，这样会触发 MagaiLed::OnStateChanged
                 // 从而调用 magai_wifi::UpdateWeatherClock 方法
                 DeviceState current_state = Application::GetInstance().GetDeviceState();
                 if (current_state == kDeviceStateIdle) {
-                    ESP_LOGI("Weather", "通过设备状态变化触发天气时钟更新");
+                    ESP_LOGI("Weather", "Triggered weather clock refresh through a device state change");
                     Application::GetInstance().SetDeviceState(kDeviceStateStarting);
                     vTaskDelay(pdMS_TO_TICKS(10)); // 短暂延迟，确保状态变化被检测到
                     Application::GetInstance().SetDeviceState(kDeviceStateIdle);
@@ -687,7 +687,7 @@ void Weather::WeatherUpdateTask(void* arg) {
             }
         });
     } else {
-        ESP_LOGW(TAG, "天气数据更新完成，但数据尚未就绪，不触发UI更新");
+        ESP_LOGW(TAG, "Weather update completed, but data is not ready; UI refresh will not be triggered");
     }
     
     // 删除任务
@@ -714,19 +714,19 @@ void Weather::StartPeriodicUpdate() {
     // 创建并启动定时器，每60分钟触发一次
     esp_err_t err = esp_timer_create(&timer_args, &update_timer_);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "创建天气更新定时器失败: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to create weather update timer: %s", esp_err_to_name(err));
         return;
     }
     
     err = esp_timer_start_periodic(update_timer_, 3600000000); // 60分钟，单位是微秒
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "启动天气更新定时器失败: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to start weather update timer: %s", esp_err_to_name(err));
         esp_timer_delete(update_timer_);
         update_timer_ = nullptr;
         return;
     }
     
-    ESP_LOGI(TAG, "天气定时更新已启动，每60分钟更新一次");
+    ESP_LOGI(TAG, "Periodic weather updates started; updating every 60 minutes");
     
     // 不再立即执行一次更新，而是等待设备状态变为idle后再更新
     // 初始获取外网IP和城市以及通过城市获取天气数据的逻辑已移至magai_wifi类的OnStateChanged方法中
@@ -772,16 +772,16 @@ Weather::Weather() : Thing("Weather", "天气信息"),
         
         methods_.AddMethod("autoDetectCity", "自动检测城市", ParameterList(), [this](const ParameterList& /*params*/) {
             if (AutoDetectCity()) {
-                ESP_LOGI(TAG, "已通过公网IP自动获取城市: %s", city_.c_str());
+                ESP_LOGI(TAG, "Automatically detected city via public IP: %s", city_.c_str());
             } else {
-                ESP_LOGE(TAG, "无法通过公网IP获取城市");
+                ESP_LOGE(TAG, "Could not detect city via public IP");
             }
         });
 
         // 不在构造函数中初始化天气数据，而是等待小智框架初始化完成后在idle状态时进行
         // 这样可以避免在框架初始化时触发导致栈溢出
-        ESP_LOGI(TAG, "天气服务初始化完成，使用默认城市: %s", city_.c_str());
-        ESP_LOGI(TAG, "天气初始获取将在小智框架初始化完成后(Application: STATE: idle)执行");
+        ESP_LOGI(TAG, "Weather service initialized; using default city: %s", city_.c_str());
+        ESP_LOGI(TAG, "Initial weather retrieval will run after the Xiaozhi framework initializes (Application: STATE: idle)");
         
         // 定期检查应用程序状态，在idle状态时初始化天气数据
         // 创建一个定时器任务，定期检查应用程序状态
@@ -793,13 +793,13 @@ Weather::Weather() : Thing("Weather", "天气信息"),
                     vTaskDelay(pdMS_TO_TICKS(1000)); // 每秒检查一次
                 }
                 
-                ESP_LOGI(TAG, "应用程序已进入idle状态，开始初始化天气数据");
+                ESP_LOGI(TAG, "Application entered idle state; initializing weather data");
                 
                 // 先尝试通过公网IP自动获取城市
                 if (w->AutoDetectCity()) {
-                    ESP_LOGI(TAG, "已通过公网IP自动获取城市: %s", w->GetCity().c_str());
+                    ESP_LOGI(TAG, "Automatically detected city via public IP: %s", w->GetCity().c_str());
                 } else {
-                    ESP_LOGI(TAG, "无法通过公网IP获取城市，使用默认城市");
+                    ESP_LOGI(TAG, "Could not detect city via public IP; using the default city");
                 }
                 
                 // 更新天气数据
@@ -834,7 +834,7 @@ bool Weather::AutoDetectCity() {
     if (success) {
         UpdateWeather();
     } else {
-        ESP_LOGE(TAG, "自动检测城市失败，使用默认城市: %s", city_.c_str());
+        ESP_LOGE(TAG, "Automatic city detection failed; using default city: %s", city_.c_str());
     }
     return success;
 }
@@ -843,7 +843,7 @@ bool Weather::AutoDetectCity() {
 void Weather::SetCity(const std::string& city) {
     if (city != city_) {
         city_ = city;
-        ESP_LOGI(TAG, "城市已设置为: %s", city_.c_str());
+        ESP_LOGI(TAG, "City set to: %s", city_.c_str());
         UpdateWeather();
     }
 }
@@ -872,7 +872,7 @@ std::string Weather::GetWeatherCode() const { return GetWeatherData().weather_co
  * @return const lv_img_dsc_t* 始终返回nullptr
  */
 const lv_img_dsc_t* Weather::GetWeatherIconObject() const {
-    ESP_LOGW(TAG, "内置图标已被移除，请使用weather_display_new模块中的函数来显示天气图标");
+    ESP_LOGW(TAG, "Built-in icons have been removed; use the functions in weather_display_new to display weather icons");
     return nullptr;
 }
 
@@ -888,14 +888,14 @@ void Weather::UpdateTimerCallback(void* arg) {
     static bool was_wifi_connected = false;
     
     if (!is_wifi_connected) {
-        ESP_LOGE(TAG, "WiFi未连接，跳过天气更新");
+        ESP_LOGE(TAG, "Wi-Fi is not connected; skipping weather update");
         was_wifi_connected = false;
         return;
     }
     
     // 检测WiFi是否刚刚重新连接
     if (!was_wifi_connected && is_wifi_connected) {
-        ESP_LOGI(TAG, "WiFi重新连接，重置IP获取状态");
+        ESP_LOGI(TAG, "Wi-Fi reconnected; resetting public IP lookup state");
         
         // 尝试重新获取城市信息
         xTaskCreate(
@@ -917,12 +917,12 @@ void Weather::UpdateTimerCallback(void* arg) {
     
     // 设置标志，避免重入
     if (weather->is_updating_) {
-        ESP_LOGW(TAG, "天气更新已在进行中，跳过本次更新");
+        ESP_LOGW(TAG, "Weather update is already in progress; skipping this update");
         return;
     }
     
     // 直接更新天气，不再检查是否整点
-    ESP_LOGI(TAG, "定时更新天气");
+    ESP_LOGI(TAG, "Updating weather on schedule");
     
     // 使用任务队列执行更新，而不是直接在定时器回调中执行
     // 这样可以避免在定时器回调中执行耗时操作，减少栈使用

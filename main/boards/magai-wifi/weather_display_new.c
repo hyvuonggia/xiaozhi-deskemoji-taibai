@@ -300,23 +300,23 @@ void weather_icon_new_show_type(int type)
  */
 void weather_icon_test_spiffs(void)
 {
-    ESP_LOGI(TAG, "=== 开始SPIFFS天气图标诊断测试 ===");
+    ESP_LOGI(TAG, "=== Starting SPIFFS weather icon diagnostic test ===");
     
     // 1. 检查SPIFFS分区信息
     size_t total = 0, used = 0;
     esp_err_t ret = esp_spiffs_info("weather", &total, &used);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "获取SPIFFS信息失败: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to retrieve SPIFFS information: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGI(TAG, "SPIFFS分区信息: 总大小=%d KB, 已使用=%d KB, 可用=%d KB", 
+    ESP_LOGI(TAG, "SPIFFS partition: total=%d KB, used=%d KB, available=%d KB",
              total/1024, used/1024, (total-used)/1024);
     
     // 2. 列出/spiffs目录下的文件
-    ESP_LOGI(TAG, "列出/spiffs目录下的文件:");
+    ESP_LOGI(TAG, "Files in /spiffs:");
     DIR *dir = opendir("/spiffs");
     if (dir == NULL) {
-        ESP_LOGE(TAG, "无法打开/spiffs目录");
+        ESP_LOGE(TAG, "Could not open /spiffs directory");
         return;
     }
     
@@ -325,16 +325,16 @@ void weather_icon_test_spiffs(void)
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG) { // 只显示文件，不显示目录
             file_count++;
-            ESP_LOGI(TAG, "  文件 %d: %s", file_count, entry->d_name);
+            ESP_LOGI(TAG, "  File %d: %s", file_count, entry->d_name);
         }
     }
     closedir(dir);
-    ESP_LOGI(TAG, "总共找到 %d 个文件", file_count);
+    ESP_LOGI(TAG, "Found %d files in total", file_count);
     
     // 3. 测试常见天气图标文件是否存在
-    ESP_LOGI(TAG, "测试常见天气图标文件:");
+    ESP_LOGI(TAG, "Checking common weather icon files:");
     const char* test_icons[] = {"100", "101", "104", "300", "400", "500", "302"};
-    const char* icon_names[] = {"晴天", "多云", "阴天", "雨天", "雪天", "雾天", "雷暴"};
+    const char* icon_names[] = {"Sunny", "Cloudy", "Overcast", "Rainy", "Snowy", "Foggy", "Thunderstorm"};
     
     for (int i = 0; i < 7; i++) {
         char filepath[64];
@@ -345,9 +345,9 @@ void weather_icon_test_spiffs(void)
             fseek(file, 0, SEEK_END);
             long size = ftell(file);
             fclose(file);
-            ESP_LOGI(TAG, "  ✓ %s (%s): %ld 字节", icon_names[i], filepath, size);
+            ESP_LOGI(TAG, "  ✓ %s (%s): %ld bytes", icon_names[i], filepath, size);
         } else {
-            ESP_LOGE(TAG, "  ✗ %s (%s): 文件不存在", icon_names[i], filepath);
+            ESP_LOGE(TAG, "  ✗ %s (%s): file not found", icon_names[i], filepath);
         }
     }
     
@@ -359,20 +359,20 @@ void weather_icon_test_spiffs(void)
         fclose(file);
         
         if (read_size == 8) {
-            ESP_LOGI(TAG, "100.png文件头: %02X %02X %02X %02X %02X %02X %02X %02X", 
+            ESP_LOGI(TAG, "100.png header: %02X %02X %02X %02X %02X %02X %02X %02X",
                      header[0], header[1], header[2], header[3], 
                      header[4], header[5], header[6], header[7]);
             
             // PNG文件头应该是: 89 50 4E 47 0D 0A 1A 0A
             if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
-                ESP_LOGI(TAG, "✓ PNG文件头验证通过");
+                ESP_LOGI(TAG, "✓ PNG header validation passed");
             } else {
-                ESP_LOGE(TAG, "✗ PNG文件头验证失败");
+                ESP_LOGE(TAG, "✗ PNG header validation failed");
             }
         }
     }
     
-    ESP_LOGI(TAG, "=== SPIFFS天气图标诊断测试完成 ===");
+    ESP_LOGI(TAG, "=== SPIFFS weather icon diagnostic test complete ===");
 }
 
 /**
@@ -383,7 +383,7 @@ void weather_icon_test_spiffs(void)
  */
 void weather_icon_test_png_decoder(void)
 {
-    ESP_LOGI(TAG, "=== 开始PNG解码器测试 ===");
+    ESP_LOGI(TAG, "=== Starting PNG decoder test ===");
     
     // 测试LVGL是否能正确加载PNG图像
     const char* test_file_lvgl = "A:/spiffs/100.png";  // LVGL路径格式
@@ -392,11 +392,11 @@ void weather_icon_test_png_decoder(void)
     // 检查文件是否存在（使用POSIX路径）
     FILE *file = fopen(test_file_posix, "rb");
     if (!file) {
-        ESP_LOGE(TAG, "测试文件 %s 不存在", test_file_posix);
+        ESP_LOGE(TAG, "Test file %s does not exist", test_file_posix);
         return;
     }
     fclose(file);
-    ESP_LOGI(TAG, "文件存在检查通过: %s", test_file_posix);
+    ESP_LOGI(TAG, "File existence check passed: %s", test_file_posix);
     
     // 验证PNG文件头
     file = fopen(test_file_posix, "rb");
@@ -406,38 +406,38 @@ void weather_icon_test_png_decoder(void)
         fclose(file);
         
         if (read_size == 8) {
-            ESP_LOGI(TAG, "PNG文件头: %02X %02X %02X %02X %02X %02X %02X %02X", 
+            ESP_LOGI(TAG, "PNG header: %02X %02X %02X %02X %02X %02X %02X %02X",
                      header[0], header[1], header[2], header[3], 
                      header[4], header[5], header[6], header[7]);
             
             // PNG文件头应该是: 89 50 4E 47 0D 0A 1A 0A
             if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
-                ESP_LOGI(TAG, "✓ PNG文件头验证通过，文件格式正确");
+                ESP_LOGI(TAG, "✓ PNG header validation passed; file format is valid");
             } else {
-                ESP_LOGE(TAG, "✗ PNG文件头验证失败");
+                ESP_LOGE(TAG, "✗ PNG header validation failed");
                 return;
             }
         }
     }
     
     // 实际测试LVGL PNG解码器
-    ESP_LOGI(TAG, "开始LVGL PNG解码器实际测试...");
+    ESP_LOGI(TAG, "Starting LVGL PNG decoder test...");
     
     // 获取当前活动屏幕
     lv_obj_t* screen = lv_screen_active();
     if (!screen) {
-        ESP_LOGE(TAG, "无法获取活动屏幕");
+        ESP_LOGE(TAG, "Could not get active screen");
         return;
     }
     
     // 创建临时图像对象进行测试
     lv_obj_t* test_img = lv_image_create(screen);
     if (!test_img) {
-        ESP_LOGE(TAG, "创建测试图像对象失败");
+        ESP_LOGE(TAG, "Failed to create test image object");
         return;
     }
     
-    ESP_LOGI(TAG, "临时图像对象创建成功");
+    ESP_LOGI(TAG, "Temporary image object created successfully");
     
     // 设置图像位置（屏幕正中央，更明显的位置）
     lv_obj_set_pos(test_img, (LV_HOR_RES - 60) / 2, (LV_VER_RES - 60) / 2);
@@ -447,7 +447,7 @@ void weather_icon_test_png_decoder(void)
     lv_obj_move_foreground(test_img);
     
     // 尝试加载PNG图像
-    ESP_LOGI(TAG, "尝试加载PNG图像: %s", test_file_lvgl);
+    ESP_LOGI(TAG, "Attempting to load PNG image: %s", test_file_lvgl);
     lv_image_set_src(test_img, test_file_lvgl);
     
     // 确保图像可见并设置透明度
@@ -464,23 +464,23 @@ void weather_icon_test_png_decoder(void)
     // 检查图像是否成功加载
     const void* src = lv_image_get_src(test_img);
     if (src) {
-        ESP_LOGI(TAG, "✓ PNG图像源设置成功");
+        ESP_LOGI(TAG, "✓ PNG image source set successfully");
         
         // 获取图像实际尺寸
          lv_coord_t width = lv_obj_get_width(test_img);
          lv_coord_t height = lv_obj_get_height(test_img);
-         ESP_LOGI(TAG, "图像尺寸: %dx%d", (int)width, (int)height);
+         ESP_LOGI(TAG, "Image dimensions: %dx%d", (int)width, (int)height);
         
         // 显示测试图像3秒钟
-        ESP_LOGI(TAG, "测试图像将显示3秒钟，请观察屏幕中央是否有天气图标");
+        ESP_LOGI(TAG, "Test image will be displayed for 3 seconds; check for a weather icon in the center of the screen");
         vTaskDelay(pdMS_TO_TICKS(3000));
         
     } else {
-        ESP_LOGE(TAG, "✗ PNG图像加载失败");
+        ESP_LOGE(TAG, "✗ Failed to load PNG image");
     }
     
     // 清理测试对象（使用延迟删除避免内存问题）
-    ESP_LOGI(TAG, "清理测试对象...");
+    ESP_LOGI(TAG, "Cleaning up test object...");
     lv_obj_delete_delayed(test_img, 100);  // 延迟100ms删除
     
     // 处理LVGL任务以确保删除操作完成
@@ -489,7 +489,7 @@ void weather_icon_test_png_decoder(void)
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     
-    ESP_LOGI(TAG, "=== PNG解码器测试完成 ===");
+    ESP_LOGI(TAG, "=== PNG decoder test complete ===");
 }
 
 /**
@@ -532,23 +532,23 @@ lv_obj_t* weather_icon_new_get_obj(void)
  */
 void weather_icon_test_c_array(void)
 {
-    ESP_LOGI(TAG, "=== 开始C数组格式天气图标测试 ===");
+    ESP_LOGI(TAG, "=== Starting C-array weather icon test ===");
     
     // 获取当前活动屏幕
     lv_obj_t* screen = lv_screen_active();
     if (!screen) {
-        ESP_LOGE(TAG, "无法获取活动屏幕");
+        ESP_LOGE(TAG, "Could not get active screen");
         return;
     }
     
     // 创建临时图像对象进行测试
     lv_obj_t* test_img = lv_image_create(screen);
     if (!test_img) {
-        ESP_LOGE(TAG, "创建测试图像对象失败");
+        ESP_LOGE(TAG, "Failed to create test image object");
         return;
     }
     
-    ESP_LOGI(TAG, "临时图像对象创建成功");
+    ESP_LOGI(TAG, "Temporary image object created successfully");
     
     // 设置图像位置（屏幕正中央）
     lv_obj_set_pos(test_img, (LV_HOR_RES - 60) / 2, (LV_VER_RES - 60) / 2);
@@ -558,7 +558,7 @@ void weather_icon_test_c_array(void)
     lv_obj_move_foreground(test_img);
     
     // 尝试加载C数组图像
-    ESP_LOGI(TAG, "尝试加载C数组格式图像数据");
+    ESP_LOGI(TAG, "Attempting to load C-array image data");
     
     // 使用头文件中定义的天气图标变量
     lv_image_set_src(test_img, &_icon_100);
@@ -577,23 +577,23 @@ void weather_icon_test_c_array(void)
     // 检查图像是否成功加载
     const void* src = lv_image_get_src(test_img);
     if (src) {
-        ESP_LOGI(TAG, "✓ C数组图像源设置成功");
+        ESP_LOGI(TAG, "✓ C-array image source set successfully");
         
         // 获取图像实际尺寸
         lv_coord_t width = lv_obj_get_width(test_img);
         lv_coord_t height = lv_obj_get_height(test_img);
-        ESP_LOGI(TAG, "图像尺寸: %dx%d", (int)width, (int)height);
+        ESP_LOGI(TAG, "Image dimensions: %dx%d", (int)width, (int)height);
         
         // 显示测试图像3秒钟
-        ESP_LOGI(TAG, "测试图像将显示3秒钟，请观察屏幕中央是否有天气图标");
+        ESP_LOGI(TAG, "Test image will be displayed for 3 seconds; check for a weather icon in the center of the screen");
         vTaskDelay(pdMS_TO_TICKS(3000));
         
     } else {
-        ESP_LOGE(TAG, "✗ C数组图像加载失败");
+        ESP_LOGE(TAG, "✗ Failed to load C-array image");
     }
     
     // 清理测试对象（使用延迟删除避免内存问题）
-    ESP_LOGI(TAG, "清理测试对象...");
+    ESP_LOGI(TAG, "Cleaning up test object...");
     lv_obj_delete_delayed(test_img, 100);  // 延迟100ms删除
     
     // 处理LVGL任务以确保删除操作完成
@@ -602,5 +602,5 @@ void weather_icon_test_c_array(void)
         vTaskDelay(pdMS_TO_TICKS(50));
     }
     
-    ESP_LOGI(TAG, "=== C数组格式天气图标测试完成 ===");
+    ESP_LOGI(TAG, "=== C-array weather icon test complete ===");
 }

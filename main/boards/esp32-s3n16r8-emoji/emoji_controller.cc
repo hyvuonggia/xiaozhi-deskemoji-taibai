@@ -29,7 +29,7 @@ EmojiController::~EmojiController() {
 }
 
 void EmojiController::Initialize() {
-    ESP_LOGI(TAG, "初始化表情控制器");
+    ESP_LOGI(TAG, "Initializing emoji controller");
     
     // 创建动画队列
     animation_queue_ = xQueueCreate(ANIMATION_QUEUE_SIZE, sizeof(AnimationMessage));
@@ -45,7 +45,7 @@ void EmojiController::Initialize() {
     );
     
     if (task_created != pdPASS) {
-        ESP_LOGE(TAG, "创建动画任务失败");
+        ESP_LOGE(TAG, "Failed to create animation task");
     }
     
     // 创建动画定时器任务
@@ -59,7 +59,7 @@ void EmojiController::Initialize() {
     );
     
     if (task_created != pdPASS) {
-        ESP_LOGE(TAG, "创建动画定时器任务失败");
+        ESP_LOGE(TAG, "Failed to create animation timer task");
     }
 }
 
@@ -67,12 +67,12 @@ void EmojiController::Initialize() {
 void EmojiController::AnimationTimerTask(void* pvParameters) {
     EmojiController* controller = static_cast<EmojiController*>(pvParameters);
     if (controller == nullptr) {
-        ESP_LOGE(TAG, "AnimationTimerTask: 无效的控制器指针");
+        ESP_LOGE(TAG, "AnimationTimerTask: invalid controller pointer");
         vTaskDelete(NULL);
         return;
     }
     
-    ESP_LOGI(TAG, "AnimationTimerTask: 启动");
+    ESP_LOGI(TAG, "AnimationTimerTask: started");
     
     // 记录上次随机动画的时间
     TickType_t last_random_time = xTaskGetTickCount();
@@ -84,7 +84,7 @@ void EmojiController::AnimationTimerTask(void* pvParameters) {
         // 检查是否应该执行随机动画
         if (controller->random_animation_enabled_ && 
             (current_time - last_random_time) >= pdMS_TO_TICKS(RANDOM_ANIMATION_INTERVAL_MS)) {
-            ESP_LOGI(TAG, "AnimationTimerTask: 准备执行随机动画");
+            ESP_LOGI(TAG, "AnimationTimerTask: Preparing to execute random animation");
             
             // 再次检查随机动画是否启用（防止在发送消息前状态改变）
             if (controller->random_animation_enabled_) {
@@ -98,13 +98,13 @@ void EmojiController::AnimationTimerTask(void* pvParameters) {
                     msg.param = 0;
                     
                     if (xQueueSend(controller->animation_queue_, &msg, 0) != pdPASS) {
-                        ESP_LOGW(TAG, "AnimationTimerTask: 发送随机动画消息失败");
+                        ESP_LOGW(TAG, "AnimationTimerTask: Failed to send random animation message");
                     } else {
-                        ESP_LOGI(TAG, "AnimationTimerTask: 已发送随机动画消息");
+                        ESP_LOGI(TAG, "AnimationTimerTask: Random animation message sent");
                     }
                 }
             } else {
-                ESP_LOGI(TAG, "AnimationTimerTask: 随机动画已被禁用，不发送消息");
+                ESP_LOGI(TAG, "AnimationTimerTask: Random animation is disabled; not sending a message");
                 // 仍然更新时间，避免连续检查
                 last_random_time = current_time;
             }
@@ -118,12 +118,12 @@ void EmojiController::AnimationTimerTask(void* pvParameters) {
 void EmojiController::AnimationTask(void* pvParameters) {
     EmojiController* controller = static_cast<EmojiController*>(pvParameters);
     if (controller == nullptr) {
-        ESP_LOGE(TAG, "AnimationTask: 无效的控制器指针");
+        ESP_LOGE(TAG, "AnimationTask: invalid controller pointer");
         vTaskDelete(NULL);
         return;
     }
     
-    ESP_LOGI(TAG, "AnimationTask: 启动");
+    ESP_LOGI(TAG, "AnimationTask: started");
     
     AnimationMessage msg;
     
@@ -132,16 +132,16 @@ void EmojiController::AnimationTask(void* pvParameters) {
         if (xQueueReceive(controller->animation_queue_, &msg, portMAX_DELAY) == pdPASS) {
             // 如果是随机动画但随机动画被禁用，则跳过
             if (msg.type == AnimationType::RANDOM && !controller->random_animation_enabled_) {
-                ESP_LOGI(TAG, "AnimationTask: 随机动画已禁用，跳过执行");
+                ESP_LOGI(TAG, "AnimationTask: Random animation is disabled; skipping execution");
                 continue;
             }
             
-            ESP_LOGI(TAG, "AnimationTask: 收到动画消息，类型: %d, 参数: %d", (int)msg.type, msg.param);
+            ESP_LOGI(TAG, "AnimationTask: Received animation message, type: %d, parameter: %d", (int)msg.type, msg.param);
             
             // 根据动画类型执行相应的动画
             // 在执行动画前检查是否有其他动画正在执行
             if (controller->is_animating_) {
-                ESP_LOGW(TAG, "AnimationTask: 已有动画正在执行，跳过此次动画");
+                ESP_LOGW(TAG, "AnimationTask: An animation is already running; skipping this animation");
                 continue;
             }
             
@@ -239,13 +239,13 @@ void EmojiController::AnimationTask(void* pvParameters) {
                         controller->ExecuteRandomAnimation();
                         break;
                     default:
-                        ESP_LOGW(TAG, "AnimationTask: 未知的动画类型: %d", (int)msg.type);
+                        ESP_LOGW(TAG, "AnimationTask: Unknown animation type: %d", (int)msg.type);
                         break;
                 }
             } catch (const std::exception& e) {
-                ESP_LOGE(TAG, "AnimationTask异常: %s", e.what());
+                ESP_LOGE(TAG, "AnimationTask exception: %s", e.what());
             } catch (...) {
-                ESP_LOGE(TAG, "AnimationTask未知异常");
+                ESP_LOGE(TAG, "Unknown AnimationTask exception");
             }
             
             // 恢复LVGL任务
@@ -304,7 +304,7 @@ void EmojiController::DrawEmoji(bool is_blinking) {
     
     // 确保屏幕和眼睛对象存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "DrawEmoji: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "DrawEmoji: screen or eye object does not exist");
         return;
     }
     
@@ -326,18 +326,18 @@ void EmojiController::DrawEmoji(bool is_blinking) {
                 
                 lock_success = true;
             } catch (...) {
-                ESP_LOGW(TAG, "DrawEmoji: 获取显示锁失败，重试 %d/%d", retry_count + 1, max_retries);
+                ESP_LOGW(TAG, "DrawEmoji: Failed to acquire display lock, retry %d/%d", retry_count + 1, max_retries);
                 retry_count++;
                 vTaskDelay(pdMS_TO_TICKS(10)); // 短暂延迟后重试
             }
         } else {
-            ESP_LOGW(TAG, "DrawEmoji: 显示对象不存在");
+            ESP_LOGW(TAG, "DrawEmoji: display object does not exist");
             return;
         }
     }
 
     if (!lock_success) {
-        ESP_LOGE(TAG, "DrawEmoji: 多次尝试获取显示锁失败");
+        ESP_LOGE(TAG, "DrawEmoji: Failed to acquire display lock after multiple attempts");
     }
 }
 
@@ -355,7 +355,7 @@ void EmojiController::EyeCenter(bool update_display) {
     
     if (update_display) {
         if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-            ESP_LOGW(TAG, "EyeCenter: 屏幕或眼睛对象不存在");
+            ESP_LOGW(TAG, "EyeCenter: screen or eye object does not exist");
             return;
         }
         
@@ -373,7 +373,7 @@ void EmojiController::EyeCenter(bool update_display) {
                 lv_obj_set_style_radius(left_eye_, ref_corner_radius_, 0);
                 lv_obj_set_style_radius(right_eye_, ref_corner_radius_, 0);
             } catch (...) {
-                ESP_LOGW(TAG, "EyeCenter: 获取显示锁失败");
+                ESP_LOGW(TAG, "EyeCenter: Failed to acquire display lock");
             }
         }
     }
@@ -435,7 +435,7 @@ void EmojiController::MoveEye(int direction) {
     
     // 确保屏幕和眼睛对象存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "MoveEye: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "MoveEye: screen or eye object does not exist");
         return;
     }
     
@@ -532,7 +532,7 @@ void EmojiController::ResumeLVGLTask() {
     if (lvgl_task) {
         vTaskPrioritySet(lvgl_task, saved_lvgl_task_priority_);
         lvgl_task_suspended_ = false;
-        ESP_LOGI(TAG, "LVGL任务优先级已恢复");
+        ESP_LOGI(TAG, "LVGL task priority restored");
     }
 }
 
@@ -540,7 +540,7 @@ void EmojiController::ResumeLVGLTask() {
 bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func) {
     // 如果已经有动画在执行，跳过此次动画
     if (is_animating_) {
-        ESP_LOGW(TAG, "SafeExecuteAnimation: 已有动画正在执行，跳过此次动画");
+        ESP_LOGW(TAG, "SafeExecuteAnimation: An animation is already running; skipping this animation");
         return false;
     }
     
@@ -554,9 +554,9 @@ bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func)
         // 执行动画函数
         animation_func();
     } catch (const std::exception& e) {
-        ESP_LOGE(TAG, "SafeExecuteAnimation异常: %s", e.what());
+        ESP_LOGE(TAG, "SafeExecuteAnimation exception: %s", e.what());
     } catch (...) {
-        ESP_LOGE(TAG, "SafeExecuteAnimation未知异常");
+        ESP_LOGE(TAG, "Unknown SafeExecuteAnimation exception");
     }
     
     // 恢复LVGL任务
@@ -569,11 +569,11 @@ bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func)
 }
 
 void EmojiController::PlayAnimation(AnimationType type, int param) {
-    ESP_LOGI(TAG, "播放动画，类型: %d, 参数: %d", (int)type, param);
+    ESP_LOGI(TAG, "Playing animation, type: %d, parameter: %d", (int)type, param);
     
     // 检查动画队列是否已创建
     if (animation_queue_ == nullptr) {
-        ESP_LOGE(TAG, "PlayAnimation: 动画队列未创建");
+        ESP_LOGE(TAG, "PlayAnimation: animation queue has not been created");
         return;
     }
     
@@ -584,15 +584,15 @@ void EmojiController::PlayAnimation(AnimationType type, int param) {
     
     // 发送动画消息到队列
     if (xQueueSend(animation_queue_, &msg, 0) != pdPASS) {
-        ESP_LOGW(TAG, "PlayAnimation: 发送动画消息失败");
+        ESP_LOGW(TAG, "PlayAnimation: Failed to send animation message");
     } else {
-        ESP_LOGI(TAG, "已发送动画消息，类型: %d", static_cast<int>(type));
+        ESP_LOGI(TAG, "Animation message sent, type: %d", static_cast<int>(type));
     }
 }
 
 void EmojiController::StopAnimation() {
     // 停止所有动画
-    ESP_LOGI(TAG, "停止所有动画");
+    ESP_LOGI(TAG, "Stopping all animations");
     
     // 恢复眼睛状态并更新显示
     EyeCenter(true);
@@ -609,7 +609,7 @@ void EmojiController::StopAnimation() {
  * @param enabled 是否启用随机动画
  */
 void EmojiController::SetRandomAnimationEnabled(bool enabled) {
-    ESP_LOGI(TAG, "设置随机动画状态: %s", enabled ? "启用" : "禁用");
+    ESP_LOGI(TAG, "Setting random animation state: %s", enabled ? "enabled" : "disabled");
     random_animation_enabled_ = enabled;
     
     // 如果禁用随机动画，清空动画队列以防止已经在队列中的随机动画被执行
@@ -626,13 +626,13 @@ void EmojiController::ClearAnimationQueue() {
         return;
     }
     
-    ESP_LOGI(TAG, "清空动画队列");
+    ESP_LOGI(TAG, "Clearing animation queue");
     
     // 清空队列中的所有消息
     AnimationMessage msg;
     while (xQueueReceive(animation_queue_, &msg, 0) == pdPASS) {
         // 只是从队列中移除消息，不做任何处理
-        ESP_LOGD(TAG, "从队列中移除动画消息，类型: %d", (int)msg.type);
+        ESP_LOGD(TAG, "Removed animation message from queue, type: %d", (int)msg.type);
     }
 }
 
@@ -671,11 +671,11 @@ void EmojiController::PlayRandomAnimation() {
 
 void EmojiController::ExecuteRandomAnimation() {
     AnimationType type = SelectRandomAnimation();
-    ESP_LOGI(TAG, "执行随机动画，类型: %d", static_cast<int>(type));
+    ESP_LOGI(TAG, "Executing random animation, type: %d", static_cast<int>(type));
     
     // 检查屏幕和眼睛对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteRandomAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteRandomAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -721,11 +721,11 @@ void EmojiController::ExecuteRandomAnimation() {
 }
 
 void EmojiController::ExecuteBlinkAnimation(int speed) {
-    ESP_LOGI(TAG, "执行眼眼动画，速度: %d", speed);
+    ESP_LOGI(TAG, "Executing blink animation, speed: %d", speed);
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteBlinkAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteBlinkAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -761,10 +761,10 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
         // 随机选择一个方向，避免使用模运算减少计算量
         uint32_t rand_val = esp_random() & 0x07; // 取最低3位，值为0-7
         head_direction = (rand_val % 6) + 1; // 1-6，确保范围正确
-        ESP_LOGI(TAG, "眨眼时添加头部运动，方向: %d", head_direction);
+        ESP_LOGI(TAG, "Adding head movement during blink, direction: %d", head_direction);
     }
     
-    ESP_LOGI(TAG, "眨眼次数: %d", blink_count);
+    ESP_LOGI(TAG, "Blink count: %d", blink_count);
     
     // 使用一个锁来保护整个眨眼过程
     if (display_) {
@@ -859,7 +859,7 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
                 }
             }
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteBlinkAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteBlinkAnimation: Failed to acquire display lock");
         }
     }
     
@@ -869,11 +869,11 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
 }
 
 void EmojiController::ExecuteHappyAnimation() {
-    ESP_LOGI(TAG, "执行开心表情动画");
+    ESP_LOGI(TAG, "Executing happy expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteHappyAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteHappyAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -986,19 +986,19 @@ void EmojiController::ExecuteHappyAnimation() {
             // 刷新显示
             lv_refr_now(NULL);
         } catch (const std::exception& e) {
-            ESP_LOGE(TAG, "ExecuteHappyAnimation异常: %s", e.what());
+            ESP_LOGE(TAG, "ExecuteHappyAnimation exception: %s", e.what());
         }
     } else {
-        ESP_LOGW(TAG, "ExecuteHappyAnimation: 显示对象不存在");
+        ESP_LOGW(TAG, "ExecuteHappyAnimation: display object does not exist");
     }
 }
 
 void EmojiController::ExecuteSadAnimation() {
-    ESP_LOGI(TAG, "执行悲伤表情动画");
+    ESP_LOGI(TAG, "Executing sad expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteSadAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteSadAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1130,7 +1130,7 @@ void EmojiController::ExecuteSadAnimation() {
             if (right_eye_mask) lv_obj_del(right_eye_mask);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteSadAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteSadAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1147,11 +1147,11 @@ void EmojiController::ExecuteSadAnimation() {
 }
 
 void EmojiController::ExecuteLaughingAnimation() {
-    ESP_LOGI(TAG, "执行大笑表情动画");
+    ESP_LOGI(TAG, "Executing laughing expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLaughingAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteLaughingAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1255,7 +1255,7 @@ void EmojiController::ExecuteLaughingAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteLaughingAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteLaughingAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1266,11 +1266,11 @@ void EmojiController::ExecuteLaughingAnimation() {
 }
 
 void EmojiController::ExecuteConfidentAnimation() {
-    ESP_LOGI(TAG, "执行自信表情动画");
+    ESP_LOGI(TAG, "Executing confident expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteConfidentAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteConfidentAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1354,7 +1354,7 @@ void EmojiController::ExecuteConfidentAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteConfidentAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteConfidentAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1366,11 +1366,11 @@ void EmojiController::ExecuteConfidentAnimation() {
 }
 
 void EmojiController::ExecuteSillyAnimation() {
-    ESP_LOGI(TAG, "执行偷笑表情动画");
+    ESP_LOGI(TAG, "Executing sly expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteSillyAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteSillyAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1458,7 +1458,7 @@ void EmojiController::ExecuteSillyAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteSillyAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteSillyAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1469,11 +1469,11 @@ void EmojiController::ExecuteSillyAnimation() {
 }
 
 void EmojiController::ExecuteDeliciousAnimation() {
-    ESP_LOGI(TAG, "执行美味表情动画");
+    ESP_LOGI(TAG, "Executing delicious expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteDeliciousAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteDeliciousAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1563,7 +1563,7 @@ void EmojiController::ExecuteDeliciousAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteDeliciousAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteDeliciousAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1574,11 +1574,11 @@ void EmojiController::ExecuteDeliciousAnimation() {
 }
 
 void EmojiController::ExecuteKissyAnimation() {
-    ESP_LOGI(TAG, "执行亲亲表情动画");
+    ESP_LOGI(TAG, "Executing kissing expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteKissyAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteKissyAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1700,7 +1700,7 @@ void EmojiController::ExecuteKissyAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteKissyAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteKissyAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1711,11 +1711,11 @@ void EmojiController::ExecuteKissyAnimation() {
 }
 
 void EmojiController::ExecuteCoolAnimation() {
-    ESP_LOGI(TAG, "执行酷酷表情动画");
+    ESP_LOGI(TAG, "Executing cool expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteCoolAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteCoolAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1799,7 +1799,7 @@ void EmojiController::ExecuteCoolAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteCoolAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteCoolAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1811,11 +1811,11 @@ void EmojiController::ExecuteCoolAnimation() {
 }
 
 void EmojiController::ExecuteRelaxedAnimation() {
-    ESP_LOGI(TAG, "执行放松表情动画");
+    ESP_LOGI(TAG, "Executing relaxed expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteRelaxedAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteRelaxedAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -1896,7 +1896,7 @@ void EmojiController::ExecuteRelaxedAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteRelaxedAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteRelaxedAnimation: Failed to acquire display lock");
         }
     }
     
@@ -1907,11 +1907,11 @@ void EmojiController::ExecuteRelaxedAnimation() {
 }
 
 void EmojiController::ExecuteShockedAnimation() {
-    ESP_LOGI(TAG, "执行震惊表情动画");
+    ESP_LOGI(TAG, "Executing shocked expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteShockedAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteShockedAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2015,7 +2015,7 @@ void EmojiController::ExecuteShockedAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteShockedAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteShockedAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2026,11 +2026,11 @@ void EmojiController::ExecuteShockedAnimation() {
 }
 
 void EmojiController::ExecuteThinkingAnimation() {
-    ESP_LOGI(TAG, "执行思考表情动画");
+    ESP_LOGI(TAG, "Executing thinking expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteThinkingAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteThinkingAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2117,7 +2117,7 @@ void EmojiController::ExecuteThinkingAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteThinkingAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteThinkingAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2128,11 +2128,11 @@ void EmojiController::ExecuteThinkingAnimation() {
 }
 
 void EmojiController::ExecuteLovingAnimation() {
-    ESP_LOGI(TAG, "执行爱心表情动画");
+    ESP_LOGI(TAG, "Executing loving expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLovingAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteLovingAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2252,7 +2252,7 @@ void EmojiController::ExecuteLovingAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteLovingAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteLovingAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2263,11 +2263,11 @@ void EmojiController::ExecuteLovingAnimation() {
 }
 
 void EmojiController::ExecuteEmbarrassedAnimation() {
-    ESP_LOGI(TAG, "执行尴尬表情动画");
+    ESP_LOGI(TAG, "Executing embarrassed expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteEmbarrassedAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteEmbarrassedAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2376,7 +2376,7 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteEmbarrassedAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteEmbarrassedAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2387,11 +2387,11 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
 }
 
 void EmojiController::ExecuteFunnyAnimation() {
-    ESP_LOGI(TAG, "执行滑稽表情动画");
+    ESP_LOGI(TAG, "Executing funny expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteFunnyAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteFunnyAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2468,7 +2468,7 @@ void EmojiController::ExecuteFunnyAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteFunnyAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteFunnyAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2479,11 +2479,11 @@ void EmojiController::ExecuteFunnyAnimation() {
 }
 
 void EmojiController::ExecuteAngerAnimation() {
-    ESP_LOGI(TAG, "执行愤怒表情动画");
+    ESP_LOGI(TAG, "Executing angry expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteAngerAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteAngerAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2626,7 +2626,7 @@ void EmojiController::ExecuteAngerAnimation() {
             if (right_eye_mask) lv_obj_del(right_eye_mask);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteAngerAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteAngerAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2643,11 +2643,11 @@ void EmojiController::ExecuteAngerAnimation() {
 }
 
 void EmojiController::ExecuteSurpriseAnimation() {
-    ESP_LOGI(TAG, "执行惊讶表情动画");
+    ESP_LOGI(TAG, "Executing surprised expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteSurpriseAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteSurpriseAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2719,7 +2719,7 @@ void EmojiController::ExecuteSurpriseAnimation() {
             vTaskDelay(pdMS_TO_TICKS(500));
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteSurpriseAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteSurpriseAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2736,11 +2736,11 @@ void EmojiController::ExecuteSurpriseAnimation() {
 }
 
 void EmojiController::ExecuteWakeupAnimation() {
-    ESP_LOGI(TAG, "执行唤醒表情动画");
+    ESP_LOGI(TAG, "Executing wake-up expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteWakeupAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteWakeupAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2757,7 +2757,7 @@ void EmojiController::ExecuteWakeupAnimation() {
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
             lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteWakeupAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteWakeupAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2769,11 +2769,11 @@ void EmojiController::ExecuteWakeupAnimation() {
 }
 
 void EmojiController::ExecuteSleepAnimation() {
-    ESP_LOGI(TAG, "执行睡眠表情动画");
+    ESP_LOGI(TAG, "Executing sleep expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteSleepAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteSleepAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2796,7 +2796,7 @@ void EmojiController::ExecuteSleepAnimation() {
             // 刷新显示
             lv_refr_now(NULL);
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteSleepAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteSleepAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2814,11 +2814,11 @@ void EmojiController::EyeConfused() {
 }
 
 void EmojiController::ExecuteConfusedAnimation() {
-    ESP_LOGI(TAG, "执行疑惑表情动画");
+    ESP_LOGI(TAG, "Executing confused expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteConfusedAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteConfusedAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -2835,7 +2835,7 @@ void EmojiController::ExecuteConfusedAnimation() {
             lv_obj_set_size(right_eye_, right_eye_width_, left_eye_height_ / 2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - left_eye_width_/2, right_eye_y_ - left_eye_height_/4);
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteConfusedAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteConfusedAnimation: Failed to acquire display lock");
         }
     }
     
@@ -2847,19 +2847,19 @@ void EmojiController::ExecuteConfusedAnimation() {
 }
 
 void EmojiController::ExecuteLookLeftAnimation() {
-    ESP_LOGI(TAG, "执行向左看动画");
+    ESP_LOGI(TAG, "Executing look-left animation");
     
     // 同时执行表情和舵机动作
     // 如果有舵机控制器，则控制舵机向左转
     if (servo_controller_ != nullptr) {
         // 同时开始舵机动作和表情动画
         servo_controller_->HeadMove(-SERVO_OFFSET_X, 0, SERVO_DELAY);
-        ESP_LOGI(TAG, "舵机向左转动");
+        ESP_LOGI(TAG, "Servo turning left");
     }
     
     // 检查对象是否存在，如果不存在则只执行舵机动作
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLookLeftAnimation: 屏幕或眼睛对象不存在，仅执行舵机动作");
+        ESP_LOGW(TAG, "ExecuteLookLeftAnimation: screen or eye object does not exist，executing servo movement only");
         return;
     }
     
@@ -2933,19 +2933,19 @@ void EmojiController::ExecuteLookLeftAnimation() {
 }
 
 void EmojiController::ExecuteLookRightAnimation() {
-    ESP_LOGI(TAG, "执行向右看动画");
+    ESP_LOGI(TAG, "Executing look-right animation");
     
     // 同时执行表情和舵机动作
     // 如果有舵机控制器，则控制舵机向右转
     if (servo_controller_ != nullptr) {
         // 同时开始舵机动作和表情动画
         servo_controller_->HeadMove(SERVO_OFFSET_X, 0, SERVO_DELAY);
-        ESP_LOGI(TAG, "舵机向右转动");
+        ESP_LOGI(TAG, "Servo turning right");
     }
     
     // 检查对象是否存在，如果不存在则只执行舵机动作
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLookRightAnimation: 屏幕或眼睛对象不存在，仅执行舵机动作");
+        ESP_LOGW(TAG, "ExecuteLookRightAnimation: screen or eye object does not exist，executing servo movement only");
         return;
     }
     
@@ -3019,11 +3019,11 @@ void EmojiController::ExecuteLookRightAnimation() {
 }
 
 void EmojiController::ExecuteHeadNodAnimation() {
-    ESP_LOGI(TAG, "执行点头动画");
+    ESP_LOGI(TAG, "Executing head-nod animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteHeadNodAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteHeadNodAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -3060,11 +3060,11 @@ void EmojiController::ExecuteHeadNodAnimation() {
 }
 
 void EmojiController::ExecuteHeadShakeAnimation() {
-    ESP_LOGI(TAG, "执行摇头动画");
+    ESP_LOGI(TAG, "Executing head-shake animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteHeadShakeAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteHeadShakeAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -3118,11 +3118,11 @@ void EmojiController::ExecuteHeadShakeAnimation() {
 }
 
 void EmojiController::ExecuteHeadRollAnimation() {
-    ESP_LOGI(TAG, "执行转圈动画");
+    ESP_LOGI(TAG, "Executing head-roll animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteHeadRollAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteHeadRollAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -3168,7 +3168,7 @@ void EmojiController::ExecuteHeadRollAnimation() {
 }
 
 void EmojiController::InitEmoji() {
-    ESP_LOGI(TAG, "初始化表情");
+    ESP_LOGI(TAG, "Initializing emoji");
     
     // 创建动画队列
     if (animation_queue_ == nullptr) {
@@ -3187,7 +3187,7 @@ void EmojiController::InitEmoji() {
         );
         
         if (task_created != pdPASS) {
-            ESP_LOGE(TAG, "创建动画任务失败");
+            ESP_LOGE(TAG, "Failed to create animation task");
         }
     }
     
@@ -3202,16 +3202,16 @@ void EmojiController::InitEmoji() {
             &animation_timer_task_handle_);
         
         if (task_created != pdPASS) {
-            ESP_LOGE(TAG, "创建动画定时器任务失败");
+            ESP_LOGE(TAG, "Failed to create animation timer task");
         }
     }
     
-    ESP_LOGI(TAG, "表情初始化完成");
+    ESP_LOGI(TAG, "Emoji initialization complete");
 }
 
 
 void EmojiController::EyeUp() {
-    ESP_LOGI(TAG, "眼睛向上");
+    ESP_LOGI(TAG, "Eyes up");
     
     // 如果有舵机控制器，则同时移动头部
     if (servo_controller_) {
@@ -3230,7 +3230,7 @@ void EmojiController::EyeUp() {
 }
 
 void EmojiController::EyeDown() {
-    ESP_LOGI(TAG, "眼睛向下");
+    ESP_LOGI(TAG, "Eyes down");
     
     // 如果有舵机控制器，则移动头部
     if (servo_controller_) {
@@ -3252,11 +3252,11 @@ void EmojiController::EyeDown() {
 }
 
 void EmojiController::ExecuteAwkwardAnimation() {
-    ESP_LOGI(TAG, "执行尴尬表情动画");
+    ESP_LOGI(TAG, "Executing embarrassed expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteAwkwardAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteAwkwardAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -3312,7 +3312,7 @@ void EmojiController::ExecuteAwkwardAnimation() {
             const int sweat_x_start = right_eye_x_ + 15;  // 从右眼右侧开始，但不要太远
             const int sweat_y = 10;  // 位于屏幕上方，确保可见
             
-            ESP_LOGI(TAG, "创建竖线1，位置: (%d, %d)，大小: %dx%d", 
+            ESP_LOGI(TAG, "Created vertical line 1, position: (%d, %d), size: %dx%d",
                      sweat_x_start, sweat_y, sweat_width, sweat_heights[0]);
             
             // 创建第一条竖线
@@ -3324,7 +3324,7 @@ void EmojiController::ExecuteAwkwardAnimation() {
             lv_obj_set_pos(sweat_line1, sweat_x_start, sweat_y);
             lv_obj_clear_flag(sweat_line1, LV_OBJ_FLAG_HIDDEN);  // 确保不隐藏
             
-            ESP_LOGI(TAG, "创建竖线2，位置: (%d, %d)，大小: %dx%d", 
+            ESP_LOGI(TAG, "Created vertical line 2, position: (%d, %d), size: %dx%d",
                      sweat_x_start + sweat_width + sweat_spacing, sweat_y, sweat_width, sweat_heights[1]);
             
             // 创建第二条竖线
@@ -3336,7 +3336,7 @@ void EmojiController::ExecuteAwkwardAnimation() {
             lv_obj_set_pos(sweat_line2, sweat_x_start + sweat_width + sweat_spacing, sweat_y);
             lv_obj_clear_flag(sweat_line2, LV_OBJ_FLAG_HIDDEN);  // 确保不隐藏
             
-            ESP_LOGI(TAG, "创建竖线3，位置: (%d, %d)，大小: %dx%d", 
+            ESP_LOGI(TAG, "Created vertical line 3, position: (%d, %d), size: %dx%d",
                      sweat_x_start + 2 * (sweat_width + sweat_spacing), sweat_y, sweat_width, sweat_heights[2]);
             
             // 创建第三条竖线
@@ -3365,7 +3365,7 @@ void EmojiController::ExecuteAwkwardAnimation() {
             if (sweat_line3) lv_obj_del(sweat_line3);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteAwkwardAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteAwkwardAnimation: Failed to acquire display lock");
         }
     }
     
@@ -3382,11 +3382,11 @@ void EmojiController::ExecuteAwkwardAnimation() {
 }
 
 void EmojiController::ExecuteCryAnimation() {
-    ESP_LOGI(TAG, "执行哭泣表情动画");
+    ESP_LOGI(TAG, "Executing crying expression animation");
     
     // 检查对象是否存在
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteCryAnimation: 屏幕或眼睛对象不存在");
+        ESP_LOGW(TAG, "ExecuteCryAnimation: screen or eye object does not exist");
         return;
     }
     
@@ -3498,7 +3498,7 @@ void EmojiController::ExecuteCryAnimation() {
             lv_refr_now(NULL);
             
         } catch (...) {
-            ESP_LOGW(TAG, "ExecuteCryAnimation: 获取显示锁失败");
+            ESP_LOGW(TAG, "ExecuteCryAnimation: Failed to acquire display lock");
         }
     }
     

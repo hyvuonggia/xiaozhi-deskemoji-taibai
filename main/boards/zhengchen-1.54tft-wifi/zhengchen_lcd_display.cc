@@ -53,38 +53,38 @@ ZhengchenLcdDisplay::ZhengchenLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp
       emotion_gif_(nullptr),
       high_temp_popup_(nullptr),
       high_temp_label_(nullptr) {
-    ESP_LOGI(TAG, "初始化ZhengchenLcdDisplay");
+    ESP_LOGI(TAG, "Initializing ZhengchenLcdDisplay");
     SetupGifContainer();
     // 立即显示一个默认表情
-    ESP_LOGI(TAG, "初始化完成，显示默认表情");
+    ESP_LOGI(TAG, "Initialization complete; displaying default emotion");
     SetEmotion("neutral");
 };
 
 void ZhengchenLcdDisplay::SetupGifContainer() {
-    ESP_LOGI(TAG, "开始设置GIF容器");
+    ESP_LOGI(TAG, "Setting up GIF container");
     DisplayLockGuard lock(this);
 
     if (emotion_label_) {
         lv_obj_del(emotion_label_);
-        ESP_LOGI(TAG, "删除旧的emotion_label_");
+        ESP_LOGI(TAG, "Deleting old emotion_label_");
     }
 
     if (chat_message_label_) {
         lv_obj_del(chat_message_label_);
-        ESP_LOGI(TAG, "删除旧的chat_message_label_");
+        ESP_LOGI(TAG, "Deleting old chat_message_label_");
     }
     if (content_) {
         lv_obj_del(content_);
-        ESP_LOGI(TAG, "删除旧的content_");
+        ESP_LOGI(TAG, "Deleting old content_");
     }
 
     // 创建内容容器
     content_ = lv_obj_create(container_);
     if (!content_) {
-        ESP_LOGE(TAG, "创建内容容器失败!");
+        ESP_LOGE(TAG, "Failed to create content container!");
         return;
     }
-    ESP_LOGI(TAG, "创建内容容器成功");
+    ESP_LOGI(TAG, "Content container created successfully");
     
     lv_obj_set_scrollbar_mode(content_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_size(content_, LV_HOR_RES, LV_HOR_RES);
@@ -96,10 +96,10 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     // 创建表情标签
     emotion_label_ = lv_label_create(content_);
     if (!emotion_label_) {
-        ESP_LOGE(TAG, "创建表情标签失败!");
+        ESP_LOGE(TAG, "Failed to create emotion label!");
         return;
     }
-    ESP_LOGI(TAG, "创建表情标签成功");
+    ESP_LOGI(TAG, "Emotion label created successfully");
     
     lv_label_set_text(emotion_label_, "");
     lv_obj_set_width(emotion_label_, 0);
@@ -107,13 +107,13 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_add_flag(emotion_label_, LV_OBJ_FLAG_HIDDEN);
 
     // 创建GIF对象
-    ESP_LOGI(TAG, "开始创建GIF对象");
+    ESP_LOGI(TAG, "Creating GIF object");
     emotion_gif_ = lv_gif_create(content_);
     if (!emotion_gif_) {
-        ESP_LOGE(TAG, "创建GIF对象失败!");
+        ESP_LOGE(TAG, "Failed to create GIF object!");
         return;
     }
-    ESP_LOGI(TAG, "创建GIF对象成功");
+    ESP_LOGI(TAG, "GIF object created successfully");
     
     int gif_size = LV_HOR_RES;
     lv_obj_set_size(emotion_gif_, gif_size, gif_size);
@@ -122,16 +122,16 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_center(emotion_gif_);
     
     // 设置默认GIF表情
-    ESP_LOGI(TAG, "设置默认GIF表情");
+    ESP_LOGI(TAG, "Setting default GIF emotion");
     lv_gif_set_src(emotion_gif_, &staticstate);
 
     // 创建聊天消息标签
     chat_message_label_ = lv_label_create(content_);
     if (!chat_message_label_) {
-        ESP_LOGE(TAG, "创建聊天消息标签失败!");
+        ESP_LOGE(TAG, "Failed to create chat message label!");
         return;
     }
-    ESP_LOGI(TAG, "创建聊天消息标签成功");
+    ESP_LOGI(TAG, "Chat message label created successfully");
     
     lv_label_set_text(chat_message_label_, "");
     lv_obj_set_width(chat_message_label_, LV_HOR_RES * 0.9);
@@ -147,43 +147,43 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_align(chat_message_label_, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     LcdDisplay::SetTheme("dark");
-    ESP_LOGI(TAG, "GIF容器设置完成");
+    ESP_LOGI(TAG, "GIF container setup complete");
     
     // 添加一个测试消息
-    lv_label_set_text(chat_message_label_, "表情显示测试");
+    lv_label_set_text(chat_message_label_, "Kiểm tra hiển thị biểu cảm");
     lv_obj_clear_flag(chat_message_label_, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ZhengchenLcdDisplay::SetEmotion(const char* emotion) {
     if (!emotion) {
-        ESP_LOGE(TAG, "emotion参数为空");
+        ESP_LOGE(TAG, "Emotion parameter is empty");
         return;
     }
     
     if (!emotion_gif_) {
-        ESP_LOGE(TAG, "emotion_gif_对象不存在");
+        ESP_LOGE(TAG, "emotion_gif_ object does not exist");
         return;
     }
 
-    ESP_LOGI(TAG, "尝试设置表情: %s", emotion);
+    ESP_LOGI(TAG, "Attempting to set emotion: %s", emotion);
     DisplayLockGuard lock(this);
 
     for (const auto& map : emotion_maps_) {
         if (map.name && strcmp(map.name, emotion) == 0) {
             if (map.gif == NULL) {
-                ESP_LOGE(TAG, "表情GIF资源不存在: %s", emotion);
+                ESP_LOGE(TAG, "Emotion GIF resource does not exist: %s", emotion);
                 continue;
             }
-            ESP_LOGI(TAG, "找到表情: %s, 设置GIF资源", emotion);
+            ESP_LOGI(TAG, "Found emotion: %s; setting GIF resource", emotion);
             lv_gif_set_src(emotion_gif_, map.gif);
-            ESP_LOGI(TAG, "设置表情成功: %s", emotion);
+            ESP_LOGI(TAG, "Emotion set successfully: %s", emotion);
             return;
         }
     }
 
-    ESP_LOGI(TAG, "未找到匹配表情'%s'，使用默认表情", emotion);
+    ESP_LOGI(TAG, "No matching emotion found for '%s'; using default emotion", emotion);
     lv_gif_set_src(emotion_gif_, &staticstate);
-    ESP_LOGI(TAG, "设置默认表情成功");
+    ESP_LOGI(TAG, "Default emotion set successfully");
 }
 
 void ZhengchenLcdDisplay::SetChatMessage(const char* role, const char* content) {
@@ -200,7 +200,7 @@ void ZhengchenLcdDisplay::SetChatMessage(const char* role, const char* content) 
     lv_label_set_text(chat_message_label_, content);
     lv_obj_clear_flag(chat_message_label_, LV_OBJ_FLAG_HIDDEN);
 
-    ESP_LOGI(TAG, "设置聊天消息 [%s]: %s", role, content);
+    ESP_LOGI(TAG, "Setting chat message [%s]: %s", role, content);
 }
 
 void ZhengchenLcdDisplay::SetupHighTempWarningPopup() {
@@ -216,7 +216,7 @@ void ZhengchenLcdDisplay::SetupHighTempWarningPopup() {
     
     // 创建警告标签
     high_temp_label_ = lv_label_create(high_temp_popup_);
-    lv_label_set_text(high_temp_label_, "警告：温度过高");
+    lv_label_set_text(high_temp_label_, "Cảnh báo: Nhiệt độ quá cao");
     lv_obj_set_style_text_color(high_temp_label_, lv_color_white(), 0);
     lv_obj_center(high_temp_label_);
     

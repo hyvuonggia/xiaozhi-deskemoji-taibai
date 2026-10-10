@@ -24,7 +24,7 @@ public:
         
         // 创建警告标签
         high_temp_label_ = lv_label_create(high_temp_popup_);
-        lv_label_set_text(high_temp_label_, "警告：温度过高");
+        lv_label_set_text(high_temp_label_, "Cảnh báo: Nhiệt độ quá cao");
         lv_obj_set_style_text_color(high_temp_label_, lv_color_white(), 0);
         lv_obj_center(high_temp_label_);
         

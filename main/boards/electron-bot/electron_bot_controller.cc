@@ -70,7 +70,7 @@ private:
 
         while (true) {
             if (xQueueReceive(controller->action_queue_, &params, pdMS_TO_TICKS(1000)) == pdTRUE) {
-                ESP_LOGI(TAG, "执行动作: %d", params.action_type);
+                ESP_LOGI(TAG, "Executing action: %d", params.action_type);
                 controller->is_action_in_progress_ = true;  // 开始执行动作
 
                 // 执行相应的动作
@@ -102,7 +102,7 @@ private:
     }
 
     void QueueAction(int action_type, int steps, int speed, int direction, int amount) {
-        ESP_LOGI(TAG, "动作控制: 类型=%d, 步数=%d, 速度=%d, 方向=%d, 幅度=%d", action_type, steps,
+        ESP_LOGI(TAG, "Action control: type=%d, steps=%d, speed=%d, direction=%d, amount=%d", action_type, steps,
                  speed, direction, amount);
 
         ElectronBotActionParams params = {action_type, steps, speed, direction, amount};
@@ -140,13 +140,13 @@ public:
         QueueAction(ACTION_HOME, 1, 1000, 0, 0);
 
         RegisterMcpTools();
-        ESP_LOGI(TAG, "Electron Bot控制器已初始化并注册MCP工具");
+        ESP_LOGI(TAG, "Electron Bot controller initialized and MCP tools registered");
     }
 
     void RegisterMcpTools() {
         auto& mcp_server = McpServer::GetInstance();
 
-        ESP_LOGI(TAG, "开始注册Electron Bot MCP工具...");
+        ESP_LOGI(TAG, "Starting Electron Bot MCP tool registration...");
 
         // 手部动作统一工具
         mcp_server.AddTool(
@@ -274,7 +274,7 @@ public:
                 std::string servo_type = properties["servo_type"].value<std::string>();
                 int trim_value = properties["trim_value"].value<int>();
 
-                ESP_LOGI(TAG, "设置舵机微调: %s = %d度", servo_type.c_str(), trim_value);
+                ESP_LOGI(TAG, "Setting servo trim: %s = %d degrees", servo_type.c_str(), trim_value);
 
                 // 获取当前所有微调值
                 Settings settings("electron_trims", true);
@@ -336,7 +336,7 @@ public:
                                    ",\"body\":" + std::to_string(body) +
                                    ",\"head\":" + std::to_string(head) + "}";
 
-                               ESP_LOGI(TAG, "获取微调设置: %s", result.c_str());
+                               ESP_LOGI(TAG, "Retrieved trim settings: %s", result.c_str());
                                return result;
                            });
 
@@ -354,7 +354,7 @@ public:
                                return status;
                            });
 
-        ESP_LOGI(TAG, "Electron Bot MCP工具注册完成");
+        ESP_LOGI(TAG, "Electron Bot MCP tool registration complete");
     }
 
     ~ElectronBotController() {
@@ -371,6 +371,6 @@ static ElectronBotController* g_electron_controller = nullptr;
 void InitializeElectronBotController() {
     if (g_electron_controller == nullptr) {
         g_electron_controller = new ElectronBotController();
-        ESP_LOGI(TAG, "Electron Bot控制器已初始化并注册MCP工具");
+        ESP_LOGI(TAG, "Electron Bot controller initialized and MCP tools registered");
     }
 }
