@@ -12,6 +12,7 @@
 #include "emoji_controller.h"
 #include "servo_controller.h"
 #include "emotion_response_controller.h"
+#include "esp_eyes.h"
 
 #include <wifi_station.h>
 #include <esp_log.h>
@@ -100,6 +101,10 @@ private:
     
     // 情感响应控制器
     EmotionResponseController* emotion_controller_ = nullptr;
+
+    // Mat kieu esp32-eyes (canvas rieng, khong dung emoji_controller de ve mat)
+    EspEyes* eyes_ = nullptr;
+    lv_obj_t* eyes_screen_ = nullptr;
     
     // 表情模式标志
     bool is_emoji_mode_ = true;  // khoi dong thang vao che do bieu cam (2 mat to)
@@ -298,7 +303,23 @@ private:
                 return true;
             });
 
-        ESP_LOGI(TAG, "Registered 5 head tools: look_left / look_right / nod / shake / center");
+        mcp.AddTool("self.eyes.set_style",
+            std::string("Change the robot's eye style / expression shape. Available styles: ") +
+                EspEyes::StyleNames(),
+            PropertyList({
+                Property("style", kPropertyTypeString)
+            }),
+            [this](const PropertyList& properties) -> ReturnValue {
+                std::string style = properties["style"].value<std::string>();
+                if (eyes_ == nullptr || !EspEyes::IsValidStyle(style.c_str())) {
+                    return std::string("unknown style, available: ") + EspEyes::StyleNames();
+                }
+                DisplayLockGuard lock(display_);
+                eyes_->SetPreset(style.c_str());
+                return true;
+            });
+
+        ESP_LOGI(TAG, "Registered 5 head tools + self.eyes.set_style");
     }
 
     void InitializeIot() {
@@ -308,6 +329,31 @@ private:
     }
     
     // 切换屏幕
+    // Tao man hinh cho bo mat esp32-eyes (nen trang, mat den -> hien thi nen toi, mat sang)
+    void CreateEyesScreen() {
+        DisplayLockGuard lock(display_);
+        eyes_screen_ = lv_obj_create(nullptr);
+        lv_obj_set_size(eyes_screen_, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+        lv_obj_set_style_bg_color(eyes_screen_, lv_color_white(), 0);
+        lv_obj_set_style_border_width(eyes_screen_, 0, 0);
+        eyes_ = new EspEyes();
+        eyes_->Initialize(eyes_screen_);
+    }
+
+    // Task ve mat ~30 fps (giu lock LVGL trong luc ve)
+    void StartEyesTask() {
+        xTaskCreate([](void* arg) {
+            EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+            while (true) {
+                if (self->eyes_ != nullptr) {
+                    DisplayLockGuard lock(self->display_);
+                    self->eyes_->Step();
+                }
+                vTaskDelay(pdMS_TO_TICKS(33));
+            }
+        }, "eyes_render", 4096, this, 2, nullptr);
+    }
+
     // Vao / thoat che do bieu cam (2 mat to) - dung chung cho nut BOOT va luc khoi dong
     void EnterEmojiMode(bool show_notification) {
         is_emoji_mode_ = true;
@@ -338,11 +384,13 @@ private:
     void SwitchScreen(bool to_emoji_mode) {
         DisplayLockGuard lock(display_);
         if (to_emoji_mode) {
+            // Van tao screen emoji de he animation/servo cu chay (no dieu khien servo),
+            // nhung man hinh HIEN THI la bo mat esp32-eyes.
             lv_obj_t* emoji_screen = emoji_controller_->GetEmojiScreen();
             if (!emoji_screen) {
                 emoji_screen = emoji_controller_->CreateEmojiScreen();
             }
-            lv_scr_load(emoji_screen);
+            lv_scr_load(eyes_screen_ ? eyes_screen_ : emoji_screen);
         } else {
             lv_scr_load(chat_screen_);
         }
@@ -391,8 +439,10 @@ public:
         
         // Khoi dong thang vao che do bieu cam (2 mat to) va giu luon o che do nay.
         // Nhan giu nut BOOT van chuyen qua lai duoc voi che do tro chuyen.
+        CreateEyesScreen();
         EnterEmojiMode(false);
-        ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup");
+        StartEyesTask();
+        ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup (esp32-eyes style)");
         
         // 创建一个任务来监听设备状态变化
         TaskParams* state_params = new TaskParams();
@@ -799,6 +849,12 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         }
         
         ESP_LOGI(TAG, "Mapped to our expression action: %s", mapped_emotion.c_str());
+
+        // Doi dang mat ben bo esp32-eyes theo cam xuc (giu nguyen animation/servo cu)
+        if (board_ && board_->eyes_) {
+            DisplayLockGuard eyes_lock(board_->display_);
+            board_->eyes_->SetPresetForEmotion(mapped_emotion.c_str());
+        }
         
         // 创建一个单独的任务来执行表情动作，避免阻塞主线程
         // 复制表情字符串，因为它将在任务中使用
