@@ -247,9 +247,64 @@ private:
         });
     }
 
+    // 5 cong cu dieu khien dau cho tro ly (Hermes): nhin trai/phai, gat, lac, ve giua.
+    // Dung lai dung duong cua he cam xuc (TriggerEmotion -> PlayAnimation/servo)
+    // nen an toan ve LVGL va khong dung do servo.
+    void RegisterHeadTools() {
+        auto& mcp = McpServer::GetInstance();
+        EmotionResponseController* emotion = emotion_controller_;
+        if (emotion == nullptr) {
+            ESP_LOGW(TAG, "Emotion controller is null; skip head tools registration");
+            return;
+        }
+
+        mcp.AddTool("self.head.look_left",
+            "Turn the robot head to its left and look that way.",
+            PropertyList(),
+            [emotion](const PropertyList&) -> ReturnValue {
+                emotion->TriggerEmotion("look_left");
+                return true;
+            });
+
+        mcp.AddTool("self.head.look_right",
+            "Turn the robot head to its right and look that way.",
+            PropertyList(),
+            [emotion](const PropertyList&) -> ReturnValue {
+                emotion->TriggerEmotion("look_right");
+                return true;
+            });
+
+        mcp.AddTool("self.head.nod",
+            "Move the head up and down (nodding): agreement, greeting or saying yes.",
+            PropertyList(),
+            [emotion](const PropertyList&) -> ReturnValue {
+                emotion->TriggerEmotion("nod");
+                return true;
+            });
+
+        mcp.AddTool("self.head.shake",
+            "Move the head left and right (shaking): disagreement, refusal or saying no.",
+            PropertyList(),
+            [emotion](const PropertyList&) -> ReturnValue {
+                emotion->TriggerEmotion("shake");
+                return true;
+            });
+
+        mcp.AddTool("self.head.center",
+            "Return the head to the straight, neutral position.",
+            PropertyList(),
+            [emotion](const PropertyList&) -> ReturnValue {
+                emotion->TriggerEmotion("look_center");
+                return true;
+            });
+
+        ESP_LOGI(TAG, "Registered 5 head tools: look_left / look_right / nod / shake / center");
+    }
+
     void InitializeIot() {
         // 新的MCP架构不再需要手动初始化Thing，由框架自动管理
         ESP_LOGI(TAG, "Device functions are managed automatically by the new MCP architecture");
+        RegisterHeadTools();
     }
     
     // 切换屏幕
