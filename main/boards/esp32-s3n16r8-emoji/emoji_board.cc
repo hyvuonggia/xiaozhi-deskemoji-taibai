@@ -102,7 +102,7 @@ private:
     EmotionResponseController* emotion_controller_ = nullptr;
     
     // 表情模式标志
-    bool is_emoji_mode_ = false;
+    bool is_emoji_mode_ = true;  // khoi dong thang vao che do bieu cam (2 mat to)
     
     // 对话模式屏幕
     lv_obj_t* chat_screen_ = nullptr;
@@ -205,25 +205,10 @@ private:
         });
 
         boot_button_.OnLongPress([this]() {
-            is_emoji_mode_ = !is_emoji_mode_;
             if (is_emoji_mode_) {
-                // 进入表情模式
-                SwitchScreen(true);
-                emoji_controller_->StartBlinkTimer();
-                emoji_controller_->EyeCenter();
-                GetDisplay()->ShowNotification("Chế độ biểu cảm");
-                
-                // 初始化舵机位置
-                servo_controller_->HeadCenter();
+                ExitEmojiMode(true);
             } else {
-                // 退出表情模式
-                emoji_controller_->StopBlinkTimer();
-                SwitchScreen(false);
-                GetDisplay()->ShowNotification("Chế độ trò chuyện");
-                emoji_controller_->CleanupEmojiScreen();
-                
-                // 舵机回到中心位置
-                servo_controller_->HeadCenter();
+                EnterEmojiMode(true);
             }
         });
 
@@ -268,6 +253,33 @@ private:
     }
     
     // 切换屏幕
+    // Vao / thoat che do bieu cam (2 mat to) - dung chung cho nut BOOT va luc khoi dong
+    void EnterEmojiMode(bool show_notification) {
+        is_emoji_mode_ = true;
+        SwitchScreen(true);
+        emoji_controller_->StartBlinkTimer();
+        emoji_controller_->EyeCenter();
+        if (servo_controller_) {
+            servo_controller_->HeadCenter();
+        }
+        if (show_notification) {
+            GetDisplay()->ShowNotification("Chế độ biểu cảm");
+        }
+    }
+
+    void ExitEmojiMode(bool show_notification) {
+        is_emoji_mode_ = false;
+        emoji_controller_->StopBlinkTimer();
+        SwitchScreen(false);
+        if (show_notification) {
+            GetDisplay()->ShowNotification("Chế độ trò chuyện");
+        }
+        emoji_controller_->CleanupEmojiScreen();
+        if (servo_controller_) {
+            servo_controller_->HeadCenter();
+        }
+    }
+
     void SwitchScreen(bool to_emoji_mode) {
         DisplayLockGuard lock(display_);
         if (to_emoji_mode) {
@@ -321,6 +333,11 @@ public:
         
         InitializeButtons();
         InitializeIot();
+        
+        // Khoi dong thang vao che do bieu cam (2 mat to) va giu luon o che do nay.
+        // Nhan giu nut BOOT van chuyen qua lai duoc voi che do tro chuyen.
+        EnterEmojiMode(false);
+        ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup");
         
         // 创建一个任务来监听设备状态变化
         TaskParams* state_params = new TaskParams();
