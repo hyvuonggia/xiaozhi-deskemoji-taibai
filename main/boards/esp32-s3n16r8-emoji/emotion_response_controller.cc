@@ -396,21 +396,25 @@ void EmotionResponseController::InitializeEmotionActions() {
     // Look-left emotion action
     emotion_actions_["look_left"] = [this]() {
         emoji_controller_->PlayAnimation(AnimationType::LOOK_LEFT);
+        if (servo_controller_) servo_controller_->HeadLeft(20);   // the point of the command is the head, not the eyes
     };
     
     // Look-right emotion action
     emotion_actions_["look_right"] = [this]() {
         emoji_controller_->PlayAnimation(AnimationType::LOOK_RIGHT);
+        if (servo_controller_) servo_controller_->HeadRight(20);
     };
     
     // Nod emotion action
     emotion_actions_["nod"] = [this]() {
         emoji_controller_->PlayAnimation(AnimationType::HEAD_NOD);
+        if (servo_controller_) servo_controller_->HeadNod(15);
     };
     
     // Head-shake emotion action
     emotion_actions_["shake"] = [this]() {
         emoji_controller_->PlayAnimation(AnimationType::HEAD_SHAKE);
+        if (servo_controller_) servo_controller_->HeadShake(10);
     };
     
     // Look-up emotion action
