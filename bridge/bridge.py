@@ -89,6 +89,7 @@ CÔNG CỤ CỦA ROBOT (luôn có, chỉ gọi được bằng khối JSON nêu 
 - self.head.nod {}                                   # gật đầu (đồng ý, chào)
 - self.head.shake {}                                 # lắc đầu (không đồng ý)
 - self.head.center {}                                # đưa đầu về giữa
+- self.eyes.set_style {"style": "<tên kiểu>"}        # đổi kiểu mắt: normal, happy, glee, sad, angry, surprised, sleepy, squint, focused, skeptic, unimpressed, suspicious, furious, scared, awe, annoyed, worried, frustrated…
 VÍ DỤ (bắt buộc theo đúng định dạng này):
 - Sếp: "quay đầu sang trái đi"  ->  {"tool": "self.head.look_left", "arguments": {}}
 - Sếp: "gật đầu cái coi"        ->  {"tool": "self.head.nod", "arguments": {}}
@@ -117,6 +118,34 @@ HEAD_ACTION_RULES = [
     (r"(quay|nghieng|cui|nhin|xuong|huong|xoay|lia)[^.]{0,16}(sang |ve |ben |qua )?(trai|ben trai|phia trai)", "self.head.look_left"),
     (r"(quay|nghieng|cui|nhin|xuong|huong|xoay|lia)[^.]{0,16}(sang |ve |ben |qua )?(phai|ben phai|phia phai)", "self.head.look_right"),
 ]
+
+
+# Lenh doi kieu mat (tieng Viet, khong dau) -> self.eyes.set_style
+EYE_STYLE_RULES = [
+    (r"(buon ngu|mat ngu|lim dim|ngu)", "sleepy"),
+    (r"(cuoi|vui|hanh phuc|sung suong|cuoi len)", "glee"),
+    (r"(gian|cau|tuc|dien)", "angry"),
+    (r"(ngac nhien|bat ngo|tro mat)", "surprised"),
+    (r"(so|hai hung|hoang)", "scared"),
+    (r"(buon|khoc|u ru)", "sad"),
+    (r"(kho hieu|hoai nghi|nghi ngo)", "skeptic"),
+    (r"(coi thuong|khinh|khong hai long)", "unimpressed"),
+    (r"(tap trung|nghiem tuc|ngau|chat)", "focused"),
+    (r"(binh thuong|nhu cu|thuong)", "normal"),
+]
+
+
+def detect_eye_style(text: str):
+    """Neu cau noi la lenh doi kieu mat -> tra ve kieu (ten preset)."""
+    t = _vn_norm(text)
+    if not t or ("mat" not in t and "mat" not in t):
+        return None
+    if "mat" not in t:
+        return None
+    for pattern, style in EYE_STYLE_RULES:
+        if re.search(pattern, t):
+            return style
+    return None
 
 
 def detect_device_action(text: str):
@@ -336,6 +365,11 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
 
     # Lenh dieu khien robot: xu ly ngay, khong cho model (nhanh + chac chan servo chay)
     if not tool_results:
+        style = detect_eye_style(user_text)
+        if style:
+            log.info("lenh doi kieu mat (%s) <- %r", style, user_text)
+            return await respond_tool_action(request, cid, model, stream,
+                                             {"name": "self.eyes.set_style", "arguments": {"style": style}})
         forced = detect_device_action(user_text)
         if forced:
             log.info("lenh thiet bi (%s) <- %r", forced["name"], user_text)
