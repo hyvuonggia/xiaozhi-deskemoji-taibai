@@ -77,6 +77,13 @@ void RobotEyes::Initialize(lv_obj_t* screen) {
 
     canvas_ = lv_canvas_create(screen_);
     lv_canvas_set_buffer(canvas_, buf_, WIDTH, HEIGHT, LV_COLOR_FORMAT_I1);
+    // An indexed (I1) canvas has NO usable colours until a palette is set: without
+    // this the whole canvas renders as one flat colour (blank screen). Index 0 is the
+    // eye shape and index 1 the background. The panel is colour-inverted, so LVGL black
+    // comes out as a lit pixel and LVGL white as a dark one - i.e. lit eyes on a dark
+    // background, matching the pixel convention used by clear()/px() below.
+    lv_canvas_set_palette(canvas_, 0, lv_color_to_32(lv_color_black(), LV_OPA_COVER));
+    lv_canvas_set_palette(canvas_, 1, lv_color_to_32(lv_color_white(), LV_OPA_COVER));
     lv_obj_align(canvas_, LV_ALIGN_CENTER, 0, 0);
 
     left_  = {40, 40, 10, 0, 0, 0, 0};
@@ -498,5 +505,20 @@ void RobotEyes::Render() {
         }
     }
 
+    // One-shot diagnostic: proves the eye shape really reached the canvas buffer.
+    // clear() fills the background with bit 1, px()/disc()/roundRect() punch the eye
+    // shape with bit 0, so the count of 1-bits is the background and the rest is the eye.
+    static int diag_frames = 0;
+    if (diag_frames < 3) {
+        diag_frames++;
+        int ones = 0;
+        for (size_t i = 0; i < (size_t)(WIDTH * HEIGHT) / 8; i++) {
+            uint8_t b = buf_[i];
+            while (b) { ones += (b & 1); b >>= 1; }
+        }
+        int total = WIDTH * HEIGHT;
+        ESP_LOGI(TAG, "diag frame %d: mood=%s look=(%.0f,%.0f) background bits=%d eye pixels=%d",
+                 diag_frames, kMoodNames[mood_], look_x_, look_y_, ones, total - ones);
+    }
     lv_obj_invalidate(canvas_);
 }
