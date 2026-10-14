@@ -1,0 +1,21 @@
+[Unit]
+Description=Hermes <-> Xiaozhi robot bridge (OpenAI-compatible endpoint relaying tool_calls to the device)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/hermes-robot-bridge
+Environment=BRIDGE_PORT=8643
+Environment=HERMES_BASE=http://<hermes-lxc-lan-ip>:8642/v1   # sua theo mang cua ban
+Environment=HERMES_MODEL=hermes-agent
+Environment=HERMES_SESSION=robot-deskemoji
+ExecStart=/usr/local/lib/hermes-agent/venv/bin/python /root/hermes-robot-bridge/bridge.py
+Restart=always
+RestartSec=3
+StandardOutput=append:/root/hermes-robot-bridge/bridge.log
+StandardError=append:/root/hermes-robot-bridge/bridge.log
+
+[Install]
+WantedBy=multi-user.target

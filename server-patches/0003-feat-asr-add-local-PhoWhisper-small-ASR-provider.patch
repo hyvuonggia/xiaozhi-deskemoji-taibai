@@ -1,0 +1,93 @@
+From 63a0ce4c54576081a66b64d17ef6c1ffde6078b8 Mon Sep 17 00:00:00 2001
+From: Gia Hy <hyvuonggia@gmail.com>
+Date: Wed, 14 Oct 2026 04:22:49 +0000
+Subject: [PATCH 3/5] feat(asr): add local PhoWhisper-small ASR provider
+
+---
+ .../core/providers/asr/phowhisper_local.py    | 77 +++++++++++++++++++
+ 1 file changed, 77 insertions(+)
+ create mode 100644 main/xiaozhi-server/core/providers/asr/phowhisper_local.py
+
+diff --git a/main/xiaozhi-server/core/providers/asr/phowhisper_local.py b/main/xiaozhi-server/core/providers/asr/phowhisper_local.py
+new file mode 100644
+index 0000000..0fcb71e
+--- /dev/null
++++ b/main/xiaozhi-server/core/providers/asr/phowhisper_local.py
+@@ -0,0 +1,77 @@
++import asyncio
++import os
++import threading
++import time
++from typing import List, Optional, Tuple
++
++import numpy as np
++import torch
++from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
++
++from config.logger import setup_logging
++from core.providers.asr.base import ASRProviderBase
++from core.providers.asr.dto.dto import InterfaceType
++
++TAG = __name__
++logger = setup_logging()
++
++
++class ASRProvider(ASRProviderBase):
++    def __init__(self, config: dict, delete_audio_file: bool = True):
++        super().__init__()
++        self.interface_type = InterfaceType.LOCAL
++        self.model_path = config.get("model_path", "models/phowhisper-small")
++        self.output_dir = config.get("output_dir", "tmp/")
++        self.num_beams = int(config.get("num_beams", 1))
++        self.delete_audio_file = delete_audio_file
++        self._inference_lock = threading.Lock()
++        os.makedirs(self.output_dir, exist_ok=True)
++
++        torch.set_num_threads(int(config.get("num_threads", 2)))
++        logger.bind(tag=TAG).info(f"Loading PhoWhisper model: {self.model_path}")
++        self.processor = AutoProcessor.from_pretrained(self.model_path, local_files_only=True)
++        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
++            self.model_path,
++            local_files_only=True,
++        ).to("cpu").eval()
++        self.model.generation_config.forced_decoder_ids = None
++        logger.bind(tag=TAG).info("PhoWhisper model loaded")
++
++    def requires_file(self) -> bool:
++        return False
++
++    async def speech_to_text(
++        self,
++        opus_data: List[bytes],
++        session_id: str,
++        artifacts=None,
++    ) -> Tuple[Optional[str], Optional[str]]:
++        if artifacts is None or not artifacts.pcm_bytes:
++            return "", None
++
++        return await asyncio.to_thread(self._transcribe_pcm, artifacts.pcm_bytes), None
++
++    def _transcribe_pcm(self, pcm_bytes: bytes) -> str:
++        audio = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
++        if audio.size == 0:
++            return ""
++
++        inputs = self.processor(
++            audio,
++            sampling_rate=16000,
++            return_tensors="pt",
++            return_attention_mask=True,
++        )
++        with self._inference_lock, torch.inference_mode():
++            predicted_ids = self.model.generate(
++                inputs.input_features,
++                attention_mask=inputs.attention_mask,
++                language="vietnamese",
++                task="transcribe",
++                num_beams=self.num_beams,
++                max_new_tokens=128,
++            )
++        text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)[0]
++        text = text.strip()
++        logger.bind(tag=TAG).info(f"PhoWhisper transcript: {text}")
++        return text

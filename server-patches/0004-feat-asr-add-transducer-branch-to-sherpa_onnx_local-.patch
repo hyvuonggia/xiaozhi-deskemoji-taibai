@@ -1,0 +1,100 @@
+From fbfdafedd6f1fbc68cbb15888df9c3eb34096b20 Mon Sep 17 00:00:00 2001
+From: Gia Hy <hyvuonggia@gmail.com>
+Date: Wed, 14 Oct 2026 04:22:49 +0000
+Subject: [PATCH 4/5] feat(asr): add transducer branch to sherpa_onnx_local for
+ the Vietnamese Zipformer model
+
+---
+ .../core/providers/asr/sherpa_onnx_local.py   | 62 +++++++++++++------
+ 1 file changed, 44 insertions(+), 18 deletions(-)
+
+diff --git a/main/xiaozhi-server/core/providers/asr/sherpa_onnx_local.py b/main/xiaozhi-server/core/providers/asr/sherpa_onnx_local.py
+index 54c981a..82c02ed 100644
+--- a/main/xiaozhi-server/core/providers/asr/sherpa_onnx_local.py
++++ b/main/xiaozhi-server/core/providers/asr/sherpa_onnx_local.py
+@@ -52,26 +52,38 @@ class ASRProvider(ASRProviderBase):
+             "tokens.txt": os.path.join(self.model_dir, "tokens.txt"),
+         }
+ 
+-        # 下载并检查模型文件
+-        try:
+-            for file_name, file_path in model_files.items():
+-                if not os.path.isfile(file_path):
+-                    logger.bind(tag=TAG).info(f"正在下载模型文件: {file_name}")
+-                    model_file_download(
+-                        model_id="pengzhendong/sherpa-onnx-sense-voice-zh-en-ja-ko-yue",
+-                        file_path=file_name,
+-                        local_dir=self.model_dir,
+-                    )
+-
++        # Transducer (zipformer, vd tieng Viet): encoder/decoder/joiner rieng
++        self.encoder_path = config.get("encoder") or os.path.join(self.model_dir, "encoder.int8.onnx")
++        self.decoder_path = config.get("decoder") or os.path.join(self.model_dir, "decoder.onnx")
++        self.joiner_path = config.get("joiner") or os.path.join(self.model_dir, "joiner.int8.onnx")
++
++        # 下载并检查模型文件 (transducer dung file co san trong model_dir)
++        if self.model_type == "transducer":
++            for p in (self.encoder_path, self.decoder_path, self.joiner_path, model_files["tokens.txt"]):
++                if not os.path.isfile(p):
++                    raise FileNotFoundError(f"Thieu file model transducer: {p}")
++            self.model_path = self.encoder_path
++            self.tokens_path = model_files["tokens.txt"]
++        else:
++            try:
++                for file_name, file_path in model_files.items():
+                     if not os.path.isfile(file_path):
+-                        raise FileNotFoundError(f"模型文件下载失败: {file_path}")
++                        logger.bind(tag=TAG).info(f"正在下载模型文件: {file_name}")
++                        model_file_download(
++                            model_id="pengzhendong/sherpa-onnx-sense-voice-zh-en-ja-ko-yue",
++                            file_path=file_name,
++                            local_dir=self.model_dir,
++                        )
+ 
+-            self.model_path = model_files["model.int8.onnx"]
+-            self.tokens_path = model_files["tokens.txt"]
++                        if not os.path.isfile(file_path):
++                            raise FileNotFoundError(f"模型文件下载失败: {file_path}")
+ 
+-        except Exception as e:
+-            logger.bind(tag=TAG).error(f"模型文件处理失败: {str(e)}")
+-            raise
++                self.model_path = model_files["model.int8.onnx"]
++                self.tokens_path = model_files["tokens.txt"]
++
++            except Exception as e:
++                logger.bind(tag=TAG).error(f"模型文件处理失败: {str(e)}")
++                raise
+ 
+         with CaptureOutput():
+             if self.model_type == "paraformer":
+@@ -84,6 +96,19 @@ class ASRProvider(ASRProviderBase):
+                     decoding_method="greedy_search",
+                     debug=False,
+                 )
++            elif self.model_type == "transducer":
++                logger.bind(tag=TAG).info(f"Loading zipformer transducer: {self.encoder_path}")
++                self.model = sherpa_onnx.OfflineRecognizer.from_transducer(
++                    encoder=self.encoder_path,
++                    decoder=self.decoder_path,
++                    joiner=self.joiner_path,
++                    tokens=self.tokens_path,
++                    num_threads=2,
++                    sample_rate=16000,
++                    feature_dim=80,
++                    decoding_method="greedy_search",
++                    debug=False,
++                )
+             else:  # sense_voice
+                 self.model = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                     model=self.model_path,
+@@ -138,7 +163,8 @@ class ASRProvider(ASRProviderBase):
+             samples, sample_rate = self.read_wave(file_path)
+             s.accept_waveform(sample_rate, samples)
+             self.model.decode_stream(s)
+-            text = s.result.text
++            text = (s.result.text or "").strip().lower()
++            logger.bind(tag=TAG).info(f"ASR xong trong {time.time() - start_time:.2f}s: {text}")
+             logger.bind(tag=TAG).debug(
+                 f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}"
+             )

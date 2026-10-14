@@ -1,0 +1,35 @@
+From 46fe7162e6f166b4a1304daac86ea86bf34fc636 Mon Sep 17 00:00:00 2001
+From: Gia Hy <hyvuonggia@gmail.com>
+Date: Wed, 14 Oct 2026 04:22:49 +0000
+Subject: [PATCH 2/5] feat(llm/openai): forward reasoning_effort from provider
+ config to the model
+
+---
+ main/xiaozhi-server/core/providers/llm/openai/openai.py | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/main/xiaozhi-server/core/providers/llm/openai/openai.py b/main/xiaozhi-server/core/providers/llm/openai/openai.py
+index e67c833..68fc279 100644
+--- a/main/xiaozhi-server/core/providers/llm/openai/openai.py
++++ b/main/xiaozhi-server/core/providers/llm/openai/openai.py
+@@ -28,6 +28,8 @@ class LLMProvider(LLMProviderBase):
+         else:
+             self.base_url = config.get("url")
+         
++        self.reasoning_effort = config.get("reasoning_effort")
++
+         timeout_config = config.get("timeout")
+         if isinstance(timeout_config, dict):
+             # 细粒度超时配置
+@@ -89,6 +91,11 @@ class LLMProvider(LLMProviderBase):
+                 logger.bind(tag=TAG).info(f"为域名 {domain} 禁用思考模式，参数: {params}")
+                 break
+ 
++        if self.reasoning_effort:
++            request_params.setdefault("extra_body", {}).setdefault("model_options", {})[
++                "reasoning_effort"
++            ] = self.reasoning_effort
++
+     def response(self, session_id, dialogue, **kwargs):
+         dialogue = self.normalize_dialogue(dialogue)
+ 
