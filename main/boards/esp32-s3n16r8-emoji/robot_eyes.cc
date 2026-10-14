@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// RobotEyes - port bo mat OliEyes (Oliray-ka/OliEyes, MIT) sang ESP-IDF/LVGL.
-// Nguon tham chieu: examples/SH1106_i12C.ino (getMoodTarget, drawEye, updateLook,
-// updateBlink, updateWinks). Giu nguyen 7 tham so hinh dang + 20 mood + cac
-// hanh vi (chop mat theo mood, nhay 1 mat, double-take, lieu mat, nhun khi cuoi).
-// Man SH1106 cua board bi dao mau: nen = bit 1 (trang trong LVGL -> hien thi den),
-// mat = bit 0 (den trong LVGL -> hien thi sang).
+// RobotEyes - OliEyes eye engine (Oliray-ka/OliEyes, MIT) ported to ESP-IDF/LVGL.
+// Reference: examples/SH1106_i12C.ino (getMoodTarget, drawEye, updateLook,
+// updateBlink, updateWinks). Keeps the 7 shape parameters, the 20 moods and the
+// behaviours (mood-based blinking, single-eye wink, double-take, idle look, laughing bounce).
+// NOTE the panel is colour-inverted: background = bit 1 (white in LVGL -> black on screen),
+// eye shape = bit 0 (black in LVGL -> lit pixel on screen).
 // ---------------------------------------------------------------------------
 #include "robot_eyes.h"
 
@@ -89,7 +89,7 @@ void RobotEyes::Initialize(lv_obj_t* screen) {
     ESP_LOGI(TAG, "RobotEyes (OliEyes) ready: %d mood", MOOD_COUNT);
 }
 
-// ------------------------- hinh dang theo mood (nguyen ban OliEyes) -------------------------
+// ------------------------- per-mood shape targets (unchanged from OliEyes) -------------------------
 void RobotEyes::GetMoodTarget(int mood, bool is_right, EyeTarget& t) const {
     const float R = is_right ? 1.0f : 0.0f;
     switch (mood) {
@@ -118,7 +118,7 @@ void RobotEyes::GetMoodTarget(int mood, bool is_right, EyeTarget& t) const {
     }
 }
 
-// ------------------------- nguyen thu ve -------------------------
+// ------------------------- drawing primitives -------------------------
 void RobotEyes::clear() { memset(buf_, 0xFF, (WIDTH * HEIGHT) / 8); }  // nen (bit 1)
 
 void RobotEyes::px(int x, int y) {
@@ -179,7 +179,7 @@ void RobotEyes::tri(int x0, int y0, int x1, int y1, int x2, int y2) {
     }
 }
 
-// chu "z"/"Z" nho (ve bang net)
+// small "z"/"Z" glyph drawn with lines
 void RobotEyes::glyphZ(int x, int y, int s) {
     hline(x, y, s + 1);
     for (int i = 0; i <= s; i++) px(x + s - i, y + 1 + i);
@@ -191,7 +191,7 @@ void RobotEyes::glyphTilde(int x, int y) {
     px(x, y + 1); px(x + 3, y + 1);
 }
 
-// Cat hinh tron / tam giac bang cach set bit 1 (mau nen)
+// Round/triangle cuts: set bit 1 (background colour) to carve the shape
 static void cut_disc(uint8_t* buf, int cx, int cy, int r) {
     if (r <= 0) return;
     for (int dy = -r; dy <= r; dy++) {
@@ -229,11 +229,11 @@ static void cut_tri(uint8_t* buf, int x0, int y0, int x1, int y1, int x2, int y2
     }
 }
 
-// ------------------------- vong lap -------------------------
+// ------------------------- frame loop -------------------------
 void RobotEyes::Step() {
     const uint32_t now = now_ms();
 
-    // demo: tu doi mood khi ranh (nhu che do demo cua OliEyes)
+    // demo: cycle moods on its own while idle (OliEyes demo mode)
     if (demo_ && idle_ && now - last_mood_switch_ > mood_switch_base_) {
         last_mood_switch_ = now;
         mood_switch_base_ = 3500 + rand_int(0, 2000);
@@ -388,7 +388,7 @@ void RobotEyes::TriggerWinkLeft(uint32_t now) {
     if (wink_left_phase_ == 0) { wink_left_phase_ = 1; wink_left_start_ = now; }
 }
 
-// ------------------------- dieu khien ngoai -------------------------
+// ------------------------- external control -------------------------
 void RobotEyes::SetMood(const char* name) {
     if (!name) return;
     for (int i = 0; i < MOOD_COUNT; i++) {
@@ -399,7 +399,7 @@ void RobotEyes::SetMood(const char* name) {
             return;
         }
     }
-    ESP_LOGW(TAG, "mood khong ton tai: %s", name);
+    ESP_LOGW(TAG, "unknown mood: %s", name);
 }
 
 void RobotEyes::SetMoodForEmotion(const char* emotion) {
@@ -429,7 +429,7 @@ void RobotEyes::Render() {
 
     clear();
 
-    // chu trang tri: ngu/buon -> z Z ; met -> ~
+    // decorations: sleepy/bored -> "z Z" ; sick -> "~"
     if (mood_ == M_SLEEPY || mood_ == M_BORED) { glyphZ(WIDTH - 22, 2, 3); glyphZ(WIDTH - 13, 0, 5); }
     if (mood_ == M_SICK) glyphTilde(WIDTH - 18, HEIGHT - 10);
 
@@ -441,7 +441,7 @@ void RobotEyes::Render() {
     int rx = base_right_x + (int)look_x_;
     int base_y = HEIGHT / 2;
 
-    // mat trai
+    // left eye
     {
         int w = (int)left_.w;
         if (look_x_ < -6) w += (int)std::min((-look_x_ - 6) * 0.6f, 6.0f);
@@ -469,7 +469,7 @@ void RobotEyes::Render() {
             cut_tri(buf_, x, yy, x + cw, yy, x, yy + ch);
         }
     }
-    // mat phai
+    // right eye
     {
         int w = (int)right_.w;
         if (look_x_ > 6) w += (int)std::min((look_x_ - 6) * 0.6f, 6.0f);

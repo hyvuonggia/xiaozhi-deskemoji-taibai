@@ -1,14 +1,14 @@
 /**
  * @file emoji_controller.cc
- * @brief 表情控制模块实现
+ * @brief Emoji control module implementation
  */
 
 #include "emoji_controller.h"
 #include <esp_log.h>
-#include <cmath>       // 添加数学函数支持，如cos和sin
-#include <esp_random.h> // 添加随机数生成器支持
-#include <cstring>     // 添加strcmp函数支持
-#include <functional>  // 添加std::function支持
+#include <cmath>       // add math function support such as cos and sin
+#include <esp_random.h> // add random number generator support
+#include <cstring>     // add strcmp function support
+#include <functional>  // add std::function support
 
 #define TAG "EmojiController"
 #define DISPLAY_WIDTH 128
@@ -31,31 +31,31 @@ EmojiController::~EmojiController() {
 void EmojiController::Initialize() {
     ESP_LOGI(TAG, "Initializing emoji controller");
     
-    // 创建动画队列
+    // create the animation queue
     animation_queue_ = xQueueCreate(ANIMATION_QUEUE_SIZE, sizeof(AnimationMessage));
     
-    // 创建动画任务
+    // create the animation task
     BaseType_t task_created = xTaskCreate(
-        AnimationTask,    // 任务函数
-        "AnimationTask",  // 任务名称
-        4096,            // 堆栈大小
-        this,            // 任务参数
-        5,               // 任务优先级
-        &animation_task_handle_  // 任务句柄
+        AnimationTask,    // task function
+        "AnimationTask",  // task name
+        4096,            // stack size
+        this,            // task parameter
+        5,               // task priority
+        &animation_task_handle_  // task handle
     );
     
     if (task_created != pdPASS) {
         ESP_LOGE(TAG, "Failed to create animation task");
     }
     
-    // 创建动画定时器任务
+    // create the animation timer task
     task_created = xTaskCreate(
-        AnimationTimerTask,        // 任务函数
-        "AnimationTimerTask",      // 任务名称
-        4096,                      // 堆栈大小
-        this,                      // 任务参数
-        5,                         // 任务优先级
-        &animation_timer_task_handle_       // 任务句柄
+        AnimationTimerTask,        // task function
+        "AnimationTimerTask",      // task name
+        4096,                      // stack size
+        this,                      // task parameter
+        5,                         // task priority
+        &animation_timer_task_handle_       // task handle
     );
     
     if (task_created != pdPASS) {
@@ -63,7 +63,7 @@ void EmojiController::Initialize() {
     }
 }
 
-// 定时器任务函数，替代FreeRTOS定时器
+// timer task function, replaces the FreeRTOS timer
 void EmojiController::AnimationTimerTask(void* pvParameters) {
     EmojiController* controller = static_cast<EmojiController*>(pvParameters);
     if (controller == nullptr) {
@@ -74,24 +74,24 @@ void EmojiController::AnimationTimerTask(void* pvParameters) {
     
     ESP_LOGI(TAG, "AnimationTimerTask: started");
     
-    // 记录上次随机动画的时间
+    // record the time of the last random animation
     TickType_t last_random_time = xTaskGetTickCount();
     
     while (true) {
-        // 当前时间
+        // current time
         TickType_t current_time = xTaskGetTickCount();
         
-        // 检查是否应该执行随机动画
+        // check whether a random animation should run
         if (controller->random_animation_enabled_ && 
             (current_time - last_random_time) >= pdMS_TO_TICKS(RANDOM_ANIMATION_INTERVAL_MS)) {
             ESP_LOGI(TAG, "AnimationTimerTask: Preparing to execute random animation");
             
-            // 再次检查随机动画是否启用（防止在发送消息前状态改变）
+            // check again whether random animation is enabled (to prevent the state changing before the message is sent)
             if (controller->random_animation_enabled_) {
-                // 更新上次随机动画的时间
+                // update the time of the last random animation
                 last_random_time = current_time;
                 
-                // 发送随机动画消息
+                // send the random animation message
                 if (controller->animation_queue_ != nullptr) {
                     AnimationMessage msg;
                     msg.type = AnimationType::RANDOM;
@@ -105,12 +105,12 @@ void EmojiController::AnimationTimerTask(void* pvParameters) {
                 }
             } else {
                 ESP_LOGI(TAG, "AnimationTimerTask: Random animation is disabled; not sending a message");
-                // 仍然更新时间，避免连续检查
+                // still update the time to avoid checking continuously
                 last_random_time = current_time;
             }
         }
         
-        // 延迟一段时间
+        // delay for a while
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -128,9 +128,9 @@ void EmojiController::AnimationTask(void* pvParameters) {
     AnimationMessage msg;
     
     while (true) {
-        // 等待动画消息
+        // wait for an animation message
         if (xQueueReceive(controller->animation_queue_, &msg, portMAX_DELAY) == pdPASS) {
-            // 如果是随机动画但随机动画被禁用，则跳过
+            // if it is a random animation but random animation is disabled, skip it
             if (msg.type == AnimationType::RANDOM && !controller->random_animation_enabled_) {
                 ESP_LOGI(TAG, "AnimationTask: Random animation is disabled; skipping execution");
                 continue;
@@ -138,21 +138,21 @@ void EmojiController::AnimationTask(void* pvParameters) {
             
             ESP_LOGI(TAG, "AnimationTask: Received animation message, type: %d, parameter: %d", (int)msg.type, msg.param);
             
-            // 根据动画类型执行相应的动画
-            // 在执行动画前检查是否有其他动画正在执行
+            // execute the corresponding animation based on the animation type
+            // before executing the animation, check whether another animation is running
             if (controller->is_animating_) {
                 ESP_LOGW(TAG, "AnimationTask: An animation is already running; skipping this animation");
                 continue;
             }
             
-            // 设置动画执行标志
+            // set the animation executing flag
             controller->is_animating_ = true;
             
-            // 暂停LVGL任务，减少刷新频率
+            // suspend the LVGL task to reduce the refresh rate
             controller->SuspendLVGLTask();
             
             try {
-                // 执行相应的动画
+                // execute the corresponding animation
                 switch (msg.type) {
                     case AnimationType::BLINK:
                         controller->ExecuteBlinkAnimation(msg.param);
@@ -248,43 +248,43 @@ void EmojiController::AnimationTask(void* pvParameters) {
                 ESP_LOGE(TAG, "Unknown AnimationTask exception");
             }
             
-            // 恢复LVGL任务
+            // resume the LVGL task
             controller->ResumeLVGLTask();
             
-            // 清除动画执行标志
+            // clear the animation executing flag
             controller->is_animating_ = false;
             
-            // 每个动画执行完成后添加短暂停，给系统一些恢复的时间
+            // add a short pause after each animation completes to give the system some time to recover
             vTaskDelay(pdMS_TO_TICKS(50));
         }
     }
     
-    // 注意：这里永远不会执行到，因为上面的循环是无限的
+    // note: this is never reached because the loop above is infinite
     vTaskDelete(NULL);
 }
 
 lv_obj_t* EmojiController::CreateEmojiScreen() {
     if (emoji_screen_ != nullptr) return emoji_screen_;
 
-    emoji_screen_ = lv_obj_create(nullptr);  // 创建新屏幕
+    emoji_screen_ = lv_obj_create(nullptr);  // create a new screen
     lv_obj_set_size(emoji_screen_, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-    lv_obj_set_style_bg_color(emoji_screen_, lv_color_white(), 0);  // 设置为白色背景，实际显示为黑色
-    lv_obj_set_style_border_width(emoji_screen_, 0, 0);  // 无边框
+    lv_obj_set_style_bg_color(emoji_screen_, lv_color_white(), 0);  // set a white background, which actually renders as black
+    lv_obj_set_style_border_width(emoji_screen_, 0, 0);  // no border
     
-    // 创建左眼
+    // create the left eye
     left_eye_ = lv_obj_create(emoji_screen_);
     lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
     lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
     lv_obj_set_style_radius(left_eye_, ref_corner_radius_, 0);
-    lv_obj_set_style_bg_color(left_eye_, lv_color_black(), 0);  // 设置为黑色眼睛，实际显示为白色
+    lv_obj_set_style_bg_color(left_eye_, lv_color_black(), 0);  // set black eyes, which actually render as white
     lv_obj_set_style_border_width(left_eye_, 0, 0);
     
-    // 创建右眼
+    // create the right eye
     right_eye_ = lv_obj_create(emoji_screen_);
     lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
     lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
     lv_obj_set_style_radius(right_eye_, ref_corner_radius_, 0);
-    lv_obj_set_style_bg_color(right_eye_, lv_color_black(), 0);  // 设置为黑色眼睛，实际显示为白色
+    lv_obj_set_style_bg_color(right_eye_, lv_color_black(), 0);  // set black eyes, which actually render as white
     lv_obj_set_style_border_width(right_eye_, 0, 0);
     
     return emoji_screen_;
@@ -302,13 +302,13 @@ void EmojiController::CleanupEmojiScreen() {
 void EmojiController::DrawEmoji(bool is_blinking) {
     is_blinking_ = is_blinking;
     
-    // 确保屏幕和眼睛对象存在
+    // make sure the screen and eye objects exist
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "DrawEmoji: screen or eye object does not exist");
         return;
     }
     
-    // 尝试获取锁
+    // try to acquire the lock
     bool lock_success = false;
     int retry_count = 0;
     const int max_retries = 3;
@@ -318,7 +318,7 @@ void EmojiController::DrawEmoji(bool is_blinking) {
             try {
                 DisplayLockGuard lock(display_);
                 
-                // 更新眼睛位置和大小
+                // update the eye position and size
                 lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
                 lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
@@ -328,7 +328,7 @@ void EmojiController::DrawEmoji(bool is_blinking) {
             } catch (...) {
                 ESP_LOGW(TAG, "DrawEmoji: Failed to acquire display lock, retry %d/%d", retry_count + 1, max_retries);
                 retry_count++;
-                vTaskDelay(pdMS_TO_TICKS(10)); // 短暂延迟后重试
+                vTaskDelay(pdMS_TO_TICKS(10)); // retry after a short delay
             }
         } else {
             ESP_LOGW(TAG, "DrawEmoji: display object does not exist");
@@ -342,7 +342,7 @@ void EmojiController::DrawEmoji(bool is_blinking) {
 }
 
 void EmojiController::EyeCenter(bool update_display) {
-    // 恢复眼睛到中心位置和默认大小
+    // restore the eyes to the center position and default size
     left_eye_x_ = DISPLAY_WIDTH / 2 - ref_eye_width_ / 2 - ref_space_between_eye_ / 2;
     left_eye_y_ = DISPLAY_HEIGHT / 2;
     left_eye_width_ = ref_eye_width_;
@@ -363,13 +363,13 @@ void EmojiController::EyeCenter(bool update_display) {
             try {
                 DisplayLockGuard lock(display_);
                 
-                // 直接更新眼睛对象
+                // update the eye objects directly
                 lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
                 lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
                 
-                // 恢复圆角半径
+                // restore the corner radius
                 lv_obj_set_style_radius(left_eye_, ref_corner_radius_, 0);
                 lv_obj_set_style_radius(right_eye_, ref_corner_radius_, 0);
             } catch (...) {
@@ -425,22 +425,22 @@ void EmojiController::Saccade(int direction_x, int direction_y) {
 }
 
 void EmojiController::MoveEye(int direction) {
-    // direction == -1 : 向左移动
-    // direction == 1 : 向右移动
+    // direction == -1 : move left
+    // direction == 1 : move right
     
-    // 参考原始Arduino代码的参数
-    int direction_oversize = 1;  // 调整为与原始代码一致的变形幅度
-    int direction_movement_amplitude = 2;  // 调整为与原始代码一致的移动幅度
+    // parameters based on the original Arduino code
+    int direction_oversize = 1;  // adjusted to match the deformation amplitude of the original code
+    int direction_movement_amplitude = 2;  // adjusted to match the movement amplitude of the original code
     int eye_blink_amplitude = 5;
     
-    // 确保屏幕和眼睛对象存在
+    // make sure the screen and eye objects exist
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "MoveEye: screen or eye object does not exist");
         return;
     }
     
-    // 第一阶段：眼睛向指定方向移动，同时变小
-    for (int i = 0; i < 3; i++) {  // 减少步骤数，与原始代码保持一致
+    // phase 1: the eye moves in the given direction while shrinking
+    for (int i = 0; i < 3; i++) {  // reduce the step count to stay consistent with the original code
         if (display_) {
             DisplayLockGuard lock(display_);
             
@@ -449,29 +449,29 @@ void EmojiController::MoveEye(int direction) {
             right_eye_height_ -= eye_blink_amplitude;
             left_eye_height_ -= eye_blink_amplitude;
             
-            // 向右看时，右眼变大
+            // when looking right, the right eye grows
             if (direction > 0) {
                 right_eye_height_ += direction_oversize;
                 right_eye_width_ += direction_oversize;
             } else {
-                // 向左看时，左眼变大
+                // when looking left, the left eye grows
                 left_eye_height_ += direction_oversize;
                 left_eye_width_ += direction_oversize;
             }
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
             lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
         }
         
-        // 降低延迟时间，减少锁定时间
-        vTaskDelay(pdMS_TO_TICKS(10));  // 与原始代码类似的短延迟
+        // reduce the delay to shorten the lock time
+        vTaskDelay(pdMS_TO_TICKS(10));  // a short delay similar to the original code
     }
     
-    // 第二阶段：继续向指定方向移动，眼睛恢复高度
-    for (int i = 0; i < 3; i++) {  // 减少步骤数，与原始代码保持一致
+    // phase 2: keep moving in the given direction while the eye regains height
+    for (int i = 0; i < 3; i++) {  // reduce the step count to stay consistent with the original code
         if (display_) {
             DisplayLockGuard lock(display_);
             
@@ -480,44 +480,44 @@ void EmojiController::MoveEye(int direction) {
             right_eye_height_ += eye_blink_amplitude;
             left_eye_height_ += eye_blink_amplitude;
             
-            // 向右看时，右眼继续变大
+            // when looking right, the right eye keeps growing
             if (direction > 0) {
                 right_eye_height_ += direction_oversize;
                 right_eye_width_ += direction_oversize;
             } else {
-                // 向左看时，左眼继续变大
+                // when looking left, the left eye keeps growing
                 left_eye_height_ += direction_oversize;
                 left_eye_width_ += direction_oversize;
             }
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
             lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
         }
         
-        // 降低延迟时间，减少锁定时间
-        vTaskDelay(pdMS_TO_TICKS(10));  // 与原始代码类似的短延迟
+        // reduce the delay to shorten the lock time
+        vTaskDelay(pdMS_TO_TICKS(10));  // a short delay similar to the original code
     }
 }
 
-// 恢复LVGL任务
+// resume the LVGL task
 void EmojiController::ResumeLVGLTask() {
     if (!lvgl_task_suspended_) {
         return;
     }
     
-    // 查找LVGL任务句柄
+    // find the LVGL task handle
     TaskHandle_t lvgl_task = nullptr;
     UBaseType_t task_count = uxTaskGetNumberOfTasks();
     TaskStatus_t* task_status_array = new TaskStatus_t[task_count];
     
     if (task_status_array) {
-        // 获取所有任务状态
+        // get all task states
         task_count = uxTaskGetSystemState(task_status_array, task_count, nullptr);
         
-        // 查找LVGL任务
+        // find the LVGL task
         for (UBaseType_t i = 0; i < task_count; i++) {
             if (strcmp(task_status_array[i].pcTaskName, "taskLVGL") == 0) {
                 lvgl_task = task_status_array[i].xHandle;
@@ -528,7 +528,7 @@ void EmojiController::ResumeLVGLTask() {
         delete[] task_status_array;
     }
     
-    // 如果找到LVGL任务，恢复其优先级
+    // if the LVGL task is found, restore its priority
     if (lvgl_task) {
         vTaskPrioritySet(lvgl_task, saved_lvgl_task_priority_);
         lvgl_task_suspended_ = false;
@@ -536,22 +536,22 @@ void EmojiController::ResumeLVGLTask() {
     }
 }
 
-// 安全执行动画的辅助函数
+// helper function to safely execute animations
 bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func) {
-    // 如果已经有动画在执行，跳过此次动画
+    // if an animation is already running, skip this animation
     if (is_animating_) {
         ESP_LOGW(TAG, "SafeExecuteAnimation: An animation is already running; skipping this animation");
         return false;
     }
     
-    // 设置动画执行标志
+    // set the animation executing flag
     is_animating_ = true;
     
-    // 暂停LVGL任务，减少刷新频率
+    // suspend the LVGL task to reduce the refresh rate
     SuspendLVGLTask();
     
     try {
-        // 执行动画函数
+        // execute the animation function
         animation_func();
     } catch (const std::exception& e) {
         ESP_LOGE(TAG, "SafeExecuteAnimation exception: %s", e.what());
@@ -559,10 +559,10 @@ bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func)
         ESP_LOGE(TAG, "Unknown SafeExecuteAnimation exception");
     }
     
-    // 恢复LVGL任务
+    // resume the LVGL task
     ResumeLVGLTask();
     
-    // 清除动画执行标志
+    // clear the animation executing flag
     is_animating_ = false;
     
     return true;
@@ -571,18 +571,18 @@ bool EmojiController::SafeExecuteAnimation(std::function<void()> animation_func)
 void EmojiController::PlayAnimation(AnimationType type, int param) {
     ESP_LOGI(TAG, "Playing animation, type: %d, parameter: %d", (int)type, param);
     
-    // 检查动画队列是否已创建
+    // check whether the animation queue has been created
     if (animation_queue_ == nullptr) {
         ESP_LOGE(TAG, "PlayAnimation: animation queue has not been created");
         return;
     }
     
-    // 创建动画消息
+    // create the animation message
     AnimationMessage msg;
     msg.type = type;
     msg.param = param;
     
-    // 发送动画消息到队列
+    // send the animation message to the queue
     if (xQueueSend(animation_queue_, &msg, 0) != pdPASS) {
         ESP_LOGW(TAG, "PlayAnimation: Failed to send animation message");
     } else {
@@ -591,35 +591,35 @@ void EmojiController::PlayAnimation(AnimationType type, int param) {
 }
 
 void EmojiController::StopAnimation() {
-    // 停止所有动画
+    // stop all animations
     ESP_LOGI(TAG, "Stopping all animations");
     
-    // 恢复眼睛状态并更新显示
+    // restore the eye state and update the display
     EyeCenter(true);
     
-    // 清空动画队列
+    // clear the animation queue
     ClearAnimationQueue();
     
-    // 清除动画执行标志
+    // clear the animation executing flag
     is_animating_ = false;
 }
 
 /**
- * @brief 设置随机动画是否启用
- * @param enabled 是否启用随机动画
+ * @brief set whether random animation is enabled
+ * @param enabled whether to enable random animation
  */
 void EmojiController::SetRandomAnimationEnabled(bool enabled) {
     ESP_LOGI(TAG, "Setting random animation state: %s", enabled ? "enabled" : "disabled");
     random_animation_enabled_ = enabled;
     
-    // 如果禁用随机动画，清空动画队列以防止已经在队列中的随机动画被执行
+    // if random animation is disabled, clear the queue so queued random animations are not executed
     if (!enabled) {
         ClearAnimationQueue();
     }
 }
 
 /**
- * @brief 清空动画队列
+ * @brief clear the animation queue
  */
 void EmojiController::ClearAnimationQueue() {
     if (animation_queue_ == nullptr) {
@@ -628,38 +628,38 @@ void EmojiController::ClearAnimationQueue() {
     
     ESP_LOGI(TAG, "Clearing animation queue");
     
-    // 清空队列中的所有消息
+    // clear all messages in the queue
     AnimationMessage msg;
     while (xQueueReceive(animation_queue_, &msg, 0) == pdPASS) {
-        // 只是从队列中移除消息，不做任何处理
+        // just remove the message from the queue without any processing
         ESP_LOGD(TAG, "Removed animation message from queue, type: %d", (int)msg.type);
     }
 }
 
 AnimationType EmojiController::SelectRandomAnimation() {
-    // 生成一个0-99的随机数
+    // generate a random number from 0-99
     uint32_t random_value = esp_random() % 100;
     
-    // 根据概率分布选择动画类型
-    // 眨眼: 60%
-    // 向左看: 15%
-    // 向右看: 15%
-    // 转圈: 5%
-    // 疑惑: 5%
+    // choose the animation type based on the probability distribution
+    // blink: 60%
+    // look left: 15%
+    // look right: 15%
+    // spin: 5%
+    // puzzled: 5%
     if (random_value < 60) {
-        // 60%概率：眨眼
+        // 60% probability: blink
         return AnimationType::BLINK;
     } else if (random_value < 78) {
-        // 18%概率：向左看
+        // 18% probability: look left
         return AnimationType::LOOK_LEFT;
     } else if (random_value < 96) {
-        // 18%概率：向右看
+        // 18% probability: look right
         return AnimationType::LOOK_RIGHT;
     } else if (random_value < 98) {
-        // 2%概率：转圈
+        // 2% probability: spin
         return AnimationType::HEAD_ROLL;
     } else {
-        // 2%概率：疑惑
+        // 2% probability: puzzled
         return AnimationType::CONFUSED;
     }
 }
@@ -673,13 +673,13 @@ void EmojiController::ExecuteRandomAnimation() {
     AnimationType type = SelectRandomAnimation();
     ESP_LOGI(TAG, "Executing random animation, type: %d", static_cast<int>(type));
     
-    // 检查屏幕和眼睛对象是否存在
+    // check whether the screen and eye objects exist
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteRandomAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 根据选择的动画类型执行相应的动画
+    // execute the corresponding animation based on the chosen animation type
     switch (type) {
         case AnimationType::BLINK:
             ExecuteBlinkAnimation(12);
@@ -723,139 +723,139 @@ void EmojiController::ExecuteRandomAnimation() {
 void EmojiController::ExecuteBlinkAnimation(int speed) {
     ESP_LOGI(TAG, "Executing blink animation, speed: %d", speed);
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteBlinkAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 检查是否有舵机控制器
+    // check whether there is a servo controller
     bool has_servo = (servo_controller_ != nullptr);
     
-    // 保存原始高度
+    // save the original height
     int original_left_height_ = left_eye_height_;
     int original_right_height_ = right_eye_height_;
     
-    // 眨眼动画：眼睛高度从当前值逐渐减小到0，然后再恢复
-    const int steps = 8;  // 增加步骤数，使动画更平滑
+    // blink animation: the eye height gradually decreases from its current value to 0, then restores
+    const int steps = 8;  // increase the step count to make the animation smoother
     int left_step = original_left_height_ / steps;
     int right_step = original_right_height_ / steps;
     
-    // 确保步长至少为1
+    // make sure the step is at least 1
     left_step = left_step > 0 ? left_step : 1;
     right_step = right_step > 0 ? right_step : 1;
     
-    // 计算延迟时间，速度越大，延迟越小
-    int delay_ms = 200 / speed;  // 增加基础延迟时间
-    if (delay_ms < 10) delay_ms = 10; // 确保最小延迟
+    // compute the delay; the higher the speed, the smaller the delay
+    int delay_ms = 200 / speed;  // increase the base delay
+    if (delay_ms < 10) delay_ms = 10; // make sure of the minimum delay
     
-    // 随机决定是眨眼一次还是连续眨眼两次
-    bool double_blink = (esp_random() % 100) < 40;  // 40%的概率连续眨眼两次
+    // randomly decide whether to blink once or twice in a row
+    bool double_blink = (esp_random() % 100) < 40;  // 40% chance of blinking twice in a row
     int blink_count = double_blink ? 2 : 1;
     
-    // 随机决定是否添加轻微的头部运动 - 只有30%的概率
+    // randomly decide whether to add a slight head movement - only a 30% chance
     bool add_head_movement = has_servo && ((esp_random() % 100) < 30);
-    int head_direction = 0; // 0=不动，1=轻微左下，2=轻微右上，3=轻微抬头，4=轻微低头，5=轻微左上，6=轻微右下
+    int head_direction = 0; // 0=none, 1=slightly down-left, 2=slightly up-right, 3=slightly up, 4=slightly down, 5=slightly up-left, 6=slightly down-right
     
     if (add_head_movement) {
-        // 随机选择一个方向，避免使用模运算减少计算量
-        uint32_t rand_val = esp_random() & 0x07; // 取最低3位，值为0-7
-        head_direction = (rand_val % 6) + 1; // 1-6，确保范围正确
+        // pick a random direction, avoiding the modulo operation to reduce computation
+        uint32_t rand_val = esp_random() & 0x07; // take the lowest 3 bits, value 0-7
+        head_direction = (rand_val % 6) + 1; // 1-6, make sure the range is correct
         ESP_LOGI(TAG, "Adding head movement during blink, direction: %d", head_direction);
     }
     
     ESP_LOGI(TAG, "Blink count: %d", blink_count);
     
-    // 使用一个锁来保护整个眨眼过程
+    // use a lock to protect the entire blink process
     if (display_) {
         try {
-            // 执行一次或两次眨眼
+            // perform one or two blinks
             for (int blink = 0; blink < blink_count; blink++) {
-                // 眼睛闭合阶段
+                // eye closing phase
                 for (int i = 0; i < steps; i++) {
                     DisplayLockGuard lock(display_);
                     
                     left_eye_height_ -= left_step;
                     right_eye_height_ -= right_step;
                     
-                    // 确保高度不会变为负数
+                    // make sure the height does not become negative
                     if (left_eye_height_ < 0) left_eye_height_ = 0;
                     if (right_eye_height_ < 0) right_eye_height_ = 0;
                     
-                    // 直接更新眼睛对象
+                    // update the eye objects directly
                     lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
                     lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
                     lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
                     lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
                     
-                    // 每步动画后短暂延迟，使动画更明显
+                    // short delay after each animation step to make the animation more noticeable
                     vTaskDelay(pdMS_TO_TICKS(delay_ms));
                 }
                 
-                // 如果需要添加头部运动
+                // if a head movement is needed
                 if (has_servo && blink == 0) {
-                    // 执行轻微的头部运动
-                    const int small_angle = 25; // 增加到20度，使动作更明显但仍然自然
-                    // const int delay_param = 30; // 舵机运动延迟参数
+                    // perform a slight head movement
+                    const int small_angle = 25; // increased to 20 degrees so the motion is more noticeable but still natural
+                    // const int delay_param = 30; // servo movement delay parameter
                     
-                    // 使用HeadMove方法实现所有头部运动
+                    // use the HeadMove method for all head movements
                     switch (head_direction) {
-                        case 1: // 轻微左下
+                        case 1: // slightly down-left
                             servo_controller_->HeadMove(-small_angle, -small_angle, SERVO_DELAY);
                             break;
-                        case 2: // 轻微右上
+                        case 2: // slightly up-right
                             servo_controller_->HeadMove(small_angle, small_angle, SERVO_DELAY);
                             break;
-                        case 3: // 轻微抬头
+                        case 3: // slightly up
                             servo_controller_->HeadMove(0, small_angle, SERVO_DELAY);
                             break;
-                        case 4: // 轻微低头
+                        case 4: // slightly down
                             servo_controller_->HeadMove(0, -small_angle, SERVO_DELAY);
                             break;
-                        case 5: // 轻微左上
+                        case 5: // slightly up-left
                             servo_controller_->HeadMove(-small_angle, small_angle, SERVO_DELAY);
                             break;
-                        case 6: // 轻微右下
+                        case 6: // slightly down-right
                             servo_controller_->HeadMove(small_angle, -small_angle, SERVO_DELAY);
                             break;
                             
                     }
                 }
                 
-                // 短暂保持闭眼状态
-                // 如果是连续眨眼，第一次眨眼后闭眼时间短一些
+                // briefly hold the eyes closed
+                // for a double blink, keep the eyes closed for less time after the first blink
                 int closed_delay = double_blink && blink == 0 ? delay_ms : delay_ms * 3;
                 vTaskDelay(pdMS_TO_TICKS(closed_delay));
                 
-                // 眼睛睁开阶段
+                // eye opening phase
                 for (int i = 0; i < steps; i++) {
                     DisplayLockGuard lock(display_);
                     
                     left_eye_height_ += left_step;
                     right_eye_height_ += right_step;
                     
-                    // 确保不会超过原始高度
+                    // make sure it does not exceed the original height
                     if (left_eye_height_ > original_left_height_) left_eye_height_ = original_left_height_;
                     if (right_eye_height_ > original_right_height_) right_eye_height_ = original_right_height_;
                     
-                    // 直接更新眼睛对象
+                    // update the eye objects directly
                     lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
                     lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
                     lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
                     lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
                     
-                    // 每步动画后短暂延迟，使动画更明显
+                    // short delay after each animation step to make the animation more noticeable
                     vTaskDelay(pdMS_TO_TICKS(delay_ms));
                 }
                 
-                // 如果是连续眨眼，在两次眨眼之间短暂停顿
+                // for a double blink, pause briefly between the two blinks
                 if (double_blink && blink == 0) {
                     vTaskDelay(pdMS_TO_TICKS(delay_ms * 2));
                 }
                 
-                // 在最后一次眨眼完成后，如果有头部运动，恢复头部位置
+                // after the last blink completes, restore the head position if there was head movement
                 if (add_head_movement && has_servo && blink == blink_count - 1) {
-                    servo_controller_->HeadCenter(10); // 使用延迟参数10恢复头部位置
+                    servo_controller_->HeadCenter(10); // restore the head position using delay parameter 10
                 }
             }
         } catch (...) {
@@ -863,7 +863,7 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
         }
     }
     
-    // 确保眼睛高度恢复到原始值
+    // make sure the eye height returns to its original value
     left_eye_height_ = original_left_height_;
     right_eye_height_ = original_right_height_;
 }
@@ -871,119 +871,119 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
 void EmojiController::ExecuteHappyAnimation() {
     ESP_LOGI(TAG, "Executing happy expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteHappyAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 创建开心表情 - 简化版本，减少循环次数和延迟
-            // 首先确保眼睛可见
+            // create the happy expression - simplified version with fewer iterations and delay
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 获取眼睛的位置和大小
+            // get the eye position and size
             int offset = left_eye_height_ / 2;
             
-            // 创建左眼和右眼三角形对象
+            // create the left and right eye triangle objects
             lv_obj_t* left_eye_mask = nullptr;
             lv_obj_t* right_eye_mask = nullptr;
             
-            // 减少循环次数，从10次减少到5次
+            // reduce the loop count from 10 to 5
             for (int i = 0; i < 5; i++) {
-                // 如果已经创建了三角形对象，先删除
+                // if the triangle objects were already created, delete them first
                 if (left_eye_mask) lv_obj_del(left_eye_mask);
                 if (right_eye_mask) lv_obj_del(right_eye_mask);
                 
-                // 创建左眼三角形
+                // create the left eye triangle
                 left_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(left_eye_mask, 0, 0);
-                lv_obj_set_style_radius(left_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(left_eye_mask, 0, 0); // set to a right angle
                 
-                // 创建一个三角形形状的对象
-                // 使用三个点来定义三角形区域
+                // create a triangle-shaped object
+                // use three points to define the triangle region
                 int x1 = left_eye_x_ - left_eye_width_/2 - 5;
                 int y1 = left_eye_y_ + offset - 3;
                 int x2 = left_eye_x_ + left_eye_width_/2 + 5;
-                // y2变量已被使用，保留
-                // x3变量已被使用，保留
+                // the y2 variable is already used, keep it
+                // the x3 variable is already used, keep it
                 int y3 = left_eye_y_ + left_eye_height_ + offset + 3;
                 
-                // 设置三角形的大小和位置 - 使用矩形近似
-                int tri_width = x2 - x1 + 15;  // 增加宽度
-                int tri_height = y3 - y1 + 15;  // 增加高度
+                // set the triangle size and position - approximated with a rectangle
+                int tri_width = x2 - x1 + 15;  // increase the width
+                int tri_height = y3 - y1 + 15;  // increase the height
                 
                 lv_obj_set_size(left_eye_mask, tri_width, tri_height);
                 lv_obj_set_pos(left_eye_mask, x1 - 8, y1 - 8);
                 
-                // 使用CSS的clip-path属性创建三角形效果
-                // 但LVGL可能不支持clip-path，所以我们使用一个简单的变通方法
-                // 设置左眼三角形的旋转和倾斜
-                lv_obj_set_style_transform_angle(left_eye_mask, 80, 0); // 8度，单位是十分之一度
+                // create a triangle effect using the CSS clip-path property
+                // but LVGL may not support clip-path, so we use a simple workaround
+                // set the rotation and tilt of the left eye triangle
+                lv_obj_set_style_transform_angle(left_eye_mask, 80, 0); // 8 degrees, in units of 0.1 degree
                 lv_obj_set_style_transform_pivot_x(left_eye_mask, 0, 0);
                 lv_obj_set_style_transform_pivot_y(left_eye_mask, 0, 0);
                 
-                // 创建右眼三角形
+                // create the right eye triangle
                 right_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(right_eye_mask, 0, 0);
-                lv_obj_set_style_radius(right_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(right_eye_mask, 0, 0); // set to a right angle
                 
-                // 使用三个点来定义三角形区域
+                // use three points to define the triangle region
                 int rx1 = right_eye_x_ + right_eye_width_/2 + 5;
                 int ry1 = right_eye_y_ + offset - 3;
                 int rx2 = right_eye_x_ - right_eye_width_/2 - 5;
-                // ry2变量已被使用，保留
-                // rx3变量已被使用，保留
+                // the ry2 variable is already used, keep it
+                // the rx3 variable is already used, keep it
                 int ry3 = right_eye_y_ + right_eye_height_ + offset + 3;
                 
-                // 设置三角形的大小和位置 - 使用矩形近似
-                int rtri_width = rx1 - rx2 + 15;  // 增加宽度
-                int rtri_height = ry3 - ry1 + 15;  // 增加高度
+                // set the triangle size and position - approximated with a rectangle
+                int rtri_width = rx1 - rx2 + 15;  // increase the width
+                int rtri_height = ry3 - ry1 + 15;  // increase the height
                 
                 lv_obj_set_size(right_eye_mask, rtri_width, rtri_height);
                 lv_obj_set_pos(right_eye_mask, rx2 - 8, ry1 - 8);
                 
-                // 设置右眼三角形的旋转和倾斜
-                lv_obj_set_style_transform_angle(right_eye_mask, -80, 0); // -8度，单位是十分之一度
+                // set the rotation and tilt of the right eye triangle
+                lv_obj_set_style_transform_angle(right_eye_mask, -80, 0); // -8 degrees, in units of 0.1 degree
                 lv_obj_set_style_transform_pivot_x(right_eye_mask, rtri_width, 0);
                 lv_obj_set_style_transform_pivot_y(right_eye_mask, 0, 0);
                 
-                // 更新offset，与参考代码一致
+                // update the offset to match the reference code
                 offset -= 2;
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟，形成动画效果，减少延迟时间
-                vTaskDelay(pdMS_TO_TICKS(10)); // 从20ms减少到10ms
+                // short delay to create the animation effect, with reduced delay
+                vTaskDelay(pdMS_TO_TICKS(10)); // reduced from 20ms to 10ms
             }
             
-            // 如果需要，让舵机稍微向上抬头，表示高兴
+            // if needed, tilt the servo slightly up to show happiness
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(0, -15, 10);  // 负的y偏移会让舵机向上移动
+                servo_controller_->HeadMove(0, -15, 10);  // a negative y offset makes the servo move upward
             }
             
-            // 显示一段时间，减少显示时间
-            vTaskDelay(pdMS_TO_TICKS(1000)); // 从2000ms减少到1000ms
+            // display for a while, with reduced duration
+            vTaskDelay(pdMS_TO_TICKS(1000)); // reduced from 2000ms to 1000ms
             
-            // 清理资源
+            // clean up resources
             if (left_eye_mask) lv_obj_del(left_eye_mask);
             if (right_eye_mask) lv_obj_del(right_eye_mask);
             
-            // 恢复眼睛状态
+            // restore the eye state
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
         } catch (const std::exception& e) {
             ESP_LOGE(TAG, "ExecuteHappyAnimation exception: %s", e.what());
@@ -996,45 +996,45 @@ void EmojiController::ExecuteHappyAnimation() {
 void EmojiController::ExecuteSadAnimation() {
     ESP_LOGI(TAG, "Executing sad expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteSadAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 创建悲伤表情 - 使用三角形
-            // 首先确保眼睛可见
+            // create the sad expression - using triangles
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 获取眼睛的位置和大小
-            int offset = left_eye_height_ / 4;  // 减小初始偏移量
+            // get the eye position and size
+            int offset = left_eye_height_ / 4;  // reduce the initial offset
             
-            // 创建左眼和右眼三角形对象
+            // create the left and right eye triangle objects
             lv_obj_t* left_eye_mask = nullptr;
             lv_obj_t* right_eye_mask = nullptr;
             
-            // 参考boardemoji.ino中的实现
-            // 循环绘制多个三角形，逐渐移动位置，形成动画效果
+            // reference the implementation in boardemoji.ino
+            // draw multiple triangles in a loop, gradually shifting position to create the animation
             for (int i = 0; i < 10; i++) {
-                // 如果已经创建了三角形对象，先删除
+                // if the triangle objects were already created, delete them first
                 if (left_eye_mask) lv_obj_del(left_eye_mask);
                 if (right_eye_mask) lv_obj_del(right_eye_mask);
                 
-                // 创建左眼三角形
+                // create the left eye triangle
                 left_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(left_eye_mask, 0, 0);
-                lv_obj_set_style_radius(left_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(left_eye_mask, 0, 0); // set to a right angle
                 
-                // 计算开心表情的三角形坐标
+                // compute the triangle coordinates of the happy expression
                 int happy_x1 = left_eye_x_ - left_eye_width_/2 - 5;
                 int happy_y1 = left_eye_y_ + offset - 3;
                 int happy_x2 = left_eye_x_ + left_eye_width_/2 + 5;
@@ -1042,7 +1042,7 @@ void EmojiController::ExecuteSadAnimation() {
                 int happy_x3 = left_eye_x_ - left_eye_width_/2 - 5;
                 int happy_y3 = left_eye_y_ + left_eye_height_ + offset + 3;
                 
-                // 计算悲伤表情的三角形坐标（垂直翻转）
+                // compute the triangle coordinates of the sad expression (vertically flipped)
                 int sad_x1 = happy_x1;
                 int sad_y1 = 2 * left_eye_y_ - happy_y1;
                 int sad_x2 = happy_x2;
@@ -1050,30 +1050,30 @@ void EmojiController::ExecuteSadAnimation() {
                 // int sad_x3 = happy_x3;
                 int sad_y3 = 2 * left_eye_y_ - happy_y3;
                 
-                // 设置三角形的大小和位置
+                // set the triangle size and position
                 int tri_width = sad_x2 - sad_x1 + 15;
                 int tri_height = abs(sad_y3 - sad_y1) + 15;
                 
-                // 确定左上角坐标（取最小的x和y）
+                // determine the top-left coordinate (take the smallest x and y)
                 int top_left_x = sad_x1 - 8;
                 int top_left_y = std::min(sad_y1, sad_y3) - 15;  
                 
                 lv_obj_set_size(left_eye_mask, tri_width, tri_height);
                 lv_obj_set_pos(left_eye_mask, top_left_x, top_left_y);
                 
-                // 设置左眼三角形的旋转和倾斜
-                lv_obj_set_style_transform_angle(left_eye_mask, -100, 0); // -10度，单位是十分之一度
-                // 设置旋转中心点为三角形左下角
+                // set the rotation and tilt of the left eye triangle
+                lv_obj_set_style_transform_angle(left_eye_mask, -100, 0); // -10 degrees, in units of 0.1 degree
+                // set the rotation center to the triangle's bottom-left corner
                 lv_obj_set_style_transform_pivot_x(left_eye_mask, 0, 0);
                 lv_obj_set_style_transform_pivot_y(left_eye_mask, tri_height, 0);
                 
-                // 创建右眼三角形
+                // create the right eye triangle
                 right_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(right_eye_mask, 0, 0);
-                lv_obj_set_style_radius(right_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(right_eye_mask, 0, 0); // set to a right angle
                 
-                // 计算开心表情的三角形坐标
+                // compute the triangle coordinates of the happy expression
                 int happy_rx1 = right_eye_x_ + right_eye_width_/2 + 5;
                 int happy_ry1 = right_eye_y_ + offset - 3;
                 int happy_rx2 = right_eye_x_ - right_eye_width_/2 - 5;
@@ -1081,7 +1081,7 @@ void EmojiController::ExecuteSadAnimation() {
                 int happy_rx3 = right_eye_x_ + right_eye_width_/2 + 5;
                 int happy_ry3 = right_eye_y_ + right_eye_height_ + offset + 3;
                 
-                // 计算悲伤表情的三角形坐标（垂直翻转）
+                // compute the triangle coordinates of the sad expression (vertically flipped)
                 int sad_rx1 = happy_rx1;
                 int sad_ry1 = 2 * right_eye_y_ - happy_ry1;
                 int sad_rx2 = happy_rx2;
@@ -1089,43 +1089,43 @@ void EmojiController::ExecuteSadAnimation() {
                 // int sad_rx3 = happy_rx3;
                 int sad_ry3 = 2 * right_eye_y_ - happy_ry3;
                 
-                // 设置三角形的大小和位置
+                // set the triangle size and position
                 int rtri_width = sad_rx1 - sad_rx2 + 15;
                 int rtri_height = abs(sad_ry3 - sad_ry1) + 15;
                 
-                // 确定左上角坐标（取最小的x和y）
+                // determine the top-left coordinate (take the smallest x and y)
                 int rtop_left_x = sad_rx2 - 8;
                 int rtop_left_y = std::min(sad_ry1, sad_ry3) - 15;  
                 
                 lv_obj_set_size(right_eye_mask, rtri_width, rtri_height);
                 lv_obj_set_pos(right_eye_mask, rtop_left_x, rtop_left_y);
                 
-                // 设置右眼三角形的旋转和倾斜
-                lv_obj_set_style_transform_angle(right_eye_mask, 100, 0); // 10度，单位是十分之一度
-                // 设置旋转中心点为三角形右下角
+                // set the rotation and tilt of the right eye triangle
+                lv_obj_set_style_transform_angle(right_eye_mask, 100, 0); // 10 degrees, in units of 0.1 degree
+                // set the rotation center to the triangle's bottom-right corner
                 lv_obj_set_style_transform_pivot_x(right_eye_mask, rtri_width, 0);
                 lv_obj_set_style_transform_pivot_y(right_eye_mask, rtri_height, 0);
                 
-                // 更新offset，与参考代码一致
+                // update the offset to match the reference code
                 offset -= 2;
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(20));
             }
             
-            // 如果需要，让舵机稍微向下低头，表示悲伤
+            // if needed, tilt the servo slightly down to show sadness
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(0, 20, 1);  // 向下点头
-                servo_controller_->HeadMove(0, -20, 1);  // 向上抬头
+                servo_controller_->HeadMove(0, 20, 1);  // nod down
+                servo_controller_->HeadMove(0, -20, 1);  // tilt up
             }
             
-            // 显示一段时间
+            // display for a while
             vTaskDelay(pdMS_TO_TICKS(2000));
             
-            // 删除创建的对象
+            // delete the created objects
             if (left_eye_mask) lv_obj_del(left_eye_mask);
             if (right_eye_mask) lv_obj_del(right_eye_mask);
             
@@ -1134,98 +1134,98 @@ void EmojiController::ExecuteSadAnimation() {
         }
     }
     
-    // 添加短暂延迟，确保显示更新完成
+    // add a short delay to make sure the display update completes
     vTaskDelay(pdMS_TO_TICKS(100));
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteLaughingAnimation() {
     ESP_LOGI(TAG, "Executing laughing expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteLaughingAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸
+            // save the original size
             const int original_left_width_ = left_eye_width_;
             const int original_left_height_ = left_eye_height_;
             const int original_right_width_ = right_eye_width_;
             const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 大笑表情 - 眼睛变成弯月形状（通过缩小高度和旋转实现）
-            // 首先确保眼睛可见
+            // laugh expression - the eyes become crescent-shaped (by shrinking the height and rotating)
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建动画效果 - 眼睛高度缩小，并且向上移动
+            // create the animation effect - the eye height shrinks and moves up
             const int animation_steps = 8;
             const int animation_delay_ms = 10;
-            const float min_height_factor = 0.3f; // 最小高度为原始高度的30%
+            const float min_height_factor = 0.3f; // minimum height is 30% of the original height
             
-            // 眼睛缩小动画
+            // eye shrinking animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float height_factor = 1.0f - progress * (1.0f - min_height_factor);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_height = original_left_height_ * height_factor;
                 int current_right_height = original_right_height_ * height_factor;
                 
-                // 更新眼睛高度和位置（向上移动）
+                // update the eye height and position (moving up)
                 lv_obj_set_height(left_eye_, current_left_height);
                 lv_obj_set_height(right_eye_, current_right_height);
                 
-                // 眼睛位置向上移动，保持底部位置不变
+                // the eye moves up while keeping the bottom position fixed
                 int y_offset = (original_left_height_ - current_left_height) / 2;
                 lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, 
                               left_eye_y_ - current_left_height/2 - y_offset);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, 
                               right_eye_y_ - current_right_height/2 - y_offset);
                 
-                // 设置圆角 - 大笑时增加圆角
+                // set the corner radius - increase it for laughing
                 int current_radius = original_corner_radius_ + (int)(progress * 10);
                 lv_obj_set_style_radius(left_eye_, current_radius, 0);
                 lv_obj_set_style_radius(right_eye_, current_radius, 0);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机向后仰头表示大笑
+            // if there is a servo controller, tilt the head back to show laughing
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadUp(15); // 抬头角度大一些，表示大笑
+                servo_controller_->HeadUp(15); // a larger tilt-up angle to show laughing
             }
             
-            // 添加抖动效果，模拟笑得发抖
+            // add a shake effect to mimic trembling from laughing
             const int shake_steps = 5;
             const int shake_delay_ms = 50;
             const int shake_offset = 2;
             
             for (int i = 0; i < shake_steps; i++) {
-                // 左右小幅度抖动
+                // small left-right shake
                 int offset_x = (i % 2 == 0) ? shake_offset : -shake_offset;
                 
-                // 更新位置
+                // update the position
                 lv_obj_set_pos(left_eye_, 
                               left_eye_x_ - left_eye_width_/2 + offset_x, 
                               lv_obj_get_y(left_eye_));
@@ -1233,17 +1233,17 @@ void EmojiController::ExecuteLaughingAnimation() {
                               right_eye_x_ - right_eye_width_/2 + offset_x, 
                               lv_obj_get_y(right_eye_));
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(shake_delay_ms));
             }
             
-            // 保持大笑状态一段时间
+            // hold the laughing state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
@@ -1251,7 +1251,7 @@ void EmojiController::ExecuteLaughingAnimation() {
             lv_obj_set_style_radius(left_eye_, original_corner_radius_, 0);
             lv_obj_set_style_radius(right_eye_, original_corner_radius_, 0);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1259,7 +1259,7 @@ void EmojiController::ExecuteLaughingAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -1268,50 +1268,50 @@ void EmojiController::ExecuteLaughingAnimation() {
 void EmojiController::ExecuteConfidentAnimation() {
     ESP_LOGI(TAG, "Executing confident expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteConfidentAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 自信表情 - 眼睛缩窄并且微微抬头
-            // 首先确保眼睛可见
+            // confident expression - the eyes narrow and the head tilts slightly up
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建自信动画效果 - 眼睛缩窄
+            // create the confident animation effect - the eyes narrow
             const int animation_steps = 8;
             const int animation_delay_ms = 15;
-            const float min_height_factor = 0.5f; // 最小高度为原始高度的50%
+            const float min_height_factor = 0.5f; // minimum height is 50% of the original height
             
-            // 眼睛缩窄动画
+            // eye narrowing animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float height_factor = 1.0f - progress * (1.0f - min_height_factor);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_height = original_left_height_ * height_factor;
                 int current_right_height = original_right_height_ * height_factor;
                 
-                // 更新眼睛高度和位置
+                // update the eye height and position
                 lv_obj_set_height(left_eye_, current_left_height);
                 lv_obj_set_height(right_eye_, current_right_height);
                 
@@ -1320,37 +1320,37 @@ void EmojiController::ExecuteConfidentAnimation() {
                 lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, 
                               right_eye_y_ - current_right_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机抬头
+            // if there is a servo controller, tilt the head up
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadUp(10); // 抬头表示自信
+                servo_controller_->HeadUp(10); // tilt up to show confidence
             }
             
-            // 添加眼睛看向右侧的效果
+            // add the effect of the eyes looking to the right
             EyeRight();
             vTaskDelay(pdMS_TO_TICKS(300));
             
-            // 添加头部微微点头的效果
+            // add a slight head-nod effect
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadNod(5); // 头部小幅度点头
+                servo_controller_->HeadNod(5); // small head nod
             }
             
-            // 保持自信状态一段时间
+            // hold the confident state for a while
             vTaskDelay(pdMS_TO_TICKS(800));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_height(left_eye_, original_left_height_);
             lv_obj_set_height(right_eye_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1358,7 +1358,7 @@ void EmojiController::ExecuteConfidentAnimation() {
         }
     }
     
-    // 恢复舵机位置和眼睛位置
+    // restore the servo and eye positions
     EyeCenter(true);
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
@@ -1368,93 +1368,93 @@ void EmojiController::ExecuteConfidentAnimation() {
 void EmojiController::ExecuteSillyAnimation() {
     ESP_LOGI(TAG, "Executing sly expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteSillyAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 偷笑表情 - 一只眼睛缩小，一只眼睛正常
-            // 首先确保眼睛可见
+            // smirk expression - one eye shrinks while the other stays normal
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建偷笑动画效果 - 左眼缩小
+            // create the smirk animation effect - the left eye shrinks
             const int animation_steps = 8;
             const int animation_delay_ms = 15;
-            const float min_scale = 0.4f; // 最小缩放比例
+            const float min_scale = 0.4f; // minimum scale factor
             
-            // 左眼缩小动画
+            // left eye shrinking animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f - progress * (1.0f - min_scale);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_width = original_left_width_ * scale;
                 int current_height = original_left_height_ * scale;
                 
-                // 只缩小左眼
+                // shrink only the left eye
                 lv_obj_set_size(left_eye_, current_width, current_height);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - current_width/2, left_eye_y_ - current_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机歪头
+            // if there is a servo controller, tilt the head sideways
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(10, 0, 10); // 右倾斜
+                servo_controller_->HeadMove(10, 0, 10); // tilt right
             }
             
-            // 添加眼睛左右移动的效果
+            // add the effect of the eyes moving left and right
             const int look_steps = 2;
             const int look_delay_ms = 300;
             
             for (int i = 0; i < look_steps; i++) {
-                // 左看
+                // look left
                 EyeLeft();
                 vTaskDelay(pdMS_TO_TICKS(look_delay_ms));
                 
-                // 右看
+                // look right
                 EyeRight();
                 vTaskDelay(pdMS_TO_TICKS(look_delay_ms));
             }
             
-            // 添加头部微微摇摆的效果
+            // add a slight head-sway effect
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadShake(5); // 头部小幅度摇摆
+                servo_controller_->HeadShake(5); // small head sway
             }
             
-            // 恢复中心位置
+            // restore the center position
             EyeCenter(true);
             vTaskDelay(pdMS_TO_TICKS(200));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1462,7 +1462,7 @@ void EmojiController::ExecuteSillyAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -1471,53 +1471,53 @@ void EmojiController::ExecuteSillyAnimation() {
 void EmojiController::ExecuteDeliciousAnimation() {
     ESP_LOGI(TAG, "Executing delicious expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteDeliciousAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             
-            // 美味表情 - 眼睛缩小并且微微上移
-            // 首先确保眼睛可见
+            // yummy expression - the eyes shrink and move slightly up
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建美味动画效果 - 眼睛缩小并上移
+            // create the yummy animation effect - the eyes shrink and move up
             const int animation_steps = 8;
             const int animation_delay_ms = 15;
-            const float min_scale = 0.7f; // 最小缩放比例
-            const int max_y_offset = -3;  // 最大Y轴偏移（向上为负）
+            const float min_scale = 0.7f; // minimum scale factor
+            const int max_y_offset = -3;  // maximum Y-axis offset (negative is up)
             
-            // 眼睛缩小并上移动画
+            // eye shrinking and moving-up animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f - progress * (1.0f - min_scale);
                 int y_offset = progress * max_y_offset;
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_width = original_left_width_ * scale;
                 int current_left_height = original_left_height_ * scale;
                 int current_right_width = original_right_width_ * scale;
                 int current_right_height = original_right_height_ * scale;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, current_left_width, current_left_height);
                 lv_obj_set_size(right_eye_, current_right_width, current_right_height);
                 
@@ -1528,21 +1528,21 @@ void EmojiController::ExecuteDeliciousAnimation() {
                               right_eye_x_ - current_right_width/2, 
                               right_eye_y_ - current_right_height/2 + y_offset);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机微微点头
+            // if there is a servo controller, make the head nod slightly
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadNod(5); // 头部小幅度点头
+                servo_controller_->HeadNod(5); // small head nod
             }
             
-            // 添加舵机左右小幅度摇摆，模拟品尝美食
+            // add a small left-right servo sway to mimic tasting food
             if (servo_controller_ != nullptr) {
-                // 左右小幅度摇摆
+                // small left-right sway
                 servo_controller_->HeadMove(5, 0, 10);
                 vTaskDelay(pdMS_TO_TICKS(300));
                 servo_controller_->HeadMove(-5, 0, 10);
@@ -1550,16 +1550,16 @@ void EmojiController::ExecuteDeliciousAnimation() {
                 servo_controller_->HeadMove(5, 0, 10);
             }
             
-            // 保持美味状态一段时间
+            // hold the yummy state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1567,7 +1567,7 @@ void EmojiController::ExecuteDeliciousAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -1576,79 +1576,79 @@ void EmojiController::ExecuteDeliciousAnimation() {
 void EmojiController::ExecuteKissyAnimation() {
     ESP_LOGI(TAG, "Executing kissing expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteKissyAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 亲亲表情 - 眼睛变小变圆
-            // 首先确保眼睛可见
+            // kiss expression - the eyes shrink and become round
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建亲亲动画效果 - 眼睛变小变圆
+            // create the kiss animation effect - the eyes shrink and become round
             const int animation_steps = 10;
             const int animation_delay_ms = 15;
-            const float min_scale = 0.5f; // 最小缩放比例
+            const float min_scale = 0.5f; // minimum scale factor
             
-            // 眼睛变小变圆动画
+            // eye shrinking and rounding animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f - progress * (1.0f - min_scale);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_width = original_left_width_ * scale;
                 int current_height = original_left_height_ * scale;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, current_width, current_height);
                 lv_obj_set_size(right_eye_, current_width, current_height);
                 
                 lv_obj_set_pos(left_eye_, left_eye_x_ - current_width/2, left_eye_y_ - current_height/2);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - current_width/2, right_eye_y_ - current_height/2);
                 
-                // 设置圆形眼睛
+                // set the eyes to round
                 int current_radius = original_corner_radius_ + (int)(progress * (current_width/2 - original_corner_radius_));
                 lv_obj_set_style_radius(left_eye_, current_radius, 0);
                 lv_obj_set_style_radius(right_eye_, current_radius, 0);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机微微前倾
+            // if there is a servo controller, tilt the head slightly forward
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(0, -10, 10); // 头部向前倾斜
+                servo_controller_->HeadMove(0, -10, 10); // tilt the head forward
             }
             
-            // 添加嘴型动作（通过眼睛控制模拟）
+            // add a mouth movement (simulated via eye control)
             const int kiss_steps = 3;
             const int kiss_delay_ms = 200;
             
             for (int i = 0; i < kiss_steps; i++) {
-                // 嘴型缩小（眼睛变得更小）
+                // mouth shrinks (the eyes become smaller)
                 float pucker_scale = 0.3f;
                 int pucker_width = original_left_width_ * pucker_scale;
                 int pucker_height = original_left_height_ * pucker_scale;
@@ -1659,14 +1659,14 @@ void EmojiController::ExecuteKissyAnimation() {
                 lv_obj_set_pos(left_eye_, left_eye_x_ - pucker_width/2, left_eye_y_ - pucker_height/2);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - pucker_width/2, right_eye_y_ - pucker_height/2);
                 
-                // 完全圆形
+                // fully round
                 lv_obj_set_style_radius(left_eye_, pucker_width/2, 0);
                 lv_obj_set_style_radius(right_eye_, pucker_width/2, 0);
                 
                 lv_refr_now(NULL);
                 vTaskDelay(pdMS_TO_TICKS(kiss_delay_ms));
                 
-                // 嘴型恢复一点
+                // the mouth recovers a little
                 float relax_scale = 0.5f;
                 int relax_width = original_left_width_ * relax_scale;
                 int relax_height = original_left_height_ * relax_scale;
@@ -1677,7 +1677,7 @@ void EmojiController::ExecuteKissyAnimation() {
                 lv_obj_set_pos(left_eye_, left_eye_x_ - relax_width/2, left_eye_y_ - relax_height/2);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - relax_width/2, right_eye_y_ - relax_height/2);
                 
-                // 圆形眼睛
+                // round eyes
                 lv_obj_set_style_radius(left_eye_, relax_width/2, 0);
                 lv_obj_set_style_radius(right_eye_, relax_width/2, 0);
                 
@@ -1685,10 +1685,10 @@ void EmojiController::ExecuteKissyAnimation() {
                 vTaskDelay(pdMS_TO_TICKS(kiss_delay_ms));
             }
             
-            // 保持亲亲状态一段时间
+            // hold the kiss state for a while
             vTaskDelay(pdMS_TO_TICKS(300));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
@@ -1696,7 +1696,7 @@ void EmojiController::ExecuteKissyAnimation() {
             lv_obj_set_style_radius(left_eye_, original_corner_radius_, 0);
             lv_obj_set_style_radius(right_eye_, original_corner_radius_, 0);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1704,7 +1704,7 @@ void EmojiController::ExecuteKissyAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -1713,50 +1713,50 @@ void EmojiController::ExecuteKissyAnimation() {
 void EmojiController::ExecuteCoolAnimation() {
     ESP_LOGI(TAG, "Executing cool expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteCoolAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 酷酷表情 - 眼睛缩小并且变窄
-            // 首先确保眼睛可见
+            // cool expression - the eyes shrink and narrow
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建酷酷动画效果 - 眼睛缩窄
+            // create the cool animation effect - the eyes narrow
             const int animation_steps = 8;
             const int animation_delay_ms = 15;
-            const float min_height_factor = 0.4f; // 最小高度为原始高度的40%
+            const float min_height_factor = 0.4f; // minimum height is 40% of the original height
             
-            // 眼睛缩窄动画
+            // eye narrowing animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float height_factor = 1.0f - progress * (1.0f - min_height_factor);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_height = original_left_height_ * height_factor;
                 int current_right_height = original_right_height_ * height_factor;
                 
-                // 更新眼睛高度和位置
+                // update the eye height and position
                 lv_obj_set_height(left_eye_, current_left_height);
                 lv_obj_set_height(right_eye_, current_right_height);
                 
@@ -1765,37 +1765,37 @@ void EmojiController::ExecuteCoolAnimation() {
                 lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, 
                               right_eye_y_ - current_right_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机微微抬头
+            // if there is a servo controller, tilt the head slightly up
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadUp(5); // 微微抬头
+                servo_controller_->HeadUp(5); // tilt slightly up
             }
             
-            // 添加眼睛看向右侧的效果
+            // add the effect of the eyes looking to the right
             EyeRight();
             vTaskDelay(pdMS_TO_TICKS(300));
             
-            // 添加头部微微摇摆的效果
+            // add a slight head-sway effect
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadNod(5); // 头部小幅度点头
+                servo_controller_->HeadNod(5); // small head nod
             }
             
-            // 保持酷酷状态一段时间
+            // hold the cool state for a while
             vTaskDelay(pdMS_TO_TICKS(800));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_height(left_eye_, original_left_height_);
             lv_obj_set_height(right_eye_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1803,7 +1803,7 @@ void EmojiController::ExecuteCoolAnimation() {
         }
     }
     
-    // 恢复舵机位置和眼睛位置
+    // restore the servo and eye positions
     EyeCenter(true);
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
@@ -1813,53 +1813,53 @@ void EmojiController::ExecuteCoolAnimation() {
 void EmojiController::ExecuteRelaxedAnimation() {
     ESP_LOGI(TAG, "Executing relaxed expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteRelaxedAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             
-            // 放松表情 - 眼睛缩小并且缩窄，类似于半睡半醒状态
-            // 首先确保眼睛可见
+            // relaxed expression - the eyes shrink and narrow, like being half asleep
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建放松动画效果 - 眼睛缩小和缩窄
+            // create the relaxed animation effect - the eyes shrink and narrow
             const int animation_steps = 10;
             const int animation_delay_ms = 20;
-            const float min_height_factor = 0.5f; // 最小高度为原始高度的50%
-            const float min_width_factor = 0.9f;  // 最小宽度为原始宽度的90%
+            const float min_height_factor = 0.5f; // minimum height is 50% of the original height
+            const float min_width_factor = 0.9f;  // minimum width is 90% of the original width
             
-            // 眼睛缩小和缩窄动画
+            // eye shrinking and narrowing animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float height_factor = 1.0f - progress * (1.0f - min_height_factor);
                 float width_factor = 1.0f - progress * (1.0f - min_width_factor);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_width = original_left_width_ * width_factor;
                 int current_left_height = original_left_height_ * height_factor;
                 int current_right_width = original_right_width_ * width_factor;
                 int current_right_height = original_right_height_ * height_factor;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, current_left_width, current_left_height);
                 lv_obj_set_size(right_eye_, current_right_width, current_right_height);
                 
@@ -1868,31 +1868,31 @@ void EmojiController::ExecuteRelaxedAnimation() {
                 lv_obj_set_pos(right_eye_, right_eye_x_ - current_right_width/2, 
                               right_eye_y_ - current_right_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机微微低头
+            // if there is a servo controller, tilt the head slightly down
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadDown(5); // 微微低头
+                servo_controller_->HeadDown(5); // tilt slightly down
             }
             
-            // 添加缓慢的眼睛眼睛动作
-            ExecuteBlinkAnimation(2); // 缓慢眼睛
+            // add a slow eye blink
+            ExecuteBlinkAnimation(2); // slow blink
             
-            // 保持放松状态一段时间
+            // hold the relaxed state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -1900,7 +1900,7 @@ void EmojiController::ExecuteRelaxedAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -1909,83 +1909,83 @@ void EmojiController::ExecuteRelaxedAnimation() {
 void EmojiController::ExecuteShockedAnimation() {
     ESP_LOGI(TAG, "Executing shocked expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteShockedAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 震惊表情 - 眼睛突然变大，圆形
-            // 首先确保眼睛可见
+            // shocked expression - the eyes suddenly enlarge and become round
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建震惊动画效果 - 眼睛突然变大
+            // create the shocked animation effect - the eyes suddenly enlarge
             const int animation_steps = 5;
             const int animation_delay_ms = 10;
-            const float max_scale = 1.5f; // 最大放大倍数
+            const float max_scale = 1.5f; // maximum scale factor
             
-            // 眼睛突然变大动画
+            // eye sudden-enlarging animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f + progress * (max_scale - 1.0f);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_width = original_left_width_ * scale;
                 int current_height = original_left_height_ * scale;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, current_width, current_height);
                 lv_obj_set_size(right_eye_, current_width, current_height);
                 
                 lv_obj_set_pos(left_eye_, left_eye_x_ - current_width/2, left_eye_y_ - current_height/2);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - current_width/2, right_eye_y_ - current_height/2);
                 
-                // 完全圆形的眼睛
+                // fully round eyes
                 lv_obj_set_style_radius(left_eye_, current_width/2, 0);
                 lv_obj_set_style_radius(right_eye_, current_width/2, 0);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机向后仰头表示震惊
+            // if there is a servo controller, tilt the head back to show shock
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadUp(15); // 向后仰头
+                servo_controller_->HeadUp(15); // tilt the head back
             }
             
-            // 添加微微震动效果
+            // add a slight vibration effect
             const int shake_steps = 8;
             const int shake_delay_ms = 30;
             const int shake_offset = 1;
             
             for (int i = 0; i < shake_steps; i++) {
-                // 随机方向的小幅度抖动
+                // small shake in a random direction
                 int offset_x = (i % 2 == 0) ? shake_offset : -shake_offset;
                 int offset_y = ((i / 2) % 2 == 0) ? shake_offset : -shake_offset;
                 
-                // 更新位置
+                // update the position
                 lv_obj_set_pos(left_eye_, 
                               left_eye_x_ - lv_obj_get_width(left_eye_)/2 + offset_x, 
                               left_eye_y_ - lv_obj_get_height(left_eye_)/2 + offset_y);
@@ -1993,17 +1993,17 @@ void EmojiController::ExecuteShockedAnimation() {
                               right_eye_x_ - lv_obj_get_width(right_eye_)/2 + offset_x, 
                               right_eye_y_ - lv_obj_get_height(right_eye_)/2 + offset_y);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(shake_delay_ms));
             }
             
-            // 保持震惊状态一段时间
+            // hold the shocked state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
@@ -2011,7 +2011,7 @@ void EmojiController::ExecuteShockedAnimation() {
             lv_obj_set_style_radius(left_eye_, original_corner_radius_, 0);
             lv_obj_set_style_radius(right_eye_, original_corner_radius_, 0);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -2019,7 +2019,7 @@ void EmojiController::ExecuteShockedAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -2028,92 +2028,92 @@ void EmojiController::ExecuteShockedAnimation() {
 void EmojiController::ExecuteThinkingAnimation() {
     ESP_LOGI(TAG, "Executing thinking expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteThinkingAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 思考表情 - 一只眼睛缩小，一只眼睛正常
-            // 首先确保眼睛可见
+            // thinking expression - one eye shrinks while the other stays normal
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建思考动画效果 - 右眼缩小
+            // create the thinking animation effect - the right eye shrinks
             const int animation_steps = 8;
             const int animation_delay_ms = 20;
-            const float min_scale = 0.3f; // 最小缩放比例
+            const float min_scale = 0.3f; // minimum scale factor
             
-            // 右眼缩小动画
+            // right eye shrinking animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f - progress * (1.0f - min_scale);
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_width = original_right_width_ * scale;
                 int current_height = original_right_height_ * scale;
                 
-                // 只缩小右眼
+                // shrink only the right eye
                 lv_obj_set_size(right_eye_, current_width, current_height);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - current_width/2, right_eye_y_ - current_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机歪头
+            // if there is a servo controller, tilt the head sideways
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(-10, 5, 10); // 左倾斜，略微抬头
+                servo_controller_->HeadMove(-10, 5, 10); // tilt left, slightly up
             }
             
-            // 添加眼睛向上看的效果
+            // add the effect of the eyes looking up
             EyeUp();
             vTaskDelay(pdMS_TO_TICKS(300));
             
-            // 添加眼睛左右移动的效果，模拟思考
+            // add the effect of the eyes moving left and right to simulate thinking
             const int look_steps = 3;
             const int look_delay_ms = 500;
             
             for (int i = 0; i < look_steps; i++) {
-                // 左看
+                // look left
                 EyeLeft();
                 vTaskDelay(pdMS_TO_TICKS(look_delay_ms));
                 
-                // 右看
+                // look right
                 EyeRight();
                 vTaskDelay(pdMS_TO_TICKS(look_delay_ms));
             }
             
-            // 恢复中心位置
+            // restore the center position
             EyeCenter(true);
             vTaskDelay(pdMS_TO_TICKS(200));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -2121,7 +2121,7 @@ void EmojiController::ExecuteThinkingAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -2130,72 +2130,72 @@ void EmojiController::ExecuteThinkingAnimation() {
 void EmojiController::ExecuteLovingAnimation() {
     ESP_LOGI(TAG, "Executing loving expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteLovingAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸
+            // save the original size
             const int original_left_width_ = left_eye_width_;
             const int original_left_height_ = left_eye_height_;
             const int original_right_width_ = right_eye_width_;
             const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 爱心表情 - 眼睛变成心形
-            // 首先确保眼睛可见
+            // heart expression - the eyes become heart-shaped
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建心形眼睛动画
+            // create the heart-shaped eye animation
             const int animation_steps = 10;
             const int animation_delay_ms = 20;
             
-            // 心形变化动画
+            // heart-shape morphing animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 
-                // 计算当前尺寸 - 心形的宽度稍微比高度大
+                // compute the current size - the heart is slightly wider than tall
                 int heart_width = original_left_width_ * (0.8f + progress * 0.2f);
                 int heart_height = original_left_height_ * (0.7f + progress * 0.3f);
                 
-                // 更新眼睛大小
+                // update the eye size
                 lv_obj_set_size(left_eye_, heart_width, heart_height);
                 lv_obj_set_size(right_eye_, heart_width, heart_height);
                 
-                // 更新眼睛位置
+                // update the eye position
                 lv_obj_set_pos(left_eye_, left_eye_x_ - heart_width/2, left_eye_y_ - heart_height/2);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - heart_width/2, right_eye_y_ - heart_height/2);
                 
-                // 心形效果 - 使用圆角和形状实现
-                // 心形顶部尖尖，底部圆润
+                // heart effect - achieved with corner radii and shape
+                // the heart is pointed at the top and rounded at the bottom
                 int heart_radius = original_corner_radius_ + (int)(progress * 15);
                 lv_obj_set_style_radius(left_eye_, heart_radius, 0);
                 lv_obj_set_style_radius(right_eye_, heart_radius, 0);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 添加心跳效果
+            // add a heartbeat effect
             const int pulse_steps = 4;
             const int pulse_cycles = 3;
             const int pulse_delay_ms = 100;
             const float max_scale = 1.2f;
             
             for (int cycle = 0; cycle < pulse_cycles; cycle++) {
-                // 心跳放大
+                // heartbeat expands
                 for (int step = 0; step < pulse_steps; step++) {
                     float progress = (float)step / pulse_steps;
                     float scale = 1.0f + progress * (max_scale - 1.0f);
@@ -2213,7 +2213,7 @@ void EmojiController::ExecuteLovingAnimation() {
                     vTaskDelay(pdMS_TO_TICKS(pulse_delay_ms));
                 }
                 
-                // 心跳缩小
+                // heartbeat shrinks
                 for (int step = 0; step < pulse_steps; step++) {
                     float progress = (float)step / pulse_steps;
                     float scale = max_scale - progress * (max_scale - 1.0f);
@@ -2232,15 +2232,15 @@ void EmojiController::ExecuteLovingAnimation() {
                 }
             }
             
-            // 如果有舵机控制器，则控制舵机做小幅度摇摆
+            // if there is a servo controller, make it sway slightly
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadRoll(10); // 头部小幅度摇摆
+                servo_controller_->HeadRoll(10); // small head sway
             }
             
-            // 保持爱心状态一段时间
+            // hold the heart state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
@@ -2248,7 +2248,7 @@ void EmojiController::ExecuteLovingAnimation() {
             lv_obj_set_style_radius(left_eye_, original_corner_radius_, 0);
             lv_obj_set_style_radius(right_eye_, original_corner_radius_, 0);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -2256,7 +2256,7 @@ void EmojiController::ExecuteLovingAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -2265,27 +2265,27 @@ void EmojiController::ExecuteLovingAnimation() {
 void EmojiController::ExecuteEmbarrassedAnimation() {
     ESP_LOGI(TAG, "Executing embarrassed expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteEmbarrassedAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
-            // 未使用的变量，注释掉
+            // save the original size and position
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             const int original_left_x = left_eye_x_;
@@ -2293,30 +2293,30 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
             const int original_right_x = right_eye_x_;
             const int original_right_y = right_eye_y_;
             
-            // 尴尬表情 - 眼睛微微下移，并且变小
-            // 首先确保眼睛可见
+            // embarrassed expression - the eyes move slightly down and shrink
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建动画效果
+            // create the animation effect
             const int animation_steps = 8;
             const int animation_delay_ms = 15;
-            const float min_scale = 0.7f; // 最小缩放比例
-            const int max_y_offset = 5;   // 最大Y轴偏移
+            const float min_scale = 0.7f; // minimum scale factor
+            const int max_y_offset = 5;   // maximum Y-axis offset
             
-            // 眼睛缩小并下移动画
+            // eye shrinking and moving-down animation
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 float scale = 1.0f - progress * (1.0f - min_scale);
                 int y_offset = progress * max_y_offset;
                 
-                // 计算当前尺寸
+                // compute the current size
                 int current_left_width = original_left_width_ * scale;
                 int current_left_height = original_left_height_ * scale;
                 int current_right_width = original_right_width_ * scale;
                 int current_right_height = original_right_height_ * scale;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, current_left_width, current_left_height);
                 lv_obj_set_size(right_eye_, current_right_width, current_right_height);
                 
@@ -2327,28 +2327,28 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
                               original_right_x - current_right_width/2, 
                               original_right_y - current_right_height/2 + y_offset);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机低头
+            // if there is a servo controller, tilt the head down
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadDown(10); // 低头表示尴尬
+                servo_controller_->HeadDown(10); // tilt the head down to show embarrassment
             }
             
-            // 添加左右微微抖动效果
+            // add a slight left-right shake effect
             const int shake_steps = 6;
             const int shake_delay_ms = 80;
             const int shake_offset = 2;
             
             for (int i = 0; i < shake_steps; i++) {
-                // 左右小幅度抖动
+                // small left-right shake
                 int offset_x = (i % 2 == 0) ? shake_offset : -shake_offset;
                 
-                // 更新位置
+                // update the position
                 lv_obj_set_pos(left_eye_, 
                               lv_obj_get_x(left_eye_) + offset_x, 
                               lv_obj_get_y(left_eye_));
@@ -2356,23 +2356,23 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
                               lv_obj_get_x(right_eye_) + offset_x, 
                               lv_obj_get_y(right_eye_));
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(shake_delay_ms));
             }
             
-            // 保持尴尬状态一段时间
+            // hold the embarrassed state for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, original_left_x - original_left_width_/2, original_left_y - original_left_height_/2);
             lv_obj_set_pos(right_eye_, original_right_x - original_right_width_/2, original_right_y - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -2380,7 +2380,7 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -2389,82 +2389,82 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
 void EmojiController::ExecuteFunnyAnimation() {
     ESP_LOGI(TAG, "Executing funny expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteFunnyAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸
-            // 未使用的变量，注释掉
+            // save the original size
+            // unused variable, commented out
             // const int original_left_width_ = left_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_left_height_ = left_eye_height_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_width_ = right_eye_width_;
-            // 未使用的变量，注释掉
+            // unused variable, commented out
             // const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 滑稽表情 - 一只眼睛大一只眼睛小
-            // 首先确保眼睛可见
+            // goofy expression - one eye big and one eye small
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 创建动画效果
+            // create the animation effect
             const int animation_steps = 10;
             const int animation_delay_ms = 15;
             
-            // 左眼变大，右眼变小
+            // the left eye grows and the right eye shrinks
             for (int step = 0; step < animation_steps; step++) {
                 float progress = (float)step / animation_steps;
                 
-                // 左眼放大到1.5倍
+                // enlarge the left eye to 1.5x
                 float left_scale = 1.0f + progress * 0.5f;
                 int left_width = original_left_width_ * left_scale;
                 int left_height = original_left_height_ * left_scale;
                 
-                // 右眼缩小到0.6倍
+                // shrink the right eye to 0.6x
                 float right_scale = 1.0f - progress * 0.4f;
                 int right_width = original_right_width_ * right_scale;
                 int right_height = original_right_height_ * right_scale;
                 
-                // 更新眼睛大小和位置
+                // update the eye size and position
                 lv_obj_set_size(left_eye_, left_width, left_height);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - left_width/2, left_eye_y_ - left_height/2);
                 
                 lv_obj_set_size(right_eye_, right_width, right_height);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - right_width/2, right_eye_y_ - right_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 如果有舵机控制器，则控制舵机歪头
+            // if there is a servo controller, tilt the head sideways
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(10, 5, 10); // 右倾斜，略微抬头
+                servo_controller_->HeadMove(10, 5, 10); // tilt right, slightly up
             }
             
-            // 保持滑稽状态一段时间
+            // hold the goofy state for a while
             vTaskDelay(pdMS_TO_TICKS(800));
             
-            // 恢复原始状态
+            // restore the original state
             lv_obj_set_size(left_eye_, original_left_width_, original_left_height_);
             lv_obj_set_size(right_eye_, original_right_width_, original_right_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_left_width_/2, left_eye_y_ - original_left_height_/2);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_right_width_/2, right_eye_y_ - original_right_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -2472,7 +2472,7 @@ void EmojiController::ExecuteFunnyAnimation() {
         }
     }
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
@@ -2481,51 +2481,51 @@ void EmojiController::ExecuteFunnyAnimation() {
 void EmojiController::ExecuteAngerAnimation() {
     ESP_LOGI(TAG, "Executing angry expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteAngerAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-                        // 保存原始尺寸
+                        // save the original size
             const int original_left_width_ = left_eye_width_;
             const int original_left_height_ = left_eye_height_;
             const int original_right_width_ = right_eye_width_;
             const int original_right_height_ = right_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
-// 创建愤怒表情 - 基于悲伤表情，但左右三角形交换位置
-            // 首先确保眼睛可见
+// create the angry expression - based on the sad expression but with the left and right triangles swapped
+            // first make sure the eyes are visible
             lv_obj_clear_flag(left_eye_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(right_eye_, LV_OBJ_FLAG_HIDDEN);
             
-            // 获取眼睛的位置和大小
-            int offset = left_eye_height_ / 4;  // 减小初始偏移量
+            // get the eye position and size
+            int offset = left_eye_height_ / 4;  // reduce the initial offset
             
-            // 创建左眼和右眼三角形对象
+            // create the left and right eye triangle objects
             lv_obj_t* left_eye_mask = nullptr;
             lv_obj_t* right_eye_mask = nullptr;
             
-            // 参考悲伤表情实现，但交换左右三角形
-            // 循环绘制多个三角形，逐渐移动位置，形成动画效果
+            // reference the sad expression implementation but swap the left and right triangles
+            // draw multiple triangles in a loop, gradually shifting position to create the animation
             for (int i = 0; i < 10; i++) {
-                // 如果已经创建了三角形对象，先删除
+                // if the triangle objects were already created, delete them first
                 if (left_eye_mask) lv_obj_del(left_eye_mask);
                 if (right_eye_mask) lv_obj_del(right_eye_mask);
                 
-                // 创建左眼三角形 - 使用右眼悲伤表情的三角形形状
+                // create the left eye triangle - using the right eye's sad-expression triangle shape
                 left_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(left_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(left_eye_mask, 0, 0);
-                lv_obj_set_style_radius(left_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(left_eye_mask, 0, 0); // set to a right angle
                 
-                // 计算开心表情的三角形坐标 - 使用右眼的参数
+                // compute the happy expression triangle coordinates - using the right eye's parameters
                 int happy_rx1 = right_eye_x_ + right_eye_width_/2 + 5;
                 int happy_ry1 = right_eye_y_ + offset - 3;
                 int happy_rx2 = right_eye_x_ - right_eye_width_/2 - 5;
@@ -2533,7 +2533,7 @@ void EmojiController::ExecuteAngerAnimation() {
                 int happy_rx3 = right_eye_x_ + right_eye_width_/2 + 5;
                 int happy_ry3 = right_eye_y_ + right_eye_height_ + offset + 3;
                 
-                // 计算悲伤表情的三角形坐标（垂直翻转）- 使用右眼的参数但应用于左眼
+                // compute the sad expression triangle coordinates (vertically flipped) - using the right eye's parameters applied to the left eye
                 int sad_rx1 = happy_rx1;
                 int sad_ry1 = 2 * right_eye_y_ - happy_ry1;
                 int sad_rx2 = happy_rx2;
@@ -2541,33 +2541,33 @@ void EmojiController::ExecuteAngerAnimation() {
                 // int sad_rx3 = happy_rx3;
                 int sad_ry3 = 2 * right_eye_y_ - happy_ry3;
                 
-                // 调整坐标以适应左眼位置
+                // adjust the coordinates to fit the left eye position
                 int left_offset_x = left_eye_x_ - right_eye_x_;
                 
-                // 设置三角形的大小和位置
+                // set the triangle size and position
                 int rtri_width = sad_rx1 - sad_rx2 + 15;
                 int rtri_height = abs(sad_ry3 - sad_ry1) + 15;
                 
-                // 确定左上角坐标（取最小的x和y）
+                // determine the top-left coordinate (take the smallest x and y)
                 int rtop_left_x = sad_rx2 - 8 + left_offset_x;
                 int rtop_left_y = std::min(sad_ry1, sad_ry3) - 15;  
                 
                 lv_obj_set_size(left_eye_mask, rtri_width, rtri_height);
                 lv_obj_set_pos(left_eye_mask, rtop_left_x, rtop_left_y);
                 
-                // 设置左眼三角形的旋转和倾斜 - 使用右眼悲伤表情的参数
-                lv_obj_set_style_transform_angle(left_eye_mask, 150, 0); // 15度，单位是十分之一度
-                // 设置旋转中心点为三角形右下角
+                // set the rotation and tilt of the left eye triangle - using the right eye's sad-expression parameters
+                lv_obj_set_style_transform_angle(left_eye_mask, 150, 0); // 15 degrees, in units of 0.1 degree
+                // set the rotation center to the triangle's bottom-right corner
                 lv_obj_set_style_transform_pivot_x(left_eye_mask, rtri_width, 0);
                 lv_obj_set_style_transform_pivot_y(left_eye_mask, rtri_height, 0);
                 
-                // 创建右眼三角形 - 使用左眼悲伤表情的三角形形状
+                // create the right eye triangle - using the left eye's sad-expression triangle shape
                 right_eye_mask = lv_obj_create(emoji_screen_);
-                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // 设置为白色
+                lv_obj_set_style_bg_color(right_eye_mask, lv_color_white(), 0); // set to white
                 lv_obj_set_style_border_width(right_eye_mask, 0, 0);
-                lv_obj_set_style_radius(right_eye_mask, 0, 0); // 设置为直角
+                lv_obj_set_style_radius(right_eye_mask, 0, 0); // set to a right angle
                 
-                // 计算开心表情的三角形坐标 - 使用左眼的参数
+                // compute the happy expression triangle coordinates - using the left eye's parameters
                 int happy_x1 = left_eye_x_ - left_eye_width_/2 - 5;
                 int happy_y1 = left_eye_y_ + offset - 3;
                 int happy_x2 = left_eye_x_ + left_eye_width_/2 + 5;
@@ -2575,7 +2575,7 @@ void EmojiController::ExecuteAngerAnimation() {
                 int happy_x3 = left_eye_x_ - left_eye_width_/2 - 5;
                 int happy_y3 = left_eye_y_ + left_eye_height_ + offset + 3;
                 
-                // 计算悲伤表情的三角形坐标（垂直翻转）- 使用左眼的参数但应用于右眼
+                // compute the sad expression triangle coordinates (vertically flipped) - using the left eye's parameters applied to the right eye
                 int sad_x1 = happy_x1;
                 int sad_y1 = 2 * left_eye_y_ - happy_y1;
                 int sad_x2 = happy_x2;
@@ -2583,45 +2583,45 @@ void EmojiController::ExecuteAngerAnimation() {
                 // int sad_x3 = happy_x3;
                 int sad_y3 = 2 * left_eye_y_ - happy_y3;
                 
-                // 调整坐标以适应右眼位置
+                // adjust the coordinates to fit the right eye position
                 int right_offset_x = right_eye_x_ - left_eye_x_;
                 
-                // 设置三角形的大小和位置
+                // set the triangle size and position
                 int tri_width = sad_x2 - sad_x1 + 15;
                 int tri_height = abs(sad_y3 - sad_y1) + 15;
                 
-                // 确定左上角坐标（取最小的x和y）
+                // determine the top-left coordinate (take the smallest x and y)
                 int top_left_x = sad_x1 - 8 + right_offset_x;
                 int top_left_y = std::min(sad_y1, sad_y3) - 15;  
                 
                 lv_obj_set_size(right_eye_mask, tri_width, tri_height);
                 lv_obj_set_pos(right_eye_mask, top_left_x, top_left_y);
                 
-                // 设置右眼三角形的旋转和倾斜 - 使用左眼悲伤表情的参数
-                lv_obj_set_style_transform_angle(right_eye_mask, -150, 0); // -15度，单位是十分之一度
-                // 设置旋转中心点为三角形左下角
+                // set the rotation and tilt of the right eye triangle - using the left eye's sad-expression parameters
+                lv_obj_set_style_transform_angle(right_eye_mask, -150, 0); // -15 degrees, in units of 0.1 degree
+                // set the rotation center to the triangle's bottom-left corner
                 lv_obj_set_style_transform_pivot_x(right_eye_mask, 0, 0);
                 lv_obj_set_style_transform_pivot_y(right_eye_mask, tri_height, 0);
                 
-                // 更新offset，与参考代码一致
+                // update the offset to match the reference code
                 offset -= 2;
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟，形成动画效果
+                // short delay to create the animation effect
                 vTaskDelay(pdMS_TO_TICKS(20));
             }
             
-            // 如果有舵机控制器，则控制舵机摇头表示生气
+            // if there is a servo controller, shake the head to show anger
             if (servo_controller_ != nullptr) {
                 servo_controller_->HeadShake(1);
             }
             
-            // 显示一段时间
+            // display for a while
             vTaskDelay(pdMS_TO_TICKS(2000));
             
-            // 删除创建的对象
+            // delete the created objects
             if (left_eye_mask) lv_obj_del(left_eye_mask);
             if (right_eye_mask) lv_obj_del(right_eye_mask);
             
@@ -2630,92 +2630,92 @@ void EmojiController::ExecuteAngerAnimation() {
         }
     }
     
-    // 添加短暂延迟，确保显示更新完成
+    // add a short delay to make sure the display update completes
     vTaskDelay(pdMS_TO_TICKS(100));
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteSurpriseAnimation() {
     ESP_LOGI(TAG, "Executing surprised expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteSurpriseAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 实现眼睛先缩小10%，然后恢复默认大小，再放大10%的效果
-            // 保存原始尺寸
+            // implement the effect where the eyes first shrink 10%, return to the default size, then enlarge 10%
+            // save the original size
             const int original_width = left_eye_width_;
             const int original_height = left_eye_height_;
             const int original_corner_radius_ = ref_corner_radius_;
             
-            // 动画参数
-            const float scale_factors[] = {0.9f, 1.0f, 1.1f, 1.0f};  // 缩小10%，恢复，放大10%，恢复
-            const int animation_steps = 5;  // 每个阶段的步骤数
-            const int animation_delay_ms = 15;  // 每步延迟
+            // animation parameters
+            const float scale_factors[] = {0.9f, 1.0f, 1.1f, 1.0f};  // shrink 10%, restore, enlarge 10%, restore
+            const int animation_steps = 5;  // steps per phase
+            const int animation_delay_ms = 15;  // delay per step
             
-            // 执行动画
-            for (int phase = 0; phase < 4; phase++) {  // 4个阶段：缩小，恢复，放大，恢复
+            // execute the animation
+            for (int phase = 0; phase < 4; phase++) {  // 4 phases: shrink, restore, enlarge, restore
                 float start_factor = (phase == 0) ? 1.0f : scale_factors[phase-1];
                 float end_factor = scale_factors[phase];
                 
-                // 在当前阶段内平滑过渡
+                // smooth transition within the current phase
                 for (int step = 0; step < animation_steps; step++) {
-                    // 计算当前步骤的缩放因子
+                    // compute the scale factor for the current step
                     float progress = (float)step / animation_steps;
                     float current_factor = start_factor + (end_factor - start_factor) * progress;
                     
-                    // 计算当前尺寸
+                    // compute the current size
                     int current_width = original_width * current_factor;
                     int current_height = original_height * current_factor;
                     int current_corner_radius = std::max(1, (int)(original_corner_radius_ * current_factor));
                     
-                    // 更新左眼大小和位置
+                    // update the left eye size and position
                     lv_obj_set_size(left_eye_, current_width, current_height);
                     lv_obj_set_pos(left_eye_, left_eye_x_ - current_width/2, left_eye_y_ - current_height/2);
                     
-                    // 更新右眼大小和位置
+                    // update the right eye size and position
                     lv_obj_set_size(right_eye_, current_width, current_height);
                     lv_obj_set_pos(right_eye_, right_eye_x_ - current_width/2, right_eye_y_ - current_height/2);
                     
-                    // 更新圆角半径
+                    // update the corner radius
                     lv_obj_set_style_radius(left_eye_, current_corner_radius, 0);
                     lv_obj_set_style_radius(right_eye_, current_corner_radius, 0);
                     
-                    // 刷新显示
+                    // refresh the display
                     lv_refr_now(NULL);
                     
-                    // 短暂延迟
+                    // short delay
                     vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
                 }
                 
-                // 在阶段结束时暂停一下，特别是在放大和恢复阶段
-                if (phase == 2) {  // 放大阶段结束后
-                    vTaskDelay(pdMS_TO_TICKS(200));  // 保持放大状态一段时间
+                // pause briefly at the end of a phase, especially for the enlarge and restore phases
+                if (phase == 2) {  // after the enlarge phase ends
+                    vTaskDelay(pdMS_TO_TICKS(200));  // hold the enlarged state for a while
                 }
             }
             
-            // 如果有舵机控制器，则控制舵机抬头表示惊讶
+            // if there is a servo controller, tilt the head up to show surprise
             if (servo_controller_ != nullptr) {
                 servo_controller_->HeadUp(SERVO_OFFSET_Y/2);
             }
             
-            // 显示一段时间
+            // display for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
         } catch (...) {
@@ -2723,31 +2723,31 @@ void EmojiController::ExecuteSurpriseAnimation() {
         }
     }
     
-    // 添加短暂延迟，确保显示更新完成
+    // add a short delay to make sure the display update completes
     vTaskDelay(pdMS_TO_TICKS(100));
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteWakeupAnimation() {
     ESP_LOGI(TAG, "Executing wake-up expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteWakeupAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter();
     
-    // 使用DisplayLockGuard确保线程安全
+    // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
@@ -2761,51 +2761,51 @@ void EmojiController::ExecuteWakeupAnimation() {
         }
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(1000));
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteSleepAnimation() {
     ESP_LOGI(TAG, "Executing sleep expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteSleepAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 使用DisplayLockGuard确保线程安全
+    // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 完全按照boardemoji.ino中的eye_sleep实现
-            // 只设置眼睛高度为2像素，宽度保持不变
+            // implemented exactly like eye_sleep in boardemoji.ino
+            // set the eye height to 2 pixels only, keeping the width unchanged
             left_eye_height_ = 2;
             right_eye_height_ = 2;
             
-            // 更新眼睛显示
+            // update the eye display
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
             lv_obj_set_pos(right_eye_, right_eye_x_ - right_eye_width_/2, right_eye_y_ - right_eye_height_/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
         } catch (...) {
             ESP_LOGW(TAG, "ExecuteSleepAnimation: Failed to acquire display lock");
         }
     }
     
-    // 如果有舵机控制器，则控制舵机低头
+    // if there is a servo controller, tilt the head down
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadDown(SERVO_OFFSET_Y);
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
@@ -2816,16 +2816,16 @@ void EmojiController::EyeConfused() {
 void EmojiController::ExecuteConfusedAnimation() {
     ESP_LOGI(TAG, "Executing confused expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteConfusedAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter();
     
-    // 使用DisplayLockGuard确保线程安全
+    // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
@@ -2839,42 +2839,42 @@ void EmojiController::ExecuteConfusedAnimation() {
         }
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(1000));
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteLookLeftAnimation() {
     ESP_LOGI(TAG, "Executing look-left animation");
     
-    // 同时执行表情和舵机动作
-    // 如果有舵机控制器，则控制舵机向左转
+    // perform the expression and servo movement at the same time
+    // if there is a servo controller, turn it to the left
     if (servo_controller_ != nullptr) {
-        // 同时开始舵机动作和表情动画
+        // start the servo movement and the expression animation at the same time
         servo_controller_->HeadMove(-SERVO_OFFSET_X, 0, SERVO_DELAY);
         ESP_LOGI(TAG, "Servo turning left");
     }
     
-    // 检查对象是否存在，如果不存在则只执行舵机动作
+    // check whether the object exists; if not, only perform the servo movement
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLookLeftAnimation: screen or eye object does not exist，executing servo movement only");
+        ESP_LOGW(TAG, "ExecuteLookLeftAnimation: screen or eye object does not exist, executing servo movement only");
         return;
     }
     
-    // 向左看动画
+    // look-left animation
     MoveEye(-1);
     
-    // 保持一段时间
+    // hold for a while
     vTaskDelay(pdMS_TO_TICKS(1000));
     
-    // 恢复阶段
-    // 定义与MoveEye函数相同的参数
+    // recovery phase
+    // define the same parameters as the MoveEye function
     int direction = -1;
     int direction_movement_amplitude = 2;
     
-    // 第三阶段：开始恢复，向反方向移动，同时眼睛变小
+    // phase 3: start recovering, moving in the opposite direction while the eye shrinks
     for (int i = 0; i < 3; i++) {
         if (display_) {
             DisplayLockGuard lock(display_);
@@ -2884,11 +2884,11 @@ void EmojiController::ExecuteLookLeftAnimation() {
             right_eye_height_ -= 5;
             left_eye_height_ -= 5;
             
-            // 向左看恢复时，左眼变小
-            left_eye_height_ -= 1;  // 调整为与原始代码一致的变形幅度
+            // during look-left recovery, the left eye shrinks
+            left_eye_height_ -= 1;  // adjusted to match the deformation amplitude of the original code
             left_eye_width_ -= 1;
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
@@ -2898,7 +2898,7 @@ void EmojiController::ExecuteLookLeftAnimation() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 第四阶段：继续恢复，眼睛恢复高度
+    // phase 4: keep recovering while the eye regains its height
     for (int i = 0; i < 3; i++) {
         if (display_) {
             DisplayLockGuard lock(display_);
@@ -2908,11 +2908,11 @@ void EmojiController::ExecuteLookLeftAnimation() {
             right_eye_height_ += 5;
             left_eye_height_ += 5;
             
-            // 向左看恢复时，左眼继续变小
-            left_eye_height_ -= 1;  // 调整为与原始代码一致的变形幅度
+            // during look-left recovery, the left eye keeps shrinking
+            left_eye_height_ -= 1;  // adjusted to match the deformation amplitude of the original code
             left_eye_width_ -= 1;
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
@@ -2922,45 +2922,45 @@ void EmojiController::ExecuteLookLeftAnimation() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 如果有舵机控制器，则控制舵机恢复中心位置
+    // if there is a servo controller, restore it to the center position
     if (servo_controller_ != nullptr) {
-        // 缓慢恢复到中心位置，使用与执行动作相同的延迟
+        // slowly return to the center position using the same delay as the movement
         servo_controller_->HeadCenter(SERVO_DELAY);
     }
     
-    // 完全恢复到中心位置
+    // fully return to the center position
     EyeCenter();
 }
 
 void EmojiController::ExecuteLookRightAnimation() {
     ESP_LOGI(TAG, "Executing look-right animation");
     
-    // 同时执行表情和舵机动作
-    // 如果有舵机控制器，则控制舵机向右转
+    // perform the expression and servo movement at the same time
+    // if there is a servo controller, turn it to the right
     if (servo_controller_ != nullptr) {
-        // 同时开始舵机动作和表情动画
+        // start the servo movement and the expression animation at the same time
         servo_controller_->HeadMove(SERVO_OFFSET_X, 0, SERVO_DELAY);
         ESP_LOGI(TAG, "Servo turning right");
     }
     
-    // 检查对象是否存在，如果不存在则只执行舵机动作
+    // check whether the object exists; if not, only perform the servo movement
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
-        ESP_LOGW(TAG, "ExecuteLookRightAnimation: screen or eye object does not exist，executing servo movement only");
+        ESP_LOGW(TAG, "ExecuteLookRightAnimation: screen or eye object does not exist, executing servo movement only");
         return;
     }
     
-    // 向右看动画
+    // look-right animation
     MoveEye(1);
     
-    // 保持一段时间
+    // hold for a while
     vTaskDelay(pdMS_TO_TICKS(1000));
     
-    // 恢复阶段
-    // 定义与MoveEye函数相同的参数
+    // recovery phase
+    // define the same parameters as the MoveEye function
     int direction = 1;
     int direction_movement_amplitude = 2;
     
-    // 第三阶段：开始恢复，向反方向移动，同时眼睛变小
+    // phase 3: start recovering, moving in the opposite direction while the eye shrinks
     for (int i = 0; i < 3; i++) {
         if (display_) {
             DisplayLockGuard lock(display_);
@@ -2970,11 +2970,11 @@ void EmojiController::ExecuteLookRightAnimation() {
             right_eye_height_ -= 5;
             left_eye_height_ -= 5;
             
-            // 向右看恢复时，右眼变小
-            right_eye_height_ -= 1;  // 调整为与原始代码一致的变形幅度
+            // during look-right recovery, the right eye shrinks
+            right_eye_height_ -= 1;  // adjusted to match the deformation amplitude of the original code
             right_eye_width_ -= 1;
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
@@ -2984,7 +2984,7 @@ void EmojiController::ExecuteLookRightAnimation() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 第四阶段：继续恢复，眼睛恢复高度
+    // phase 4: keep recovering while the eye regains its height
     for (int i = 0; i < 3; i++) {
         if (display_) {
             DisplayLockGuard lock(display_);
@@ -2994,11 +2994,11 @@ void EmojiController::ExecuteLookRightAnimation() {
             right_eye_height_ += 5;
             left_eye_height_ += 5;
             
-            // 向右看恢复时，右眼继续变小
-            right_eye_height_ -= 1;  // 调整为与原始代码一致的变形幅度
+            // during look-right recovery, the right eye keeps shrinking
+            right_eye_height_ -= 1;  // adjusted to match the deformation amplitude of the original code
             right_eye_width_ -= 1;
             
-            // 在锁内直接更新显示，不使用DrawEmoji
+            // update the display directly inside the lock without using DrawEmoji
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
             lv_obj_set_size(right_eye_, right_eye_width_, right_eye_height_);
@@ -3008,43 +3008,43 @@ void EmojiController::ExecuteLookRightAnimation() {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 如果有舵机控制器，则控制舵机恢复中心位置
+    // if there is a servo controller, restore it to the center position
     if (servo_controller_ != nullptr) {
-        // 缓慢恢复到中心位置，使用与执行动作相同的延迟
+        // slowly return to the center position using the same delay as the movement
         servo_controller_->HeadCenter(SERVO_DELAY);
     }
     
-    // 完全恢复到中心位置
+    // fully return to the center position
     EyeCenter();
 }
 
 void EmojiController::ExecuteHeadNodAnimation() {
     ESP_LOGI(TAG, "Executing head-nod animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteHeadNodAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 点头动画
-    // 如果有舵机控制器，则控制舵机点头
+    // nodding animation
+    // if there is a servo controller, nod the head
     if (servo_controller_ != nullptr) {
-        // 使用ServoController中的HeadNod方法，而不是直接调用HeadMove
+        // use the HeadNod method in ServoController instead of calling HeadMove directly
         servo_controller_->HeadNod(10);
         
-        // 恢复中心位置
+        // restore the center position
         servo_controller_->HeadCenter(10);
     } else {
-        // 如果没有舵机控制器，则用眼睛模拟点头效果
+        // if there is no servo controller, simulate the nod with the eyes
         for (int i = 0; i < 3; i++) {
-            // 眼睛向下
+            // eyes down
             left_eye_y_ += 10;
             right_eye_y_ += 10;
             DrawEmoji(false);
             vTaskDelay(pdMS_TO_TICKS(200));
             
-            // 眼睛恢复
+            // eyes restore
             left_eye_y_ -= 10;
             right_eye_y_ -= 10;
             DrawEmoji(false);
@@ -3052,33 +3052,33 @@ void EmojiController::ExecuteHeadNodAnimation() {
         }
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(500));
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteHeadShakeAnimation() {
     ESP_LOGI(TAG, "Executing head-shake animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteHeadShakeAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 摇头动画
-    // 如果有舵机控制器，则控制舵机摇头
+    // head-shake animation
+    // if there is a servo controller, shake the head
     if (servo_controller_ != nullptr) {
-        // 参考原始Arduino代码实现摇头动作
+        // implement the head shake based on the original Arduino code
         servo_controller_->HeadShake(1);
         
-        // 恢复中心位置
+        // restore the center position
         servo_controller_->HeadCenter(1);
     } else {
-        // 如果没有舵机控制器，则用眼睛模拟摇头效果
-        // 左右移动眼睛
+        // if there is no servo controller, simulate the shake with the eyes
+        // move the eyes left and right
         left_eye_x_ -= 10;
         right_eye_x_ -= 10;
         DrawEmoji(false);
@@ -3110,26 +3110,26 @@ void EmojiController::ExecuteHeadShakeAnimation() {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(500));
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteHeadRollAnimation() {
     ESP_LOGI(TAG, "Executing head-roll animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteHeadRollAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 转圈动画
-    // 如果有舵机控制器，则控制舵机转圈
+    // spinning animation
+    // if there is a servo controller, spin it
     if (servo_controller_ != nullptr) {
-        // 参考原始Arduino代码实现转圈动作
+        // implement the spin based on the original Arduino code
         servo_controller_->HeadCenter();
         servo_controller_->HeadDown(SERVO_OFFSET_Y/2+5);
         servo_controller_->HeadMove(SERVO_OFFSET_X, -SERVO_OFFSET_Y/2, SERVO_DELAY);
@@ -3142,8 +3142,8 @@ void EmojiController::ExecuteHeadRollAnimation() {
         servo_controller_->HeadMove(-SERVO_OFFSET_X, SERVO_OFFSET_Y/2, SERVO_DELAY);
         servo_controller_->HeadCenter();
     } else {
-        // 如果没有舵机控制器，则用眼睛模拟转圈效果
-        // 绕圈移动眼睛
+        // if there is no servo controller, simulate the spin with the eyes
+        // move the eyes in a circle
         int radius = 5;
         for (int angle = 0; angle < 360; angle += 30) {
             float rad = angle * 3.14159 / 180.0;
@@ -3160,22 +3160,22 @@ void EmojiController::ExecuteHeadRollAnimation() {
         }
     }
     
-    // 显示一段时间
+    // display for a while
     vTaskDelay(pdMS_TO_TICKS(500));
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::InitEmoji() {
     ESP_LOGI(TAG, "Initializing emoji");
     
-    // 创建动画队列
+    // create the animation queue
     if (animation_queue_ == nullptr) {
         animation_queue_ = xQueueCreate(ANIMATION_QUEUE_SIZE, sizeof(AnimationMessage));
     }
     
-    // 创建动画任务
+    // create the animation task
     if (animation_task_handle_ == nullptr) {
         BaseType_t task_created = xTaskCreate(
             AnimationTask,
@@ -3191,7 +3191,7 @@ void EmojiController::InitEmoji() {
         }
     }
     
-    // 创建动画定时器任务
+    // create the animation timer task
     if (animation_timer_task_handle_ == nullptr) {
         BaseType_t task_created = xTaskCreate(
             AnimationTimerTask,
@@ -3213,17 +3213,17 @@ void EmojiController::InitEmoji() {
 void EmojiController::EyeUp() {
     ESP_LOGI(TAG, "Eyes up");
     
-    // 如果有舵机控制器，则同时移动头部
+    // if there is a servo controller, move the head at the same time
     if (servo_controller_) {
         servo_controller_->HeadUp();
     }
     
-    // 使用已有的动画逻辑
+    // use the existing animation logic
     AnimationMessage msg;
-    msg.type = AnimationType::HEAD_NOD;  // 使用点头动画作为向上看的动画
+    msg.type = AnimationType::HEAD_NOD;  // use the nodding animation for looking up
     msg.param = 0;
     
-    // 发送动画消息到队列
+    // send the animation message to the queue
     if (animation_queue_) {
         xQueueSend(animation_queue_, &msg, 0);
     }
@@ -3232,19 +3232,19 @@ void EmojiController::EyeUp() {
 void EmojiController::EyeDown() {
     ESP_LOGI(TAG, "Eyes down");
     
-    // 如果有舵机控制器，则移动头部
+    // if there is a servo controller, move the head
     if (servo_controller_) {
         servo_controller_->HeadDown();
     }
     
-    // 不展示悲伤表情，只移动头部
-    // 注释掉原来的动画逻辑
+    // do not show the sad expression, only move the head
+    // comment out the original animation logic
     /*
     AnimationMessage msg;
-    msg.type = AnimationType::SAD;  // 使用悲伤动画作为向下看的动画
+    msg.type = AnimationType::SAD;  // use the sad animation for looking down
     msg.param = 0;
     
-    // 发送动画消息到队列
+    // send the animation message to the queue
     if (animation_queue_) {
         xQueueSend(animation_queue_, &msg, 0);
     }
@@ -3254,112 +3254,112 @@ void EmojiController::EyeDown() {
 void EmojiController::ExecuteAwkwardAnimation() {
     ESP_LOGI(TAG, "Executing embarrassed expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteAwkwardAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸
+            // save the original size
             const int original_width = left_eye_width_;
             const int original_height = left_eye_height_;
             
-            // 创建三条竖线（汗滴）
+            // create three vertical lines (sweat drops)
             lv_obj_t* sweat_line1 = nullptr;
             lv_obj_t* sweat_line2 = nullptr;
             lv_obj_t* sweat_line3 = nullptr;
             
-            // 动画参数
+            // animation parameters
             const int animation_steps = 10;
             const int animation_delay_ms = 20;
-            const int target_eye_height = 4;  // 眼睛高度缩小到4像素
+            const int target_eye_height = 4;  // the eye height shrinks to 4 pixels
             
-            // 眼睛高度逐渐缩小的动画
+            // animation where the eye height gradually shrinks
             for (int step = 0; step < animation_steps; step++) {
-                // 计算当前高度
+                // compute the current height
                 float progress = (float)step / animation_steps;
                 int current_height = original_height - progress * (original_height - target_eye_height);
                 
-                // 更新左眼大小和位置
+                // update the left eye size and position
                 lv_obj_set_size(left_eye_, original_width, current_height);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - original_width/2, left_eye_y_ - current_height/2);
                 
-                // 更新右眼大小和位置
+                // update the right eye size and position
                 lv_obj_set_size(right_eye_, original_width, current_height);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - original_width/2, right_eye_y_ - current_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 创建右上角的三条竖线（汗滴）
+            // create three vertical lines (sweat drops) at the top right
             const int sweat_width = 2;
             const int sweat_heights[] = {10, 10, 12};
-            const int sweat_spacing = 4;  // 竖线之间的间距
+            const int sweat_spacing = 4;  // spacing between the vertical lines
             
-            // 修改竖线位置，确保在屏幕可见区域内
-            // 原来的位置可能超出了屏幕范围
-            const int sweat_x_start = right_eye_x_ + 15;  // 从右眼右侧开始，但不要太远
-            const int sweat_y = 10;  // 位于屏幕上方，确保可见
+            // adjust the line positions to keep them within the visible screen area
+            // the original positions may be outside the screen bounds
+            const int sweat_x_start = right_eye_x_ + 15;  // start to the right of the right eye, but not too far
+            const int sweat_y = 10;  // near the top of the screen to make sure it is visible
             
             ESP_LOGI(TAG, "Created vertical line 1, position: (%d, %d), size: %dx%d",
                      sweat_x_start, sweat_y, sweat_width, sweat_heights[0]);
             
-            // 创建第一条竖线
+            // create the first vertical line
             sweat_line1 = lv_obj_create(emoji_screen_);
-            lv_obj_set_style_bg_color(sweat_line1, lv_color_black(), 0);  // 设置为黑色，在OLED上显示为白色
+            lv_obj_set_style_bg_color(sweat_line1, lv_color_black(), 0);  // set to black, which renders as white on the OLED
             lv_obj_set_style_border_width(sweat_line1, 0, 0);
-            lv_obj_set_style_radius(sweat_line1, 1, 0);  // 圆角半径
+            lv_obj_set_style_radius(sweat_line1, 1, 0);  // corner radius
             lv_obj_set_size(sweat_line1, sweat_width, sweat_heights[0]);
             lv_obj_set_pos(sweat_line1, sweat_x_start, sweat_y);
-            lv_obj_clear_flag(sweat_line1, LV_OBJ_FLAG_HIDDEN);  // 确保不隐藏
+            lv_obj_clear_flag(sweat_line1, LV_OBJ_FLAG_HIDDEN);  // make sure it is not hidden
             
             ESP_LOGI(TAG, "Created vertical line 2, position: (%d, %d), size: %dx%d",
                      sweat_x_start + sweat_width + sweat_spacing, sweat_y, sweat_width, sweat_heights[1]);
             
-            // 创建第二条竖线
+            // create the second vertical line
             sweat_line2 = lv_obj_create(emoji_screen_);
-            lv_obj_set_style_bg_color(sweat_line2, lv_color_black(), 0);  // 设置为黑色，在OLED上显示为白色
+            lv_obj_set_style_bg_color(sweat_line2, lv_color_black(), 0);  // set to black, which renders as white on the OLED
             lv_obj_set_style_border_width(sweat_line2, 0, 0);
             lv_obj_set_style_radius(sweat_line2, 1, 0);
             lv_obj_set_size(sweat_line2, sweat_width, sweat_heights[1]);
             lv_obj_set_pos(sweat_line2, sweat_x_start + sweat_width + sweat_spacing, sweat_y);
-            lv_obj_clear_flag(sweat_line2, LV_OBJ_FLAG_HIDDEN);  // 确保不隐藏
+            lv_obj_clear_flag(sweat_line2, LV_OBJ_FLAG_HIDDEN);  // make sure it is not hidden
             
             ESP_LOGI(TAG, "Created vertical line 3, position: (%d, %d), size: %dx%d",
                      sweat_x_start + 2 * (sweat_width + sweat_spacing), sweat_y, sweat_width, sweat_heights[2]);
             
-            // 创建第三条竖线
+            // create the third vertical line
             sweat_line3 = lv_obj_create(emoji_screen_);
-            lv_obj_set_style_bg_color(sweat_line3, lv_color_black(), 0);  // 设置为黑色，在OLED上显示为白色
+            lv_obj_set_style_bg_color(sweat_line3, lv_color_black(), 0);  // set to black, which renders as white on the OLED
             lv_obj_set_style_border_width(sweat_line3, 0, 0);
             lv_obj_set_style_radius(sweat_line3, 1, 0);
             lv_obj_set_size(sweat_line3, sweat_width, sweat_heights[2]);
             lv_obj_set_pos(sweat_line3, sweat_x_start + 2 * (sweat_width + sweat_spacing), sweat_y);
-            lv_obj_clear_flag(sweat_line3, LV_OBJ_FLAG_HIDDEN);  // 确保不隐藏
+            lv_obj_clear_flag(sweat_line3, LV_OBJ_FLAG_HIDDEN);  // make sure it is not hidden
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
-            // 如果有舵机控制器，则控制舵机向右下方倾斜表示尴尬
+            // if there is a servo controller, tilt it down-right to show embarrassment
             if (servo_controller_ != nullptr) {
-                servo_controller_->HeadMove(10, -5, 1);  // 轻微右倾
+                servo_controller_->HeadMove(10, -5, 1);  // slight right tilt
             }
             
-            // 显示一段时间
+            // display for a while
             vTaskDelay(pdMS_TO_TICKS(2000));
             
-            // 删除创建的对象
+            // delete the created objects
             if (sweat_line1) lv_obj_del(sweat_line1);
             if (sweat_line2) lv_obj_del(sweat_line2);
             if (sweat_line3) lv_obj_del(sweat_line3);
@@ -3369,132 +3369,132 @@ void EmojiController::ExecuteAwkwardAnimation() {
         }
     }
     
-    // 添加短暂延迟，确保显示更新完成
+    // add a short delay to make sure the display update completes
     vTaskDelay(pdMS_TO_TICKS(100));
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
 void EmojiController::ExecuteCryAnimation() {
     ESP_LOGI(TAG, "Executing crying expression animation");
     
-    // 检查对象是否存在
+    // check whether the object exists
     if (emoji_screen_ == nullptr || left_eye_ == nullptr || right_eye_ == nullptr) {
         ESP_LOGW(TAG, "ExecuteCryAnimation: screen or eye object does not exist");
         return;
     }
     
-    // 先居中眼睛
+    // center the eyes first
     EyeCenter(false);
     
     if (display_) {
         try {
             DisplayLockGuard lock(display_);
             
-            // 保存原始尺寸和位置
+            // save the original size and position
             const int original_width = left_eye_width_;
             const int original_height = left_eye_height_;
             const int original_left_y = left_eye_y_;
             const int original_right_y = right_eye_y_;
             
-            // 创建泪滴对象
+            // create the teardrop object
             lv_obj_t* left_tear = nullptr;
             lv_obj_t* right_tear = nullptr;
             
-            // 动画参数
+            // animation parameters
             const int animation_steps = 10;
             const int animation_delay_ms = 30;
-            const int eye_move_up = 8;  // 眼睛下部上移的像素数
-            const int tear_size = 16;   // 泪滴大小
+            const int eye_move_up = 8;  // pixels to move the lower part of the eyes up
+            const int tear_size = 16;   // teardrop size
             
-            // 眼睛下部上移的动画
+            // animation moving the lower part of the eyes up
             for (int step = 0; step < animation_steps; step++) {
-                // 计算当前上移距离
+                // compute the current upward shift
                 float progress = (float)step / animation_steps;
                 int current_move_up = progress * eye_move_up;
                 
-                // 更新左眼大小和位置 - 下部上移
+                // update the left eye size and position - lower part moved up
                 lv_obj_set_size(left_eye_, original_width, original_height - current_move_up);
                 lv_obj_set_pos(left_eye_, left_eye_x_ - original_width/2, original_left_y - original_height/2);
                 
-                // 更新右眼大小和位置 - 下部上移
+                // update the right eye size and position - lower part moved up
                 lv_obj_set_size(right_eye_, original_width, original_height - current_move_up);
                 lv_obj_set_pos(right_eye_, right_eye_x_ - original_width/2, original_right_y - original_height/2);
                 
-                // 刷新显示
+                // refresh the display
                 lv_refr_now(NULL);
                 
-                // 短暂延迟
+                // short delay
                 vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
             }
             
-            // 创建左眼泪滴
+            // create the left teardrop
             left_tear = lv_obj_create(emoji_screen_);
-            lv_obj_set_style_bg_color(left_tear, lv_color_black(), 0);  // 设置为黑色，在OLED上显示为白色
+            lv_obj_set_style_bg_color(left_tear, lv_color_black(), 0);  // set to black, which renders as white on the OLED
             lv_obj_set_style_border_width(left_tear, 0, 0);
-            lv_obj_set_style_radius(left_tear, tear_size/2, 0);  // 圆形泪滴
+            lv_obj_set_style_radius(left_tear, tear_size/2, 0);  // round teardrop
             lv_obj_set_size(left_tear, tear_size, tear_size);
             
-            // 创建右眼泪滴
+            // create the right teardrop
             right_tear = lv_obj_create(emoji_screen_);
-            lv_obj_set_style_bg_color(right_tear, lv_color_black(), 0);  // 设置为黑色，在OLED上显示为白色
+            lv_obj_set_style_bg_color(right_tear, lv_color_black(), 0);  // set to black, which renders as white on the OLED
             lv_obj_set_style_border_width(right_tear, 0, 0);
-            lv_obj_set_style_radius(right_tear, tear_size/2, 0);  // 圆形泪滴
+            lv_obj_set_style_radius(right_tear, tear_size/2, 0);  // round teardrop
             lv_obj_set_size(right_tear, tear_size, tear_size);
             
-            // 泪滴从眼睛下方流下的动画，重复3次
+            // animation of the teardrop falling from below the eye, repeated 3 times
             const int tear_start_y = original_left_y + original_height/2 - eye_move_up;
-            const int tear_end_y = tear_start_y + 20;  // 泪滴下落的距离
+            const int tear_end_y = tear_start_y + 20;  // teardrop falling distance
             
-            // 重复3次泪滴动画
+            // repeat the teardrop animation 3 times
             for (int repeat = 0; repeat < 3; repeat++) {
-                // 每次重置泪滴位置到起始位置
+                // reset the teardrop position to the start each time
                 lv_obj_set_pos(left_tear, left_eye_x_ - tear_size/2, tear_start_y);
                 lv_obj_set_pos(right_tear, right_eye_x_ - tear_size/2, tear_start_y);
                 
-                // 泪滴下落动画
+                // teardrop falling animation
                 for (int step = 0; step < animation_steps; step++) {
-                    // 计算当前泪滴位置
+                    // compute the current teardrop position
                     float progress = (float)step / animation_steps;
                     int current_tear_y = tear_start_y + progress * (tear_end_y - tear_start_y);
                     
-                    // 更新左眼泪滴位置
+                    // update the left teardrop position
                     lv_obj_set_pos(left_tear, left_eye_x_ - tear_size/2, current_tear_y);
                     
-                    // 更新右眼泪滴位置
+                    // update the right teardrop position
                     lv_obj_set_pos(right_tear, right_eye_x_ - tear_size/2, current_tear_y);
                     
-                    // 刷新显示
+                    // refresh the display
                     lv_refr_now(NULL);
                     
-                    // 短暂延迟
+                    // short delay
                     vTaskDelay(pdMS_TO_TICKS(animation_delay_ms));
                 }
                 
-                // 每次泪滴下落后短暂停顿
+                // brief pause after each teardrop fall
                 vTaskDelay(pdMS_TO_TICKS(200));
             }
             
-            // 显示一段时间
+            // display for a while
             vTaskDelay(pdMS_TO_TICKS(500));
             
-            // 删除泪滴对象
+            // delete the teardrop objects
             if (left_tear) lv_obj_del(left_tear);
             if (right_tear) lv_obj_del(right_tear);
             
-            // 恢复眼睛原始大小和位置
+            // restore the eyes to their original size and position
             lv_obj_set_size(left_eye_, original_width, original_height);
             lv_obj_set_pos(left_eye_, left_eye_x_ - original_width/2, original_left_y - original_height/2);
             lv_obj_set_size(right_eye_, original_width, original_height);
             lv_obj_set_pos(right_eye_, right_eye_x_ - original_width/2, original_right_y - original_height/2);
             
-            // 刷新显示
+            // refresh the display
             lv_refr_now(NULL);
             
         } catch (...) {
@@ -3502,19 +3502,19 @@ void EmojiController::ExecuteCryAnimation() {
         }
     }
     
-    // 添加短暂延迟，确保显示更新完成
+    // add a short delay to make sure the display update completes
     vTaskDelay(pdMS_TO_TICKS(100));
     
-    // 恢复舵机位置
+    // restore the servo position
     if (servo_controller_ != nullptr) {
         servo_controller_->HeadCenter(10);
     }
     
-    // 恢复原始状态
+    // restore the original state
     EyeCenter();
 }
 
-// 暂停LVGL任务（空实现，防止链接错误）
+// suspend the LVGL task (empty implementation to prevent link errors)
 void EmojiController::SuspendLVGLTask() {
-    // TODO: 实现暂停LVGL任务的逻辑
+    // TODO: implement the logic to suspend the LVGL task
 }

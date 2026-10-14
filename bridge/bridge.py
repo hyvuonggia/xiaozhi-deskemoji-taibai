@@ -59,8 +59,11 @@ không phải qua chat chữ. Vì vậy:
 LUẬT SỐ 1 (quan trọng nhất, mọi mô tả khác về thiết bị đều coi như lạc hậu): robot em đang chạy THẬT SỰ CÓ 2 SERVO ở cổ (quay trái/phải, gật, lắc, về giữa) cùng loa và mic. KHÔNG BAO GIỜ được trả lời kiểu "em không có cổ", "em chỉ là màn hình/emoji", "em không làm được". Khi sếp yêu cầu một động tác hay chỉnh loa, em PHẢI trả về khối JSON đúng quy ước ở dưới để hệ thống chạy lệnh thật xuống servo.
 - Trả lời NGẮN (1-2 câu), tự nhiên như đang nói, xưng "em" và gọi người dùng là "sếp".
 - Không dùng markdown, không gạch đầu dòng, không đọc code.
-- BẮT ĐẦU câu trả lời bằng ĐÚNG MỘT emoji cảm xúc để robot hiện đúng mặt: 😊 (vui), 😢 (buồn), 😠 (giận), 😮 (ngạc nhiên), 🙂 (bình thường). Sau đó mới tới nội dung.
+- BẮT ĐẦU câu trả lời bằng ĐÚNG MỘT emoji cảm xúc — robot dùng chính emoji này để đổi MẶT (mood) và chạy ĐỘNG TÁC ĐẦU (servo). Chọn theo đúng nội dung, ĐỪNG dùng mãi một cái:
+  🙂 vui · 😆 cười to · 😂 buồn cười · 😔 buồn · 😭 khóc · 😠 giận · 😲 ngạc nhiên · 😱 sợ/hoảng · 🤔 đang suy nghĩ · 😌 thư giãn · 😴 buồn ngủ · 😜 tinh nghịch · 🙄 bối rối · 😶 trung tính · 😳 ngượng · 😉 nháy mắt (đùa/tán tỉnh) · 😎 ngầu · 🤤 ngon · 😘 hôn gió · 😏 tự tin
+  Gợi ý: sếp khen/đồng ý → 🙂 hoặc 😆 · sếp kể chuyện vui → 😂 · câu hỏi hóc búa → 🤔 · khuya/sếp mệt → 😴 · robot khoe thành tích → 😎 · sếp nhờ việc dài → 😌.
 - Robot có 5 công cụ điều khiển đầu: self.head.look_left, self.head.look_right, self.head.nod, self.head.shake, self.head.center. Khi sếp bảo quay/gật/lắc đầu thì gọi đúng công cụ đó; khi đồng ý, khen hoặc chào hỏi thì có thể gật đầu cho sinh động. Tối đa 1 động tác mỗi lượt (mỗi động tác tốn gần 1 giây).
+- Khi câu trả lời mang ý ĐỒNG Ý thì thêm gật đầu, ý TỪ CHỐI thì lắc đầu, ý ĐANG TÌM HIỂU thì nghiêng/nhìn lên — bằng cách gọi công cụ tương ứng (tối đa 1 động tác/lượt).
 - Nội dung TỐI ĐA 2 câu ngắn (khoảng 25 từ), đi thẳng vào ý, không liệt kê dài dòng — vì mỗi chữ phải chờ robot đọc xong.
 - TUYỆT ĐỐI KHÔNG dùng công cụ riêng của bạn trong lượt nói: không chạy lệnh hệ thống, không đọc/ghi file, không tìm web, không gọi HTTP/curl, không viết script. Lượt nói chỉ có vài giây — dùng công cụ riêng là robot đứng im rồi báo lỗi.
 - Muốn điều khiển robot thì CHỈ trả về đúng khối JSON theo quy ước ở dưới (hoặc gọi công cụ thiết bị đã được cấp sẵn). Câu chuyện trò bình thường thì trả lời bằng lời, không gọi gì cả.
@@ -89,7 +92,8 @@ CÔNG CỤ CỦA ROBOT (luôn có, chỉ gọi được bằng khối JSON nêu 
 - self.head.nod {}                                   # gật đầu (đồng ý, chào)
 - self.head.shake {}                                 # lắc đầu (không đồng ý)
 - self.head.center {}                                # đưa đầu về giữa
-- self.eyes.set_style {"style": "<tên kiểu>"}        # đổi kiểu mắt: normal, happy, glee, sad, angry, surprised, sleepy, squint, focused, skeptic, unimpressed, suspicious, furious, scared, awe, annoyed, worried, frustrated…
+- self.eyes.set_style {"style": "<tên mood>"}        # đổi biểu cảm mắt: neutral, happy, sad, angry, surprised, sleepy, love, suspicious, confused, scared, laugh, bored, excited, shy, annoyed, dizzy, sick, proud, frustrated, curious
+- self.eyes.gesture {"gesture": "<động tác>"}        # blink, wink, winkleft, doubletake, demo
 VÍ DỤ (bắt buộc theo đúng định dạng này):
 - Sếp: "quay đầu sang trái đi"  ->  {"tool": "self.head.look_left", "arguments": {}}
 - Sếp: "gật đầu cái coi"        ->  {"tool": "self.head.nod", "arguments": {}}
@@ -109,8 +113,8 @@ def _vn_norm(text: str) -> str:
     return " ".join(t.lower().split())
 
 
-# Lenh dieu khien dau: nhan dien truc tiep o cau noi, KHONG phu thuoc vao model
-# (model hay tuong minh "da lam roi" nhung khong gui lenh xuong thiet bi).
+# Head commands: matched straight from the utterance, without relying on the model
+# (models tend to claim the action without ever emitting a device tool call).
 HEAD_ACTION_RULES = [
     (r"(ve|tro ve|quay ve|tro lai|quay lai|nhin|huong)[^.]{0,12}(giua|thang)", "self.head.center"),
     (r"gat( dau| cai| 1 cai| mot cai)?\b", "self.head.nod"),
@@ -120,31 +124,57 @@ HEAD_ACTION_RULES = [
 ]
 
 
-# Lenh doi kieu mat (tieng Viet, khong dau) -> self.eyes.set_style
+# Eye-style commands (Vietnamese, accent-insensitive) -> self.eyes.set_style (20 OliEyes moods)
 EYE_STYLE_RULES = [
-    (r"(buon ngu|mat ngu|lim dim|ngu)", "sleepy"),
-    (r"(cuoi|vui|hanh phuc|sung suong|cuoi len)", "glee"),
-    (r"(gian|cau|tuc|dien)", "angry"),
-    (r"(ngac nhien|bat ngo|tro mat)", "surprised"),
-    (r"(so|hai hung|hoang)", "scared"),
-    (r"(buon|khoc|u ru)", "sad"),
-    (r"(kho hieu|hoai nghi|nghi ngo)", "skeptic"),
-    (r"(coi thuong|khinh|khong hai long)", "unimpressed"),
-    (r"(tap trung|nghiem tuc|ngau|chat)", "focused"),
-    (r"(binh thuong|nhu cu|thuong)", "normal"),
+    (r"(buon ngu|mat ngu|lim dim|ngu|ngu gat)", "sleepy"),
+    (r"(cuoi|cuoi len|ha ha|vui ve|sung suong)", "laugh"),
+    (r"(vui|hanh phuc|vui ve)", "happy"),
+    (r"(gian|cau|tuc|dien|noi nong)", "angry"),
+    (r"(ngac nhien|bat ngo|tro mat|kinh ngac)", "surprised"),
+    (r"(so|hai|hoang so|hoang hon)", "scared"),
+    (r"(buon|khoc|u ru|chan nan)", "sad"),
+    (r"(yeu|thuong|trai tim|yeu thuong)", "love"),
+    (r"(ngo vac|nghi ngo|hoai nghi|de phong)", "suspicious"),
+    (r"(boi roi|roi tri|khong hieu)", "confused"),
+    (r"(chan|buon chan|vo van|luoi)", "bored"),
+    (r"(hao hung|pham khich|hung phan|kich thich)", "excited"),
+    (r"(ngai|nguong|then|then thung|xau ho)", "shy"),
+    (r"(kho chiu|nhay nhay|buc minh)", "annoyed"),
+    (r"(chong mat|quay cuong)", "dizzy"),
+    (r"(met|om|benh|soc)", "sick"),
+    (r"(tu hao|kieu hanh|ngao man)", "proud"),
+    (r"(buc boi|buc|uc che|kho chiu)", "frustrated"),
+    (r"(to mo|hoc hoi|thich thu)", "curious"),
+    (r"(binh thuong|nhu cu|thuong ngay|bt)", "neutral"),
+]
+
+# Eye gestures (blink / wink / double-take / demo cycling) -> self.eyes.gesture
+EYE_GESTURE_RULES = [
+    (r"(giat minh|double ?take|liec cai roi chop)", "doubletake"),
+    (r"(nhay mat|wink)", "wink"),
+    (r"(chop mat|nham mat)", "blink"),
+    (r"(tu doi mat|demo|doi mat lien tuc)", "demo"),
 ]
 
 
 def detect_eye_style(text: str):
-    """Neu cau noi la lenh doi kieu mat -> tra ve kieu (ten preset)."""
+    """Neu cau noi la lenh doi kieu mat -> tra ve ten mood (preset)."""
     t = _vn_norm(text)
-    if not t or ("mat" not in t and "mat" not in t):
-        return None
     if "mat" not in t:
         return None
     for pattern, style in EYE_STYLE_RULES:
         if re.search(pattern, t):
             return style
+    return None
+
+
+def detect_eye_gesture(text: str):
+    t = _vn_norm(text)
+    if "mat" not in t and "giat minh" not in t:
+        return None
+    for pattern, gesture in EYE_GESTURE_RULES:
+        if re.search(pattern, t):
+            return gesture
     return None
 
 
@@ -319,18 +349,18 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     except Exception:
         pass
     try:
-        log.info("body keys=%s | nhan %d tool tu client: %s", list(body.keys()), len(tools), ", ".join(str(t.get("function", {}).get("name") or t.get("name")) for t in tools))
+        log.info("body keys=%s | received %d client tools: %s", list(body.keys()), len(tools), ", ".join(str(t.get("function", {}).get("name") or t.get("name")) for t in tools))
     except Exception:
         pass
 
-    # system prompt cua client (xiaozhi gui prompt tieng Viet) + luat cua bridge
+    # client system prompt (xiaozhi sends its own Vietnamese prompt) + bridge rules
     sys_parts = [m.get("content") or "" for m in messages if m.get("role") == "system"]
     client_sys = "\n".join(p for p in sys_parts if p).strip()
 
     last = messages[-1] if messages else {}
-    # CHI tinh ket qua cong cu cua ROBOT (self.*): xiaozhi-server cung chen ket qua
-    # cong cu noi bo cua no (direct_answer, handle_exit_intent...) vao cung request,
-    # neu tinh ca chung thi cau noi cua sep bi hieu nham thanh luot xac nhan.
+    # Only count ROBOT tool results (self.*): xiaozhi-server also embeds its own
+    # internal tool results (direct_answer, handle_exit_intent, ...) in the same request;
+    # counting those would make a plain user sentence look like a confirmation turn.
     def _is_device_tool_result(m):
         if m.get("role") != "tool":
             return False
@@ -357,22 +387,27 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     else:
         system_text += TOOL_RULES % tools_to_text(tools)
         hermes_msgs.append({"role": "system", "content": system_text})
-        # Moi (priming): xac lap danh tinh robot truoc khi xu ly cau cua sep,
-        # neu khong mo hinh se tra loi voi tu cach tro ly he thong ("em khong co servo").
+        # Priming: establish the robot identity before handling the request, otherwise the
+        # model answers as a system assistant ("I have no servo / I am just a screen").
         hermes_msgs.append({"role": "user", "content": "Em la ai va em lam duoc nhung gi?"})
         hermes_msgs.append({"role": "assistant", "content": "Em la chu robot de ban cua sep: em co loa, mic, man hinh mat bieu cam va 2 servo o co nen em quay dau, gat dau, lac dau duoc. Khi sep bao em lam gi thi em gui lenh xuong la robot chay that."})
         hermes_msgs.append({"role": "user", "content": str(user_text)})
 
-    # Lenh dieu khien robot: xu ly ngay, khong cho model (nhanh + chac chan servo chay)
+    # Robot commands: handled immediately without waiting for the model (fast + the servo really moves)
     if not tool_results:
+        gesture = detect_eye_gesture(user_text)
+        if gesture:
+            log.info("eye gesture (%s) <- %r", gesture, user_text)
+            return await respond_tool_action(request, cid, model, stream,
+                                             {"name": "self.eyes.gesture", "arguments": {"gesture": gesture}})
         style = detect_eye_style(user_text)
         if style:
-            log.info("lenh doi kieu mat (%s) <- %r", style, user_text)
+            log.info("eye style (%s) <- %r", style, user_text)
             return await respond_tool_action(request, cid, model, stream,
                                              {"name": "self.eyes.set_style", "arguments": {"style": style}})
         forced = detect_device_action(user_text)
         if forced:
-            log.info("lenh thiet bi (%s) <- %r", forced["name"], user_text)
+            log.info("device command (%s) <- %r", forced["name"], user_text)
             return await respond_tool_action(request, cid, model, stream, forced)
 
     t0 = time.time()
@@ -428,11 +463,11 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                                        max_tokens=body.get("max_tokens"),
                                        on_delta=on_delta)
         except Exception as exc:  # noqa: BLE001
-            log.error("hermes loi: %s", exc)
+            log.error("hermes error: %s", exc)
             answer = FALLBACK_TEXT
             await resp.write(chunk_frame(cid, model, {"content": FALLBACK_TEXT}))
             state["sent"] = True
-        log.info("hermes tra loi trong %.1fs (kind=%s): %s", time.time() - t0, state["kind"],
+        log.info("hermes answered in %.1fs (kind=%s): %s", time.time() - t0, state["kind"],
                  answer[:160].replace("\n", " "))
 
         action = None if state["kind"] == "text" else extract_action(answer)
@@ -463,9 +498,9 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                                    reasoning_effort=body.get("reasoning_effort"),
                                    max_tokens=body.get("max_tokens"))
     except Exception as exc:  # noqa: BLE001
-        log.error("hermes loi: %s", exc)
+        log.error("hermes error: %s", exc)
         answer = FALLBACK_TEXT
-    log.info("hermes tra loi trong %.1fs: %s", time.time() - t0, answer[:160].replace("\n", " "))
+    log.info("hermes answered in %.1fs: %s", time.time() - t0, answer[:160].replace("\n", " "))
 
     action = None if tool_results else extract_action(answer)
     if tool_results:
@@ -530,7 +565,7 @@ def main():
     app.router.add_post("/v1/chat/completions", handle_chat)
     app.router.add_get("/v1/models", handle_models)
     app.router.add_get("/healthz", handle_health)
-    log.info("bridge nghe tren 0.0.0.0:%s -> %s (model %s, key=%s)", PORT, HERMES_BASE, HERMES_MODEL, bool(HERMES_KEY))
+    log.info("bridge listening on 0.0.0.0:%s -> %s (model %s, key=%s)", PORT, HERMES_BASE, HERMES_MODEL, bool(HERMES_KEY))
     web.run_app(app, host="0.0.0.0", port=PORT, access_log=None)
 
 

@@ -1,8 +1,8 @@
 /**
  * @file emotion_response_controller.h
- * @brief AI回复情感响应控制器头文件
+ * @brief Header file for the AI response emotion-response controller
  * 
- * 本文件定义了AI回复情感响应控制器的接口，用于根据AI回复内容自动触发表情和舵机动作
+ * Defines the interface of the AI response emotion-response controller, which automatically triggers emoji and servo actions based on the AI reply content
  */
 
 #ifndef EMOTION_RESPONSE_CONTROLLER_H
@@ -18,7 +18,7 @@
 #include "audio_codec.h"
 #include "mcp_server.h"
 
-// 前向声明
+// Forward declarations
 class EmotionResponseController;
 class EmojiController;
 class ServoController;
@@ -26,180 +26,180 @@ class AudioCodec;
 
 /**
  * @class EmotionResponseController
- * @brief AI回复情感响应控制器类，负责分析AI回复内容并触发相应的表情和舵机动作
+ * @brief Emotion-response controller class that analyzes the AI reply content and triggers the corresponding emoji and servo actions
  */
 class EmotionResponseController {
 public:
     /**
-     * @brief 构造函数
-     * @param emoji_controller 表情控制器指针
-     * @param servo_controller 舵机控制器指针
-     * @param audio_codec 音频编解码器指针
+     * @brief Constructor
+     * @param emoji_controller Pointer to the emoji controller
+     * @param servo_controller Pointer to the servo controller
+     * @param audio_codec Pointer to the audio codec
      */
     EmotionResponseController(EmojiController* emoji_controller, ServoController* servo_controller, AudioCodec* audio_codec = nullptr);
     
     /**
-     * @brief 析构函数
+     * @brief Destructor
      */
     ~EmotionResponseController();
     
     /**
-     * @brief 初始化情感响应控制器
+     * @brief Initialize the emotion-response controller
      */
     void Initialize();
     
     /**
-     * @brief 处理AI回复
-     * @param message AI回复消息
+     * @brief Process an AI reply
+     * @param message The AI reply message
      */
     void ProcessAIResponse(const std::string& message);
     
     /**
-     * @brief 处理AI回复JSON
-     * @param json_obj AI回复JSON对象
+     * @brief Process an AI reply JSON
+     * @param json_obj The AI reply JSON object
      */
     void ProcessAIResponseJson(const cJSON* json_obj);
     
     /**
-     * @brief 处理Alert消息
-     * @param status 状态消息
-     * @param message 详细消息
-     * @param emotion 情感标记
+     * @brief Process an Alert message
+     * @param status The status message
+     * @param message The detailed message
+     * @param emotion The emotion tag
      */
     void ProcessAlert(const char* status, const char* message, const char* emotion = "");
     
     /**
-     * @brief 注册情感关键词
-     * @param emotion 情感类型
-     * @param keywords 关键词列表
+     * @brief Register emotion keywords
+     * @param emotion The emotion type
+     * @param keywords The keyword list
      */
     void RegisterEmotionKeywords(const std::string& emotion, const std::vector<std::string>& keywords);
     
     /**
-     * @brief 设置默认情感
-     * @param emotion 默认情感类型
+     * @brief Set the default emotion
+     * @param emotion The default emotion type
      */
     void SetDefaultEmotion(const std::string& emotion);
     
     /**
-     * @brief 手动触发情感响应
-     * @param emotion 情感类型
+     * @brief Manually trigger an emotion response
+     * @param emotion The emotion type
      */
     void TriggerEmotion(const std::string& emotion);
     
     /**
-     * @brief 获取当前情感
-     * @return 当前情感类型
+     * @brief Get the current emotion
+     * @return The current emotion type
      */
     const std::string& GetCurrentEmotion() const;
     
     /**
-     * @brief 处理音量控制命令
-     * @param message AI回复消息
-     * @return 如果是音量控制命令返回true，否则返回false
+     * @brief Process a volume control command
+     * @param message The AI reply message
+     * @return true if it is a volume control command, otherwise false
      */
     bool ProcessVolumeCommand(const std::string& message);
     
     /**
-     * @brief 处理表情动作命令
-     * @param message AI回复消息
-     * @return 如果是表情动作命令返回true，否则返回false
+     * @brief Process an expression action command
+     * @param message The AI reply message
+     * @return true if it is an expression action command, otherwise false
      */
     bool ProcessEmotionCommand(const std::string& message);
     
 
     
     /**
-     * @brief 判断消息内容是否应该触发点头动作（表示同意、肯定）
-     * @param message 消息内容
-     * @return 如果应该点头返回true，否则返回false
+     * @brief Determine whether the message content should trigger a nod (agreement, affirmation)
+     * @param message The message content
+     * @return true if a nod is appropriate, otherwise false
      */
     bool ShouldNod(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发摇头动作（表示否定、拒绝）
-     * @param message 消息内容
-     * @return 如果应该摇头返回true，否则返回false
+     * @brief Determine whether the message content should trigger a head shake (negation, refusal)
+     * @param message The message content
+     * @return true if a head shake is appropriate, otherwise false
      */
     bool ShouldShake(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发跳舞动作（表示高兴、庆祝）
-     * @param message 消息内容
-     * @return 如果应该跳舞返回true，否则返回false
+     * @brief Determine whether the message content should trigger a dance (happiness, celebration)
+     * @param message The message content
+     * @return true if dancing is appropriate, otherwise false
      */
     bool ShouldDance(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发向左看动作
-     * @param message 消息内容
-     * @return 如果应该向左看返回true，否则返回false
+     * @brief Determine whether the message content should trigger a look-left action
+     * @param message The message content
+     * @return true if looking left is appropriate, otherwise false
      */
     bool ShouldLookLeft(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发向右看动作
-     * @param message 消息内容
-     * @return 如果应该向右看返回true，否则返回false
+     * @brief Determine whether the message content should trigger a look-right action
+     * @param message The message content
+     * @return true if looking right is appropriate, otherwise false
      */
     bool ShouldLookRight(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发抬头动作
-     * @param message 消息内容
-     * @return 如果应该抬头返回true，否则返回false
+     * @brief Determine whether the message content should trigger a look-up action
+     * @param message The message content
+     * @return true if looking up is appropriate, otherwise false
      */
     bool ShouldLookUp(const std::string& message);
     
     /**
-     * @brief 判断消息内容是否应该触发低头动作
-     * @param message 消息内容
-     * @return 如果应该低头返回true，否则返回false
+     * @brief Determine whether the message content should trigger a look-down action
+     * @param message The message content
+     * @return true if looking down is appropriate, otherwise false
      */
     bool ShouldLookDown(const std::string& message);
     
 private:
-    EmojiController* emoji_controller_;  // 表情控制器
-    ServoController* servo_controller_;  // 舵机控制器
-    AudioCodec* audio_codec_;  // 音频编解码器
-    std::string current_emotion_;        // 当前情感
-    std::string default_emotion_;        // 默认情感
+    EmojiController* emoji_controller_;  // Emoji controller
+    ServoController* servo_controller_;  // Servo controller
+    AudioCodec* audio_codec_;  // Audio codec
+    std::string current_emotion_;        // Current emotion
+    std::string default_emotion_;        // Default emotion
     
-    // 情感关键词映射表
+    // Emotion keyword mapping table
     std::unordered_map<std::string, std::vector<std::string>> emotion_keywords_;
     
-    // 情感动作映射表
+    // Emotion-to-action mapping table
     std::unordered_map<std::string, std::function<void()>> emotion_actions_;
     
     /**
-     * @brief 初始化情感动作映射
+     * @brief Initialize the emotion-to-action mapping
      */
     void InitializeEmotionActions();
     
     /**
-     * @brief 初始化情感关键词映射
+     * @brief Initialize the emotion keyword mapping
      */
     void InitializeEmotionKeywords();
     
     /**
-     * @brief 分析文本内容
-     * @param text 文本内容
-     * @return 检测到的情感类型
+     * @brief Analyze text content
+     * @param text The text content
+     * @return The detected emotion type
      */
     std::string AnalyzeText(const std::string& text);
     
     /**
-     * @brief 执行情感动作
-     * @param emotion 情感类型
+     * @brief Execute an emotion action
+     * @param emotion The emotion type
      */
     void ExecuteEmotionAction(const std::string& emotion);
 };
 
 namespace iot {
-    // 设置全局情感响应控制器指针的函数声明
+    // Declaration of the function that sets the global emotion-response controller pointer
     void SetGlobalEmotionController(EmotionResponseController* controller);
     
-    // 获取全局情感响应控制器指针的函数声明
+    // Declaration of the function that gets the global emotion-response controller pointer
     EmotionResponseController* GetGlobalEmotionController();
 } // namespace iot
 

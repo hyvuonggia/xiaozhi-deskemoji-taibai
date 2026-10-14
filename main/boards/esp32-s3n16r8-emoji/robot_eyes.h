@@ -1,14 +1,14 @@
 #pragma once
 // ---------------------------------------------------------------------------
-// RobotEyes - bo mat theo kieu "OliEyes" (Oliray-ka/OliEyes, giay phep MIT).
-// Port tu examples/SH1106_i12C.ino sang ESP-IDF/LVGL (canvas I1) cho man
-// SH1106 128x64 cua board esp32-s3n16r8-emoji.
+// RobotEyes - OliEyes-style eye engine (Oliray-ka/OliEyes, MIT licence).
+// Ported from examples/SH1106_i12C.ino to ESP-IDF/LVGL (I1 canvas) for the
+// 128x64 SH1106 display of the esp32-s3n16r8-emoji board.
 //   - 20 mood (neutral, happy, sad, angry, surprised, sleepy, love, suspicious,
 //     confused, scared, laugh, bored, excited, shy, annoyed, dizzy, sick,
 //     proud, frustrated, curious)
-//   - morph muot (ease), chop mat ngau nhien theo mood, nhay 1 mat trai/phai,
-//     double-take (giat minh liéc + chop), lieu mat khi ranh, nhun khi cuoi,
-//     chu "z Z" khi ngu/buon, "~" khi met, mat xoay vong khi chong mat, demo tu doi mood.
+//   - smooth easing morphs, mood-dependent random blinks, single-eye winks,
+//     double-take, idle looking around, bouncing while laughing, "z Z" when
+//     sleepy/bored, "~" when sick, rolling eyes when dizzy, optional demo cycling.
 // ---------------------------------------------------------------------------
 #include <cstdint>
 #include <string>
@@ -19,18 +19,18 @@ public:
     void Initialize(lv_obj_t* screen);
     lv_obj_t* Screen() const { return screen_; }
 
-    // --- dieu khien ---
+    // --- control API ---
     void SetMood(const char* name);                 // ten trong 20 mood
     void SetMoodForEmotion(const char* emotion);    // emotion cua server -> mood
     void Blink();
     void Wink(bool right_side = true);
     void DoubleTake(bool right_first = true);
     void SetDemo(bool on) { demo_ = on; }
-    // Khi dang noi chuyen: tat bo hanh vi "khi ranh" (demo + lieu mat)
+    // While in conversation: turn off idle behaviours (demo cycling + random looks)
     void SetIdleBehaviors(bool on) { idle_ = on; }
     void SetEaseSpeed(float s) { ease_speed_ = (s < 0.01f ? 0.01f : (s > 1.0f ? 1.0f : s)); }
 
-    // Goi ~40 lan/giay. PHAI giu lock LVGL khi goi (DisplayLockGuard).
+    // Call ~40 times per second. MUST be called with the LVGL lock held (DisplayLockGuard).
     void Step();
 
     static std::string StyleNames();
@@ -50,7 +50,7 @@ private:
     void UpdateEasing();
     void TriggerWinkRight(uint32_t now);
     void TriggerWinkLeft(uint32_t now);
-    // ve nguyen thu
+    // drawing primitives
     void px(int x, int y);
     void hline(int x0, int y, int len);
     void box(int x0, int y0, int x1, int y1);
@@ -96,7 +96,7 @@ private:
 
     float bounce_y_ = 0;
 
-    bool demo_ = false;   // tat mac dinh: board dieu khien mood theo trang thai; bat lai bang giong noi "tu doi mat di"
+    bool demo_ = false;   // off by default: the board drives moods by context; enable by voice ("change your face by itself")
     bool idle_ = true;
     uint32_t last_mood_switch_ = 0;
     uint32_t mood_switch_base_ = 3500;

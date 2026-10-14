@@ -21,7 +21,7 @@ bridge.py (:8643)  ──►  Hermes api_server (:8642, model `hermes-agent`, se
    as soon as the first sentence exists (cuts the "robot thinks for ages" gap).
 2. **Deterministic voice-command router** — Vietnamese head/neck commands are matched with
    accent-insensitive regexes and turned into `tool_calls` immediately, without asking the
-   model. Reason: language models reliably *claim* they moved ("em đã cúi đầu rồi") without
+   model. Reason: language models reliably *claim* they moved ("em đã cúi đầu rồi" — "I already bowed my head") without
    ever emitting a tool call, and prompt-only fixes do not hold.
    Supported: look left / right, nod, shake, center (see `HEAD_ACTION_RULES`).
 3. **Device tool results only** — xiaozhi-server mixes its own internal tool results

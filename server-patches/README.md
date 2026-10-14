@@ -1,30 +1,31 @@
-# server-patches — thay đổi cục bộ trên xiaozhi-server
+# server-patches — local changes on top of xiaozhi-server
 
-Thư mục này chứa **các commit cục bộ** đã áp lên bản clone `xiaozhi-server` đang chạy
-(`/opt/xiaozhi-esp32-server`, upstream `xinnan-tech/xiaozhi-esp32-server` — không push được
-lên upstream vì không phải repo của mình). Mục đích: nếu máy chủ hỏng, vẫn dựng lại được
-nguyên hệ thống.
+This folder holds the **local commits** applied to the running `xiaozhi-server` clone
+(`/opt/xiaozhi-esp32-server`, upstream `xinnan-tech/xiaozhi-esp32-server` — they cannot be
+pushed upstream because that repository is not ours). Purpose: rebuild the whole system
+from scratch if the server host dies.
 
-| patch | nội dung |
+| patch | what it does |
 |---|---|
-| 0001 | API HTTP `/device/tool` + theo dõi thiết bị đang kết nối (để Hermes gọi được MCP tool của robot) |
-| 0002 | Chuyển tiếp `reasoning_effort` từ config xuống model (giảm độ trễ) |
-| 0003 | Provider ASR `phowhisper_local` (PhoWhisper-small chạy local) |
-| 0004 | Nhánh `transducer` cho `sherpa_onnx_local` (model Zipformer tiếng Việt 30M int8 — ASR nhanh ~30×) |
-| 0005 | Dockerfile + `docker-compose.local.yml` + `piper_http.py` cho stack local (PhoWhisper / Piper / Vosk) |
+| 0001 | HTTP API `/device/tool` + tracking of live device connections (lets Hermes call the robot's own MCP tools) |
+| 0002 | Forward `reasoning_effort` from the provider config down to the model (cuts latency) |
+| 0003 | `phowhisper_local` ASR provider (PhoWhisper-small running locally) |
+| 0004 | `transducer` branch in `sherpa_onnx_local` (Vietnamese Zipformer 30M int8 model — ~30× faster ASR) |
+| 0005 | Dockerfiles + `docker-compose.local.yml` + `piper_http.py` for the local stack (PhoWhisper / Piper / Vosk) |
 
-## Cách áp lại
+## How to re-apply
 
 ```bash
-cd /opt/xiaozhi-esp32-server/main/xiaozhi-server   # bản clone upstream
-git am /duong/dan/server-patches/000*.patch
+cd /opt/xiaozhi-esp32-server/main/xiaozhi-server   # the upstream clone
+git am /path/to/server-patches/000*.patch
 ```
 
-Ngoài patch, cần thêm (không nằm trong git vì là dữ liệu/cấu hình riêng):
+Beyond the patches, these are needed as well (kept out of git because they are local
+data / configuration):
 
-* model ASR: `data/models/sherpa-onnx-zipformer-vi-30M-int8/`
+* ASR model: `data/models/sherpa-onnx-zipformer-vi-30M-int8/`
   (encoder.int8.onnx, decoder.onnx, joiner.int8.onnx, tokens.txt);
-* cấu hình `data/.config.yaml` (chứa API key — **không** commit) với
+* config `data/.config.yaml` (**contains API keys — never commit it**) with
   `ASR.SherpaVN`, `selected_module.ASR: SherpaVN`, `selected_module.LLM: HermesAgent`
-  (bridge), `TTS` trỏ Piper local;
-* `data/.config.yaml` bản backup: `.bak-20261013-2230`, `.bak-20261013-2310`, `.bak-20261014`.
+  (the bridge) and `TTS` pointing at the local Piper service;
+* backups of that config: `.bak-20261013-2230`, `.bak-20261013-2310`, `.bak-20261014`.

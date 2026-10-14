@@ -22,8 +22,8 @@
 #include <algorithm>
 #include <ctime>
 #include <cstdlib>
-#include <cstring>   // 添加cstring头文件，用于strchr()函数
-#include <stdlib.h>  // 添加标准库头文件，用于rand()函数
+#include <cstring>   // Include the cstring header for strchr()
+#include <stdlib.h>  // Include the standard library header for rand()
 #include <esp_system.h>
 #include <esp_timer.h>
 #include <esp_random.h>
@@ -31,7 +31,7 @@
 #include <esp_lcd_panel_vendor.h>
 #include <esp_lcd_panel_ops.h>
 #include <driver/i2c.h>
-#include <driver/i2c_master.h>  // 添加新版I2C驱动API头文件
+#include <driver/i2c_master.h>  // Include the new I2C driver API header
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -46,32 +46,32 @@
 LV_FONT_DECLARE(font_puhui_14_1);
 LV_FONT_DECLARE(font_awesome_14_1);
 
-// 声明一个静态函数，用于处理AI回复
+// Declare a static function used to process the AI response
 static void ProcessAIResponseTask(void* arg);
 
-// 前向声明EmojiBoard类
+// Forward declaration of the EmojiBoard class
 class EmojiBoard;
 
-// 全局变量，用于存储和访问EmojiBoard实例
+// Global variable used to store and access the EmojiBoard instance
 EmojiBoard* g_board_instance = nullptr;
 
-// 任务函数声明
+// Task function declaration
 static void StateMonitorTask(void* arg);
 
-// 任务参数结构体，用于传递参数给静态任务函数
+// Task parameter struct used to pass arguments to the static task functions
 struct TaskParams {
-    EmojiBoard* board;  // 使用EmojiBoard*代替void*
+    EmojiBoard* board;  // Use EmojiBoard* instead of void*
     EmotionResponseController* emotion_controller;
 };
 
-// 自定义OledDisplay类，用于捕获AI回复内容并触发表情和动作
+// Custom OledDisplay subclass that captures the AI reply and triggers expressions and motions
 class EmojiDisplay : public OledDisplay {
 private:
     EmojiBoard* board_ = nullptr;
-    bool processing_ai_response_ = false; // 添加标志，防止递归调用
+    bool processing_ai_response_ = false; // Flag added to prevent recursive calls
 
 public:
-    // 重写SetEmotion方法，根据小智AI框架识别的表情触发我们自己的表情动画
+    // Override SetEmotion: trigger our own expression animation from the emotion recognised by the Xiaozhi AI framework
     virtual void SetEmotion(const char* emotion) override;
     
     EmojiDisplay(EmojiBoard* board, esp_lcd_panel_io_handle_t io, esp_lcd_panel_handle_t panel, 
@@ -81,7 +81,7 @@ public:
         ESP_LOGI(TAG, "Created EmojiDisplay instance");
     }
 
-    // 重写SetChatMessage方法，在显示AI回复时同时触发表情和动作
+    // Override SetChatMessage: also trigger expressions and motions while displaying the AI reply
     void SetChatMessage(const char* role, const char* content) override;
 };
 
@@ -95,55 +95,55 @@ private:
     Button volume_up_button_;
     Button volume_down_button_;
     
-    // 表情和舵机控制器
+    // Expression and servo controllers
     EmojiController* emoji_controller_ = nullptr;
     ServoController* servo_controller_ = nullptr;
     
-    // 情感响应控制器
+    // Emotion response controller
     EmotionResponseController* emotion_controller_ = nullptr;
 
-    // Mat kieu esp32-eyes (canvas rieng, khong dung emoji_controller de ve mat)
+    // OliEyes engine (own canvas; emoji_controller no longer draws the eyes)
     RobotEyes* eyes_ = nullptr;
     lv_obj_t* eyes_screen_ = nullptr;
     
-    // 表情模式标志
-    bool is_emoji_mode_ = true;  // khoi dong thang vao che do bieu cam (2 mat to)
+    // Expression-mode flag
+    bool is_emoji_mode_ = true;  // boot straight into expressive mode (two big eyes)
     
-    // 对话模式屏幕
+    // Chat-mode screen
     lv_obj_t* chat_screen_ = nullptr;
     
-    // 上一次处理的AI回复
+    // Last processed AI reply
     std::string last_ai_response_;
     
-    // 处理AI回复的方法
+    // Method that processes the AI reply
     void ProcessAIResponseInternal(const char* message) {
-        // 如果消息为空，则不处理
+        // Do nothing when the message is empty
         if (!message || message[0] == '\0') {
             return;
         }
         
         ESP_LOGI(TAG, "Processing AI response: %s", message);
         
-        // 检查是否与上一次相同，如果相同则不处理
+        // Skip when it is identical to the previous reply
         if (last_ai_response_ == message) {
             return;
         }
         
-        // 更新上一次处理的AI回复
+        // Record the last processed AI reply
         last_ai_response_ = message;
         
-        // 检查是否包含特殊字符标记，如果有则立即处理
+        // Check for a special character marker and handle it immediately when present
         if (message[0] && strchr("{}<>/\\$!?^*#~", message[0]) != nullptr) {
             ESP_LOGI(TAG, "Detected special character marker: %c", message[0]);
             emotion_controller_->ProcessAIResponse(message);
         } else {
-            // 如果没有特殊字符标记，则正常处理AI回复
+            // No special character marker: process the AI reply normally
             emotion_controller_->ProcessAIResponse(message);
         }
     }
 
     void InitializeDisplayI2c() {
-        // 使用ESP-IDF v5.3.2的新版I2C驱动API
+        // Use the new I2C driver API from ESP-IDF v5.3.2
         i2c_master_bus_config_t bus_config = {};
         bus_config.i2c_port = I2C_NUM_0;
         bus_config.sda_io_num = DISPLAY_I2C_SDA_PIN;
@@ -169,7 +169,7 @@ private:
         io_config.flags.disable_control_phase = 0;
         io_config.scl_speed_hz = 100 * 1000;
 
-        // 使用新版I2C面板IO API
+        // Use the new I2C panel IO API
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_));
         ESP_LOGI(TAG, "LCD panel I/O initialized successfully");
 
@@ -187,21 +187,21 @@ private:
         ESP_LOGI(TAG, "Turning display on");
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_, true));
 
-        // 创建DisplayFonts对象
+        // Create the DisplayFonts object
         DisplayFonts display_fonts;
         display_fonts.text_font = &font_puhui_14_1;
         display_fonts.icon_font = &font_awesome_14_1;
 
-        // 使用自定义的EmojiDisplay类
+        // Use the custom EmojiDisplay class
         display_ = new EmojiDisplay(this, panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, true, true, display_fonts);
 
-        // 保存对话模式屏幕的引用
+        // Keep a reference to the chat-mode screen
         chat_screen_ = lv_screen_active();
     }
 
     void InitializeButtons() {
         boot_button_.OnClick([this]() {
-            // 无论在哪种模式下，短按BOOT按钮都进入录音状态
+            // A short press of the BOOT button always starts recording, in any mode
             auto& app = Application::GetInstance();
             if (app.GetDeviceState() == kDeviceStateStarting && !WifiStation::GetInstance().IsConnected()) {
                 ResetWifiConfiguration();
@@ -218,7 +218,7 @@ private:
         });
 
         volume_up_button_.OnClick([this]() {
-            // 无论在哪种模式下，音量+按钮都控制音量增加
+            // The volume-up button always increases the volume, in any mode
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() + 10;
             if (volume > 100) {
@@ -229,13 +229,13 @@ private:
         });
 
         volume_up_button_.OnLongPress([this]() {
-            // 无论在哪种模式下，长按音量+按钮都将音量设为最大
+            // Long-pressing volume-up always sets the volume to maximum, in any mode
             GetAudioCodec()->SetOutputVolume(100);
             GetDisplay()->ShowNotification(Lang::Strings::MAX_VOLUME);
         });
 
         volume_down_button_.OnClick([this]() {
-            // 无论在哪种模式下，音量-按钮都控制音量减小
+            // The volume-down button always decreases the volume, in any mode
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() - 10;
             if (volume < 0) {
@@ -246,15 +246,15 @@ private:
         });
 
         volume_down_button_.OnLongPress([this]() {
-            // 无论在哪种模式下，长按音量-按钮都将音量设为0
+            // Long-pressing volume-down always sets the volume to 0, in any mode
             GetAudioCodec()->SetOutputVolume(0);
             GetDisplay()->ShowNotification(Lang::Strings::MUTED);
         });
     }
 
-    // 5 cong cu dieu khien dau cho tro ly (Hermes): nhin trai/phai, gat, lac, ve giua.
-    // Dung lai dung duong cua he cam xuc (TriggerEmotion -> PlayAnimation/servo)
-    // nen an toan ve LVGL va khong dung do servo.
+    // Five head tools for the assistant: look left/right, nod, shake, centre.
+    // They reuse the existing emotion pipeline (TriggerEmotion -> PlayAnimation/servo),
+    // which is LVGL-safe and does not collide with running animations.
     void RegisterHeadTools() {
         auto& mcp = McpServer::GetInstance();
         EmotionResponseController* emotion = emotion_controller_;
@@ -342,13 +342,14 @@ private:
     }
 
     void InitializeIot() {
-        // 新的MCP架构不再需要手动初始化Thing，由框架自动管理
+        // The new MCP architecture no longer needs manual Thing initialisation; the framework manages it automatically
         ESP_LOGI(TAG, "Device functions are managed automatically by the new MCP architecture");
         RegisterHeadTools();
     }
     
-    // 切换屏幕
-    // Tao man hinh cho bo mat esp32-eyes (nen trang, mat den -> hien thi nen toi, mat sang)
+    // Switch the screen
+    // Create the screen for the OliEyes engine (white background / black shapes,
+    // which renders as a dark background with lit eyes on this inverted panel)
     void CreateEyesScreen() {
         DisplayLockGuard lock(display_);
         eyes_screen_ = lv_obj_create(nullptr);
@@ -359,7 +360,7 @@ private:
         eyes_->Initialize(eyes_screen_);
     }
 
-    // Task ve mat ~30 fps (giu lock LVGL trong luc ve)
+    // Eye rendering task at ~30 fps (holds the LVGL lock while drawing)
     void StartEyesTask() {
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
@@ -373,7 +374,7 @@ private:
         }, "eyes_render", 4096, this, 2, nullptr);
     }
 
-    // Vao / thoat che do bieu cam (2 mat to) - dung chung cho nut BOOT va luc khoi dong
+    // Enter / leave the expressive-eyes mode - shared by the BOOT long press and startup
     void EnterEmojiMode(bool show_notification) {
         is_emoji_mode_ = true;
         SwitchScreen(true);
@@ -403,8 +404,8 @@ private:
     void SwitchScreen(bool to_emoji_mode) {
         DisplayLockGuard lock(display_);
         if (to_emoji_mode) {
-            // Van tao screen emoji de he animation/servo cu chay (no dieu khien servo),
-            // nhung man hinh HIEN THI la bo mat esp32-eyes.
+            // Still create the emoji screen so the old animation/servo system keeps running (it does not drive the servo),
+            // but the VISIBLE screen is the OliEyes canvas.
             lv_obj_t* emoji_screen = emoji_controller_->GetEmojiScreen();
             if (!emoji_screen) {
                 emoji_screen = emoji_controller_->CreateEmojiScreen();
@@ -415,13 +416,13 @@ private:
         }
     }
 
-    // 声明静态任务函数为友元函数，使其可以访问私有成员
+    // Declare the static task function as a friend so it can access private members
     friend void StateMonitorTask(void* arg);
 
-    // 声明EmojiDisplay为友元类，使其能够访问EmojiBoard的私有成员
+    // Declare EmojiDisplay as a friend class so it can access EmojiBoard's private members
     friend class EmojiDisplay;
 
-    // 声明ProcessAIResponseTask为友元函数，使其能够访问私有成员
+    // Declare ProcessAIResponseTask as a friend function so it can access private members
     friend void ProcessAIResponseTask(void* arg);
 
 public:
@@ -432,44 +433,44 @@ public:
         InitializeDisplayI2c();
         InitializeSsd1306Display();
         
-        // 创建表情控制器和舵机控制器
+        // Create the expression controller and the servo controller
         emoji_controller_ = new EmojiController(display_);
         servo_controller_ = new ServoController();
         
-        // 初始化控制器
+        // Initialise the controllers
         emoji_controller_->Initialize();
         servo_controller_->Initialize();
         
-        // 设置表情控制器的舵机控制器
+        // Give the expression controller its servo controller
         emoji_controller_->SetServoController(servo_controller_);
         
-        // 创建并初始化情感响应控制器
+        // Create and initialise the emotion response controller
         emotion_controller_ = new EmotionResponseController(emoji_controller_, servo_controller_, GetAudioCodec());
         emotion_controller_->Initialize();
         
-        // 手势识别功能已移除
+        // Gesture recognition has been removed
         ESP_LOGI(TAG, "Gesture recognition has been removed");
         
-        // 新版MCP架构不再需要设置全局情感控制器指针
+        // The new MCP architecture no longer needs a global emotion controller pointer
         // iot::SetGlobalEmotionController(emotion_controller_);
         
         InitializeButtons();
         InitializeIot();
         
-        // Khoi dong thang vao che do bieu cam (2 mat to) va giu luon o che do nay.
-        // Nhan giu nut BOOT van chuyen qua lai duoc voi che do tro chuyen.
+        // Boot straight into the expressive-eyes mode and stay there.
+        // The BOOT long press still toggles with the chat screen.
         CreateEyesScreen();
         EnterEmojiMode(false);
         StartEyesTask();
         ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup (esp32-eyes style)");
         
-        // 创建一个任务来监听设备状态变化
+        // Create a task that monitors device state changes
         TaskParams* state_params = new TaskParams();
         state_params->emotion_controller = emotion_controller_;
         state_params->board = this;
         xTaskCreate(StateMonitorTask, "StateMonitor", 8192, state_params, 1, NULL);
         
-        // 将自身实例赋值给全局变量
+        // Store this instance in the global variable
         g_board_instance = this;
     }
 
@@ -477,7 +478,7 @@ public:
         delete emoji_controller_;
         delete servo_controller_;
         delete emotion_controller_;
-        // 清除全局变量
+        // Clear the global variable
         g_board_instance = nullptr;
     }
 
@@ -498,23 +499,23 @@ public:
     }
     
     /**
-     * @brief 处理用户输入的命令
-     * @param message 用户输入的消息
+     * @brief Process a command entered by the user
+     * @param message The message entered by the user
      */
     void ProcessUserCommand(const char* message) {
         if (!message || message[0] == '\0') {
             return;
         }
         
-        // 直接使用情感响应控制器处理用户命令
+        // Hand the user command straight to the emotion response controller
         if (emotion_controller_) {
-            // 检查是否是表情动作命令
+            // Check whether it is an expression-motion command
             if (emotion_controller_->ProcessEmotionCommand(message)) {
                 ESP_LOGI(TAG, "Processed user-entered expression action command: %s", message);
                 return;
             }
             
-            // 检查是否是音量控制命令
+            // Check whether it is a volume control command
             if (emotion_controller_->ProcessVolumeCommand(message)) {
                 ESP_LOGI(TAG, "Processed user-entered volume control command: %s", message);
                 return;
@@ -522,59 +523,59 @@ public:
         }
     }
 
-    // 处理AI回复的公共方法，可以被外部调用
+    // Public method that processes the AI reply; may be called from outside
     void ProcessAIResponse(const char* message) {
         ProcessAIResponseInternal(message);
     }
 };
 
-// 在EmojiBoard类定义后实现EmojiDisplay::SetChatMessage方法
+// Implement EmojiDisplay::SetChatMessage after the EmojiBoard class definition
 void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
-    // 检查是否正在处理AI回复，避免递归调用
+    // Guard against recursive calls while an AI reply is being processed
     if (processing_ai_response_) {
-        // 如果正在处理AI回复，只调用父类方法显示消息，不进行额外处理
+        // While an AI reply is being processed, only call the base method to display the message; do no extra work
         OledDisplay::SetChatMessage(role, content);
         return;
     }
     
-    // 设置标志，表示正在处理AI回复
+    // Set the flag indicating an AI reply is being processed
     processing_ai_response_ = true;
     
-    // 首先调用父类方法显示消息
+    // First call the base method to display the message
     OledDisplay::SetChatMessage(role, content);
     
-    // 如果是AI回复，则处理内容
+    // If this is an AI reply, process its content
     if (role && strcmp(role, "assistant") == 0 && content && content[0] != '\0') {
         ESP_LOGI(TAG, "EmojiDisplay captured AI response: %s", content);
         
-        // 调用EmojiBoard的ProcessAIResponse方法处理AI回复
+        // Call EmojiBoard::ProcessAIResponse to handle the AI reply
         if (board_ && board_->emotion_controller_) {
-            // 简化处理逻辑，只更新last_ai_response_并调用ProcessAIResponse
+            // Simplified handling: only update last_ai_response_ and call ProcessAIResponse
             if (board_->last_ai_response_ != content) {
                 board_->last_ai_response_ = content;
                 
-                // 检查是否包含特殊字符标记，如果有则直接处理
+                // Check for a special character marker and handle it directly when present
                 if (content[0] && strchr("{}<>/\\$!?^*#~", content[0]) != nullptr) {
                     ESP_LOGI(TAG, "Detected special character marker: %c", content[0]);
                     
-                    // 直接调用情感控制器处理特殊字符
+                    // Pass the special character straight to the emotion controller
                     board_->emotion_controller_->ProcessAIResponse(content);
                     
-                    // 不再创建额外的任务处理AI回复，避免栈溢出
+                    // No extra task is created for the AI reply here, to avoid a stack overflow
                 } else {
-                    // 使用后台任务处理AI回复，避免在主循环中处理复杂逻辑
-                    // 增加栈大小，避免栈溢出
+                    // Handle the AI reply in a background task, to keep complex work out of the main loop
+                    // Increase the stack size to avoid a stack overflow
                     xTaskCreate(ProcessAIResponseTask, "ai_response", 8192, strdup(content), 1, NULL);
                 }
             }
         }
     }
     
-    // 重置标志
+    // Reset the flag
     processing_ai_response_ = false;
 }
 
-// 监听设备状态的静态任务函数
+// Static task function that monitors device state
 static void StateMonitorTask(void* arg) {
     TaskParams* params = static_cast<TaskParams*>(arg);
     EmojiBoard* board = params->board;
@@ -584,7 +585,7 @@ static void StateMonitorTask(void* arg) {
         return;
     }
     
-    // 获取情感控制器
+    // Get the emotion controller
     auto* emotion_controller = params->emotion_controller;
     if (!emotion_controller) {
         ESP_LOGE(TAG, "Emotion controller is null");
@@ -592,16 +593,16 @@ static void StateMonitorTask(void* arg) {
         return;
     }
     
-    // 初始化随机数生成器
+    // Initialise the random number generator
     srand(time(nullptr));
     
-    // 初始化变量
+    // Initialise the variables
     DeviceState last_state = kDeviceStateIdle;
     TickType_t last_speak_end_time = 0;
     bool in_conversation = false;
 
-    // --- Phan ung theo ngu canh (them 2026-10-14) ---
-    // idle -> (im lang 6s) bored -> (im lang 20s) suspicious; dang nghe -> curious + ngang dau len
+    // --- Context-aware behaviour ---
+    // idle -> (6s of silence) bored -> (20s) suspicious; while listening -> curious + head up
     TickType_t idle_since = xTaskGetTickCount();
     bool idle_bored_done = false;
     bool idle_suspicious_done = false;
@@ -614,57 +615,57 @@ static void StateMonitorTask(void* arg) {
     auto set_eyes_idle = [&](bool on) {
         if (board->eyes_ == nullptr) return;
         DisplayLockGuard lock(board->display_);
-        board->eyes_->SetIdleBehaviors(on);   // tat/bat lieu mat ngau nhien + che do demo
+        board->eyes_->SetIdleBehaviors(on);   // turn random eye glances/blinks on/off plus demo mode
     };
     
-    // 确保初始状态下随机动画是启用的
+    // Make sure random animation is enabled in the initial state
     if (board->emoji_controller_) {
         board->emoji_controller_->SetRandomAnimationEnabled(true);
         ESP_LOGI(TAG, "Initialization: random expression animation enabled");
     }
     
-    // 监控设备状态
+    // Monitor the device state
     while (true) {
-        // 获取当前设备状态
+        // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
         
-        // 如果设备状态发生变化，记录日志
+        // Log the device state when it changes
         if (current_state != last_state) {
             ESP_LOGI(TAG, "Device state changed: %d -> %d", last_state, current_state);
         }
         
-        // 如果设备状态从idle变为speaking或listening，说明对话开始
+        // A transition from idle to speaking or listening means a conversation has started
         if (last_state == kDeviceStateIdle && 
             (current_state == kDeviceStateSpeaking || current_state == kDeviceStateListening)) {
-            // 标记为对话中
+            // Mark as being in a conversation
             in_conversation = true;
             
-            // 停止随机表情动画
+            // Stop the random expression animation
             if (board->emoji_controller_) {
                 board->emoji_controller_->SetRandomAnimationEnabled(false);
                 board->emoji_controller_->ClearAnimationQueue();
                 ESP_LOGI(TAG, "Conversation started; stopping random expression animation");
             }
             
-            // Phan ung theo ngu canh (thay cho random vui/ngac nhien truoc day)
+            // Context-aware reaction (replaces the old random happy/surprised emotion)
             set_eyes_idle(false);
             if (current_state == kDeviceStateListening) {
                 set_eyes_mood("curious");
                 if (board->servo_controller_ != nullptr) {
-                    board->servo_controller_->HeadUp(10);   // hoi ngang dau len: "dang nghe sep noi"
+                    board->servo_controller_->HeadUp(10);   // tilt the head slightly up: "I am listening to the boss"
                 }
                 ESP_LOGI(TAG, "Listening: eyes=curious, head slightly up");
             } else if (current_state == kDeviceStateSpeaking) {
                 ESP_LOGI(TAG, "Speaking: eyes/head follow the assistant emotion");
             }
         }
-        // 如果设备状态变为speaking或listening，但不是从idle变过来，说明对话继续
+        // Speaking/listening without coming from idle means the conversation is continuing
         else if ((current_state == kDeviceStateSpeaking || current_state == kDeviceStateListening) && 
                  !in_conversation) {
-            // 标记为对话中
+            // Mark as being in a conversation
             in_conversation = true;
             
-            // 停止随机表情动画
+            // Stop the random expression animation
             if (board->emoji_controller_) {
                 board->emoji_controller_->SetRandomAnimationEnabled(false);
                 board->emoji_controller_->ClearAnimationQueue();
@@ -679,22 +680,22 @@ static void StateMonitorTask(void* arg) {
             }
         }
         
-        // 如果设备状态从speaking变为idle，说明AI刚刚回复完毕
+        // A transition from speaking to idle means the AI has just finished replying
         if (last_state == kDeviceStateSpeaking && current_state == kDeviceStateIdle) {
-            // 记录AI回复结束的时间
+            // Record the time the AI reply ended
             last_speak_end_time = xTaskGetTickCount();
             
-            // 获取最近的AI回复内容
+            // Get the most recent AI reply content
             const std::string& ai_response = board->last_ai_response_;
             
-            // 如果有AI回复内容，则基于内容分析情感
+            // When there is AI reply content, derive the emotion from it
             if (!ai_response.empty()) {
                 ESP_LOGI(TAG, "AI response ended; analyzing emotion from content: %s", ai_response.c_str());
                 
-                // 直接处理AI回复内容，触发相应的表情和动作
+                // Process the AI reply content directly to trigger the matching expression and motions
                 emotion_controller->ProcessAIResponse(ai_response);
             } else {
-                // 如果没有AI回复内容，则使用随机情感
+                // With no AI reply content, fall back to a random emotion
                 static const char* emotions[] = {
                     "happy", "sad", "surprise", "confused", "neutral", "look_left", "look_right"
                 };
@@ -705,13 +706,13 @@ static void StateMonitorTask(void* arg) {
             }
         }
         
-        // 如果设备状态从listening变为idle，说明用户刚刚输入完毕
+        // A transition from listening to idle means the user has just finished speaking
         if (last_state == kDeviceStateListening && current_state == kDeviceStateIdle) {
-            // 尝试处理用户输入的表情动作命令
-            // 注意：这里我们不能直接获取用户输入内容，因为框架没有提供这个接口
-            // 但我们可以在AI回复前检查常见的表情动作命令
+            // Try to process an expression-motion command from the user input
+            // Note: the user input text is not directly available here because the framework exposes no such API
+            // We can, however, check for common expression-motion commands before the AI replies
             
-            // 模拟处理几个常见的表情动作命令
+            // Emulate handling a few common expression-motion commands
             static const std::vector<std::string> common_commands = {
                 "向左看", "向右看", "看左边", "看右边", "左看", "右看",
                 "开心", "笑一笑", "高兴", "笑", "微笑",
@@ -729,17 +730,17 @@ static void StateMonitorTask(void* arg) {
             }
         }
         
-        // 如果设备状态从listening或speaking变为idle，认为对话可能结束
+        // A transition from listening or speaking to idle means the conversation may have ended
         if ((last_state == kDeviceStateListening || last_state == kDeviceStateSpeaking) && 
             current_state == kDeviceStateIdle) {
             TickType_t current_time = xTaskGetTickCount();
             
-            // 如果已经过了3秒，认为对话结束
+            // Treat the conversation as ended once 3 seconds have passed
             if (in_conversation && 
                 ((current_time - last_speak_end_time) > pdMS_TO_TICKS(3000))) {
                 in_conversation = false;
                 
-                // 恢复随机表情动画
+                // Resume the random expression animation
                 if (board->emoji_controller_) {
                     board->emoji_controller_->SetRandomAnimationEnabled(true);
                     ESP_LOGI(TAG, "Conversation ended; resuming random expression animation");
@@ -753,13 +754,13 @@ static void StateMonitorTask(void* arg) {
                 idle_bored_done = false;
                 idle_suspicious_done = false;
                 
-                // 触发中性情感
+                // Trigger the neutral emotion
                 emotion_controller->TriggerEmotion("neutral");
                 ESP_LOGI(TAG, "Conversation ended; restoring neutral emotion");
             }
         }
         
-        // Ngoi khong: im lang 6s -> chan, 20s -> ngo vac (kem lieu mat ngau nhien)
+        // Sitting idle: 6s of silence -> bored, 20s -> suspicious (plus random looks/blinks)
         if (current_state == kDeviceStateIdle) {
             if (last_state != kDeviceStateIdle) {
                 idle_since = xTaskGetTickCount();
@@ -779,28 +780,28 @@ static void StateMonitorTask(void* arg) {
             }
         }
         
-        // 更新上一次的设备状态
+        // Update the previous device state
         last_state = current_state;
         
-        // 延时100毫秒
+        // Delay for 100 milliseconds
         vTaskDelay(pdMS_TO_TICKS(100));
     }
     
-    // 注意：这里永远不会执行到，因为上面的循环是无限的
+    // Note: this is never reached because the loop above is infinite
     delete params;
     vTaskDelete(NULL);
 }
 
-// 声明一个静态函数，用于处理AI回复
+// Declare a static function used to process the AI response
 static void ProcessAIResponseTask(void* arg) {
     char* message = (char*)arg;
     if (message) {
-        // 获取情感响应控制器
+        // Get the emotion response controller
         EmotionResponseController* emotion_controller = nullptr;
         
-        // 直接从EmojiBoard获取
+        // Fetch it directly from the EmojiBoard
         if (g_board_instance) {
-            // 由于ProcessAIResponseTask是EmojiBoard的友元函数，可以直接访问私有成员
+            // ProcessAIResponseTask is a friend of EmojiBoard, so it can access private members directly
             emotion_controller = g_board_instance->emotion_controller_;
             ESP_LOGI("AIResponseTask", "Retrieved emotion controller from EmojiBoard");
         }
@@ -813,35 +814,35 @@ static void ProcessAIResponseTask(void* arg) {
         }
     }
     
-    // 释放消息内存
+    // Free the message memory
     if (message) {
         free(message);
     }
     
-    // 删除任务
+    // Delete the task
     vTaskDelete(NULL);
 }
 
-// 实现EmojiDisplay::SetEmotion方法
+// Implements EmojiDisplay::SetEmotion
 void EmojiDisplay::SetEmotion(const char* emotion) {
     ESP_LOGI(TAG, "Xiaozhi AI framework recognized emotion: %s", emotion);
     
-    // 调用父类的SetEmotion方法，保持原有功能
+    // Call the base class SetEmotion to keep the original behaviour
     OledDisplay::SetEmotion(emotion);
     
-    // 防止递归调用
+    // Prevent recursive calls
     if (processing_ai_response_) {
         return;
     }
     
-    // 将小智AI框架的表情映射到我们的表情动作
+    // Map the Xiaozhi AI framework emotion onto our own expression motions
     if (board_ && board_->emotion_controller_) {
         std::string emotion_str(emotion);
         
-        // 映射小智AI框架的表情到我们的表情动作
+        // Map the Xiaozhi AI framework emotion onto our own expression motions
         std::string mapped_emotion;
         
-        // 开心系列表情
+        // Happy family of expressions
         if (emotion_str == "happy") {
             mapped_emotion = "happy";
         } else if (emotion_str == "laughing") {
@@ -849,71 +850,71 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         } else if (emotion_str == "funny") {
             mapped_emotion = "funny";
         } 
-        // 悲伤系列表情
+        // Sad family of expressions
         else if (emotion_str == "sad") {
             mapped_emotion = "sad";
         } else if (emotion_str == "crying") {
             mapped_emotion = "cry";
         } 
-        // 生气表情
+        // Angry expression
         else if (emotion_str == "angry") {
             mapped_emotion = "anger";
         } 
-        // 惊讶系列表情
+        // Surprised family of expressions
         else if (emotion_str == "surprised") {
             mapped_emotion = "surprise";
         } else if (emotion_str == "shocked") {
             mapped_emotion = "shocked";
         } 
-        // 困惑和思考表情
+        // Confused and thinking expressions
         else if (emotion_str == "confused") {
             mapped_emotion = "confused";
         } else if (emotion_str == "thinking") {
             mapped_emotion = "thinking";
         } 
-        // 尴尬表情
+        // Embarrassed expression
         else if (emotion_str == "embarrassed") {
             mapped_emotion = "awkward";
         } 
-        // 睡觉表情
+        // Sleeping expression
         else if (emotion_str == "sleepy") {
             mapped_emotion = "sleep";
         } 
-        // 眨眼表情
+        // Winking expression
         else if (emotion_str == "winking") {
             mapped_emotion = "blink";
         } 
-        // 酷酷的表情
+        // Cool expression
         else if (emotion_str == "cool") {
             mapped_emotion = "cool";
         } 
-        // 自信表情
+        // Confident expression
         else if (emotion_str == "confident") {
             mapped_emotion = "confident";
         } 
-        // 放松表情
+        // Relaxed expression
         else if (emotion_str == "relaxed") {
             mapped_emotion = "relaxed";
         } 
-        // 爱心和亲吻表情
+        // Loving and kissing expressions
         else if (emotion_str == "loving") {
             mapped_emotion = "loving";
         } else if (emotion_str == "kissy") {
             mapped_emotion = "kissy";
         } 
-        // 美味表情
+        // Delicious expression
         else if (emotion_str == "delicious") {
             mapped_emotion = "delicious";
         } 
-        // 奇怪表情
+        // Silly expression
         else if (emotion_str == "silly") {
             mapped_emotion = "silly";
         } 
-        // 中性表情
+        // Neutral expression
         else if (emotion_str == "neutral") {
             mapped_emotion = "neutral";
         } 
-        // 对于其他表情，使用默认的中性表情
+        // For any other emotion, fall back to the default neutral expression
         else {
             mapped_emotion = "neutral";
             ESP_LOGW(TAG, "Unrecognized emotion type: %s; using the default neutral expression", emotion_str.c_str());
@@ -921,24 +922,24 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         
         ESP_LOGI(TAG, "Mapped to our expression action: %s", mapped_emotion.c_str());
 
-        // Doi dang mat ben bo esp32-eyes theo cam xuc (giu nguyen animation/servo cu)
+        // Switch the OliEyes mood from the emotion (the animation/servo pipeline is untouched)
         if (board_ && board_->eyes_) {
             DisplayLockGuard eyes_lock(board_->display_);
             board_->eyes_->SetMoodForEmotion(mapped_emotion.c_str());
         }
         
-        // 创建一个单独的任务来执行表情动作，避免阻塞主线程
-        // 复制表情字符串，因为它将在任务中使用
+        // Run the expression motion in a separate task so the main thread is not blocked
+        // Copy the expression string because it will be used inside the task
         char* emotion_copy = strdup(mapped_emotion.c_str());
         if (emotion_copy) {
             xTaskCreate([](void* arg) {
                 char* emotion = (char*)arg;
-                // 获取EmojiBoard实例
+                // Get the EmojiBoard instance
                 if (g_board_instance && g_board_instance->emotion_controller_) {
-                    // 使用TriggerEmotion方法触发表情动作，这是一个公有方法
+                    // TriggerEmotion is a public method, so call it to fire the expression motion
                     g_board_instance->emotion_controller_->TriggerEmotion(emotion);
                 }
-                // 释放复制的字符串
+                // Free the copied string
                 free(emotion);
                 vTaskDelete(NULL);
             }, "emotion_task", 4096, emotion_copy, 1, NULL);
