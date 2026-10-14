@@ -60,6 +60,7 @@ private:
     void glyphZ(int x, int y, int size);
     void glyphTilde(int x, int y);
     void clear();
+    void blit();       // expand the 1-bit scratch buffer into the RGB565 canvas
 
     static constexpr int WIDTH = 128;
     static constexpr int HEIGHT = 64;
@@ -67,7 +68,8 @@ private:
 
     lv_obj_t* screen_ = nullptr;
     lv_obj_t* canvas_ = nullptr;
-    uint8_t* buf_ = nullptr;
+    uint8_t* buf_ = nullptr;      // 1-bit scratch buffer the drawing primitives write into
+    uint16_t* rgb_ = nullptr;     // RGB565 canvas buffer (what LVGL actually renders)
 
     int mood_ = 0;                  // 0 = neutral
     EyeState left_{}, right_{};
