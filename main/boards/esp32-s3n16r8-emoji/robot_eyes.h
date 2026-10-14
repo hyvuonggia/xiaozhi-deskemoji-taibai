@@ -96,7 +96,7 @@ private:
 
     float bounce_y_ = 0;
 
-    bool demo_ = true;
+    bool demo_ = false;   // tat mac dinh: board dieu khien mood theo trang thai; bat lai bang giong noi "tu doi mat di"
     bool idle_ = true;
     uint32_t last_mood_switch_ = 0;
     uint32_t mood_switch_base_ = 3500;

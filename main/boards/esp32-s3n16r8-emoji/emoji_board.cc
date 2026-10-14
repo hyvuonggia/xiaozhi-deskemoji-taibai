@@ -599,6 +599,23 @@ static void StateMonitorTask(void* arg) {
     DeviceState last_state = kDeviceStateIdle;
     TickType_t last_speak_end_time = 0;
     bool in_conversation = false;
+
+    // --- Phan ung theo ngu canh (them 2026-10-14) ---
+    // idle -> (im lang 6s) bored -> (im lang 20s) suspicious; dang nghe -> curious + ngang dau len
+    TickType_t idle_since = xTaskGetTickCount();
+    bool idle_bored_done = false;
+    bool idle_suspicious_done = false;
+
+    auto set_eyes_mood = [&](const char* mood) {
+        if (board->eyes_ == nullptr) return;
+        DisplayLockGuard lock(board->display_);
+        board->eyes_->SetMood(mood);
+    };
+    auto set_eyes_idle = [&](bool on) {
+        if (board->eyes_ == nullptr) return;
+        DisplayLockGuard lock(board->display_);
+        board->eyes_->SetIdleBehaviors(on);   // tat/bat lieu mat ngau nhien + che do demo
+    };
     
     // 确保初始状态下随机动画是启用的
     if (board->emoji_controller_) {
@@ -629,16 +646,16 @@ static void StateMonitorTask(void* arg) {
                 ESP_LOGI(TAG, "Conversation started; stopping random expression animation");
             }
             
-            // 如果是AI开始回复
-            if (current_state == kDeviceStateSpeaking) {
-                // 随机触发一种积极情感（开心或惊讶）
-                static const char* positive_emotions[] = {
-                    "happy", "surprise"
-                };
-                int random_index = rand() % (sizeof(positive_emotions) / sizeof(positive_emotions[0]));
-                emotion_controller->TriggerEmotion(positive_emotions[random_index]);
-                
-                ESP_LOGI(TAG, "AI started responding; triggering positive emotion: %s", positive_emotions[random_index]);
+            // Phan ung theo ngu canh (thay cho random vui/ngac nhien truoc day)
+            set_eyes_idle(false);
+            if (current_state == kDeviceStateListening) {
+                set_eyes_mood("curious");
+                if (board->servo_controller_ != nullptr) {
+                    board->servo_controller_->HeadUp(10);   // hoi ngang dau len: "dang nghe sep noi"
+                }
+                ESP_LOGI(TAG, "Listening: eyes=curious, head slightly up");
+            } else if (current_state == kDeviceStateSpeaking) {
+                ESP_LOGI(TAG, "Speaking: eyes/head follow the assistant emotion");
             }
         }
         // 如果设备状态变为speaking或listening，但不是从idle变过来，说明对话继续
@@ -652,6 +669,13 @@ static void StateMonitorTask(void* arg) {
                 board->emoji_controller_->SetRandomAnimationEnabled(false);
                 board->emoji_controller_->ClearAnimationQueue();
                 ESP_LOGI(TAG, "Conversation continued; stopping random expression animation");
+            }
+            set_eyes_idle(false);
+            if (current_state == kDeviceStateListening) {
+                set_eyes_mood("curious");
+                if (board->servo_controller_ != nullptr) {
+                    board->servo_controller_->HeadUp(10);
+                }
             }
         }
         
@@ -723,11 +747,35 @@ static void StateMonitorTask(void* arg) {
                 if (board->eyes_) {
                     DisplayLockGuard eyes_lock(board->display_);
                     board->eyes_->SetIdleBehaviors(true);
+                    board->eyes_->SetMood("relaxed");
                 }
+                idle_since = xTaskGetTickCount();
+                idle_bored_done = false;
+                idle_suspicious_done = false;
                 
                 // 触发中性情感
                 emotion_controller->TriggerEmotion("neutral");
                 ESP_LOGI(TAG, "Conversation ended; restoring neutral emotion");
+            }
+        }
+        
+        // Ngoi khong: im lang 6s -> chan, 20s -> ngo vac (kem lieu mat ngau nhien)
+        if (current_state == kDeviceStateIdle) {
+            if (last_state != kDeviceStateIdle) {
+                idle_since = xTaskGetTickCount();
+                idle_bored_done = false;
+                idle_suspicious_done = false;
+            }
+            uint32_t idle_ms = (uint32_t)((xTaskGetTickCount() - idle_since) * portTICK_PERIOD_MS);
+            if (!idle_bored_done && idle_ms > 6000) {
+                idle_bored_done = true;
+                set_eyes_mood("bored");
+                ESP_LOGI(TAG, "Idle 6s -> eyes=bored");
+            }
+            if (!idle_suspicious_done && idle_ms > 20000) {
+                idle_suspicious_done = true;
+                set_eyes_mood("suspicious");
+                ESP_LOGI(TAG, "Idle 20s -> eyes=suspicious");
             }
         }
         
