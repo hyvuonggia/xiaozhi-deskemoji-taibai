@@ -10,9 +10,9 @@
 static const char *TAG = "app_weather";
 
 /**
- * @brief 天气代码
+ * @brief Weather code
  * 
- * 存储当前天气代码，用于查找对应的天气图标
- * 默认为晴天代码 "100"
+ * Stores the current weather code, used to look up the matching weather icon
+ * Defaults to the sunny weather code "100"
  */
 char weather_icon[10] = "100";

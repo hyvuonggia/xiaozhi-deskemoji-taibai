@@ -7,14 +7,14 @@
 
 #define TAG "ZhengchenLcdDisplay"
 
-// 表情映射表 - 将原版21种表情映射到现有6个GIF
+// Emotion mapping table - maps the original 21 emotions to the existing 6 GIFs
 const ZhengchenLcdDisplay::EmotionMap ZhengchenLcdDisplay::emotion_maps_[] = {
-    // 中性/平静类表情 -> staticstate
+    // Neutral/calm emotions -> staticstate
     {"neutral", &staticstate},
     {"relaxed", &staticstate},
     {"sleepy", &staticstate},
 
-    // 积极/开心类表情 -> happy
+    // Positive/happy emotions -> happy
     {"happy", &happy},
     {"laughing", &happy},
     {"funny", &happy},
@@ -26,23 +26,23 @@ const ZhengchenLcdDisplay::EmotionMap ZhengchenLcdDisplay::emotion_maps_[] = {
     {"kissy", &happy},
     {"silly", &happy},
 
-    // 悲伤类表情 -> sad
+    // Sad emotions -> sad
     {"sad", &sad},
     {"crying", &sad},
 
-    // 愤怒类表情 -> anger
+    // Angry emotions -> anger
     {"angry", &anger},
 
-    // 惊讶类表情 -> scare
+    // Surprised emotions -> scare
     {"surprised", &scare},
     {"shocked", &scare},
 
-    // 思考/困惑类表情 -> buxue
+    // Thinking/confused emotions -> buxue
     {"thinking", &buxue},
     {"confused", &buxue},
     {"embarrassed", &buxue},
 
-    {nullptr, nullptr}  // 结束标记
+    {nullptr, nullptr}  // End marker
 };
 
 ZhengchenLcdDisplay::ZhengchenLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
@@ -55,7 +55,7 @@ ZhengchenLcdDisplay::ZhengchenLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp
       high_temp_label_(nullptr) {
     ESP_LOGI(TAG, "Initializing ZhengchenLcdDisplay");
     SetupGifContainer();
-    // 立即显示一个默认表情
+    // Immediately show a default emotion
     ESP_LOGI(TAG, "Initialization complete; displaying default emotion");
     SetEmotion("neutral");
 };
@@ -78,7 +78,7 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
         ESP_LOGI(TAG, "Deleting old content_");
     }
 
-    // 创建内容容器
+    // Create content container
     content_ = lv_obj_create(container_);
     if (!content_) {
         ESP_LOGE(TAG, "Failed to create content container!");
@@ -93,7 +93,7 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_set_flex_grow(content_, 1);
     lv_obj_center(content_);
 
-    // 创建表情标签
+    // Create emotion label
     emotion_label_ = lv_label_create(content_);
     if (!emotion_label_) {
         ESP_LOGE(TAG, "Failed to create emotion label!");
@@ -106,7 +106,7 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_set_style_border_width(emotion_label_, 0, 0);
     lv_obj_add_flag(emotion_label_, LV_OBJ_FLAG_HIDDEN);
 
-    // 创建GIF对象
+    // Create GIF object
     ESP_LOGI(TAG, "Creating GIF object");
     emotion_gif_ = lv_gif_create(content_);
     if (!emotion_gif_) {
@@ -121,11 +121,11 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     lv_obj_set_style_bg_opa(emotion_gif_, LV_OPA_TRANSP, 0);
     lv_obj_center(emotion_gif_);
     
-    // 设置默认GIF表情
+    // Set default GIF emotion
     ESP_LOGI(TAG, "Setting default GIF emotion");
     lv_gif_set_src(emotion_gif_, &staticstate);
 
-    // 创建聊天消息标签
+    // Create chat message label
     chat_message_label_ = lv_label_create(content_);
     if (!chat_message_label_) {
         ESP_LOGE(TAG, "Failed to create chat message label!");
@@ -149,7 +149,7 @@ void ZhengchenLcdDisplay::SetupGifContainer() {
     LcdDisplay::SetTheme("dark");
     ESP_LOGI(TAG, "GIF container setup complete");
     
-    // 添加一个测试消息
+    // Add a test message
     lv_label_set_text(chat_message_label_, "Kiểm tra hiển thị biểu cảm");
     lv_obj_clear_flag(chat_message_label_, LV_OBJ_FLAG_HIDDEN);
 }
@@ -206,21 +206,21 @@ void ZhengchenLcdDisplay::SetChatMessage(const char* role, const char* content) 
 void ZhengchenLcdDisplay::SetupHighTempWarningPopup() {
     DisplayLockGuard lock(this);
     
-    // 创建高温警告弹窗
-    high_temp_popup_ = lv_obj_create(lv_scr_act());  // 使用当前屏幕
+    // Create high-temperature warning popup
+    high_temp_popup_ = lv_obj_create(lv_scr_act());  // Use current screen
     lv_obj_set_scrollbar_mode(high_temp_popup_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_size(high_temp_popup_, LV_HOR_RES * 0.9, fonts_.text_font->line_height * 2);
     lv_obj_align(high_temp_popup_, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_bg_color(high_temp_popup_, lv_palette_main(LV_PALETTE_RED), 0);
     lv_obj_set_style_radius(high_temp_popup_, 10, 0);
     
-    // 创建警告标签
+    // Create warning label
     high_temp_label_ = lv_label_create(high_temp_popup_);
     lv_label_set_text(high_temp_label_, "Cảnh báo: Nhiệt độ quá cao");
     lv_obj_set_style_text_color(high_temp_label_, lv_color_white(), 0);
     lv_obj_center(high_temp_label_);
     
-    // 默认隐藏
+    // Hidden by default
     lv_obj_add_flag(high_temp_popup_, LV_OBJ_FLAG_HIDDEN);
 }
 

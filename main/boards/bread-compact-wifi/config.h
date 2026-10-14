@@ -6,7 +6,7 @@
 #define AUDIO_INPUT_SAMPLE_RATE  16000
 #define AUDIO_OUTPUT_SAMPLE_RATE 24000
 
-// 如果使用 Duplex I2S 模式，请注释下面一行
+// If using Duplex I2S mode, comment out the line below
 #define AUDIO_I2S_METHOD_SIMPLEX
 
 #ifdef AUDIO_I2S_METHOD_SIMPLEX
@@ -46,7 +46,7 @@
 #define DISPLAY_HEIGHT  64
 #define SH1106
 #else
-#error "未选择 OLED 屏幕类型"
+#error "No OLED screen type selected"
 #endif
 
 #define DISPLAY_MIRROR_X true

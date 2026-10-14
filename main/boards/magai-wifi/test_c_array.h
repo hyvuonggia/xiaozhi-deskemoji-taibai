@@ -1,6 +1,6 @@
 /**
  * @file test_c_array.h
- * @brief C数组格式天气图标测试程序头文件
+ * @brief Header file for the C-array format weather icon test program
  */
 
 #pragma once
@@ -10,9 +10,9 @@ extern "C" {
 #endif
 
 /**
- * @brief 启动C数组测试
+ * @brief Start the C array test
  * 
- * 创建一个测试任务来验证C数组格式的天气图标显示功能
+ * Creates a test task to verify the C-array format weather icon display feature
  */
 void start_c_array_test(void);
 

@@ -43,7 +43,7 @@ bool CustomWakeWord::Initialize(AudioCodec* codec) {
         return false;
     }
 
-    // 初始化 multinet (命令词识别)
+    // Initialize multinet (command word recognition)
     mn_name_ = esp_srmodel_filter(models_, ESP_MN_PREFIX, ESP_MN_CHINESE);
     if (mn_name_ == nullptr) {
         ESP_LOGE(TAG, "Failed to initialize multinet, mn_name is nullptr");
@@ -53,7 +53,7 @@ bool CustomWakeWord::Initialize(AudioCodec* codec) {
 
     ESP_LOGI(TAG, "multinet: %s", mn_name_);
     multinet_ = esp_mn_handle_from_name(mn_name_);
-    multinet_model_data_ = multinet_->create(mn_name_, 3000);  // 3 秒超时
+    multinet_model_data_ = multinet_->create(mn_name_, 3000);  // 3 second timeout
     multinet_->set_det_threshold(multinet_model_data_, CONFIG_CUSTOM_WAKE_WORD_THRESHOLD / 100.0f);
     esp_mn_commands_clear();
     esp_mn_commands_add(1, CONFIG_CUSTOM_WAKE_WORD);

@@ -28,7 +28,7 @@
 LV_FONT_DECLARE(font_puhui_20_4);
 LV_FONT_DECLARE(font_awesome_20_4);
 
-// 自定义LCD显示器类，用于圆形屏幕适配
+// Custom LCD display class adapted for the round screen
 class CustomLcdDisplay : public SpiLcdDisplay
 {
 public:
@@ -64,14 +64,14 @@ private:
     esp_lcd_panel_io_handle_t panel_io = NULL;
     esp_lcd_panel_handle_t panel = NULL;
 
-    // 音量映射函数：将内部音量(0-80)映射为显示音量(0-100%)
+    // Volume mapping: maps internal volume (0-80) to display volume (0-100%)
     int MapVolumeForDisplay(int internal_volume) {
-        // 确保输入在有效范围内
+        // Clamp the input to the valid range
         if (internal_volume < 0) internal_volume = 0;
         if (internal_volume > 80) internal_volume = 80;
         
-        // 将0-80映射到0-100
-        // 公式: 显示音量 = (内部音量 / 80) * 100
+        // Map 0-80 to 0-100
+        // Formula: display volume = (internal volume / 80) * 100
         return (internal_volume * 100) / 80;
     }
     
@@ -108,13 +108,13 @@ private:
             } else {
                 ESP_LOGI(TAG, "Short press, return to sleep");
                 ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(PWR_BUTTON_GPIO, 0));
-                ESP_ERROR_CHECK(rtc_gpio_pullup_en(PWR_BUTTON_GPIO));  // 内部上拉
+                ESP_ERROR_CHECK(rtc_gpio_pullup_en(PWR_BUTTON_GPIO));  // Internal pull-up
                 ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(PWR_BUTTON_GPIO));
                 esp_deep_sleep_start();
             }
         }
         #endif
-        //一分钟进入浅睡眠，5分钟进入深睡眠关机
+        // Enter light sleep after 1 minute, deep sleep shutdown after 5 minutes
         power_save_timer_ = new PowerSaveTimer(-1, (60*5), -1);
         // power_save_timer_ = new PowerSaveTimer(-1, 6, 10);//test
         power_save_timer_->OnEnterSleepMode([this]() {
@@ -129,10 +129,10 @@ private:
             ESP_LOGI(TAG, "Shutting down");
             #ifndef __USER_GPIO_PWRDOWN__
             ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(PWR_BUTTON_GPIO, 0));
-            ESP_ERROR_CHECK(rtc_gpio_pullup_en(PWR_BUTTON_GPIO));  // 内部上拉
+            ESP_ERROR_CHECK(rtc_gpio_pullup_en(PWR_BUTTON_GPIO));  // Internal pull-up
             ESP_ERROR_CHECK(rtc_gpio_pulldown_dis(PWR_BUTTON_GPIO));
 
-            esp_lcd_panel_disp_on_off(panel, false); //关闭显示
+            esp_lcd_panel_disp_on_off(panel, false); // Turn off the display
             esp_deep_sleep_start();
             #else
             rtc_gpio_set_level(PWR_EN_GPIO, 0);
@@ -167,7 +167,7 @@ private:
         if (gpio_get_level(GPIO_NUM_3) == 1) {
             pwrbutton_unreleased = true;
         }
-        // 配置GPIO
+        // Configure GPIO
         ESP_LOGI(TAG, "Configuring power button GPIO");
         GpioManager::Config(GPIO_NUM_3, GpioManager::GpioMode::INPUT_PULLDOWN);
 
@@ -176,10 +176,10 @@ private:
             power_save_timer_->WakeUp();
         });
 
-        // 检查电源按钮初始状态
+        // Check the initial power button state
         ESP_LOGI(TAG, "Power button initial state: %d", GpioManager::GetLevel(PWR_BUTTON_GPIO));
 
-        // 高电平有效长按关机逻辑
+        // Active-high long-press shutdown logic
         pwr_button_.OnPressDown([this]() {
             pwrbutton_unreleased = false;
         });
@@ -192,7 +192,7 @@ private:
                 return;
             }
             
-            // 高电平有效防抖确认
+            // Active-high debounce confirmation
             for (int i = 0; i < 5; i++) {
                 int level = GpioManager::GetLevel(PWR_BUTTON_GPIO);
                 ESP_LOGD(TAG, "Debounce check %d: GPIO%d level=%d", i+1, PWR_BUTTON_GPIO, level);
@@ -207,34 +207,34 @@ private:
             ESP_LOGI(TAG, "Confirmed power button pressed - initiating shutdown");
             power_manager_->SetPowerState(PowerState::SHUTDOWN); });
 
-        //单击切换状态
+        // Single click toggles state
         pwr_button_.OnClick([this]()
                             {
-            // 获取当前应用实例和状态
+            // Get the current application instance and state
             auto &app = Application::GetInstance();
             auto current_state = app.GetDeviceState();
 
             ESP_LOGI(TAG, "Current device state: %d", current_state);
             
             if (current_state == kDeviceStateIdle) {
-                // 如果当前是待命状态，切换到聆听状态
+                // If currently idle, switch to listening state
                 ESP_LOGI(TAG, "Switching from standby to listening state");
-                app.ToggleChatState(); // 切换到聆听状态
+                app.ToggleChatState(); // Switch to listening state
             } else if (current_state == kDeviceStateListening) {
-                // 如果当前是聆听状态，切换到待命状态
+                // If currently listening, switch to idle state
                 ESP_LOGI(TAG, "Switching from listening to standby state");
-                app.ToggleChatState(); // 切换到待命状态
+                app.ToggleChatState(); // Switch to idle state
             } else if (current_state == kDeviceStateSpeaking) {
-                // 如果当前是说话状态，终止说话并切换到待命状态
+                // If currently speaking, stop speaking and switch to idle state
                 ESP_LOGI(TAG, "Switching from speaking to standby state");
-                app.ToggleChatState(); // 终止说话
+                app.ToggleChatState(); // Stop speaking
             } else {
-                // 其他状态下只唤醒设备
+                // In any other state, just wake the device
                 ESP_LOGI(TAG, "Waking device");
                 power_save_timer_->WakeUp();
             } });
 
-        // 电源键三击：重置WiFi
+        // Triple-click the power button: reset Wi-Fi
         pwr_button_.OnMultipleClick([this]()
                                     {
             ESP_LOGI(TAG, "Power button triple click: resetting Wi-Fi");
@@ -247,7 +247,7 @@ private:
             power_save_timer_->WakeUp();
 
             auto codec = GetAudioCodec();
-            int current_vol = codec->output_volume(); // 获取实际当前音量
+            int current_vol = codec->output_volume(); // Get the actual current volume
             current_vol = (current_vol + 8 > 80) ? 80 : current_vol + 8;
             
             codec->SetOutputVolume(current_vol);
@@ -262,7 +262,7 @@ private:
             power_save_timer_->WakeUp();
 
             auto codec = GetAudioCodec();
-            int current_vol = codec->output_volume(); // 获取实际当前音量
+            int current_vol = codec->output_volume(); // Get the actual current volume
             current_vol = (current_vol - 8 < 0) ? 0 : current_vol - 8;
             
             codec->SetOutputVolume(current_vol);
@@ -278,7 +278,7 @@ private:
 
         void InitializeGC9301isplay()
         {
-            // 液晶屏控制IO初始化
+            // LCD control IO initialization
             ESP_LOGI(TAG, "test Install panel IO");
             spi_bus_config_t buscfg = {};
             buscfg.mosi_io_num = DISPLAY_SPI_MOSI_PIN;
@@ -289,7 +289,7 @@ private:
             buscfg.max_transfer_sz = DISPLAY_WIDTH * DISPLAY_HEIGHT * sizeof(uint16_t);
             ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
-            // 初始化SPI总线
+            // Initialize the SPI bus
             esp_lcd_panel_io_spi_config_t io_config = {};
             io_config.cs_gpio_num = DISPLAY_SPI_CS_PIN;
             io_config.dc_gpio_num = DISPLAY_DC_PIN;
@@ -300,7 +300,7 @@ private:
             io_config.lcd_param_bits = 8;
             esp_lcd_new_panel_io_spi(SPI3_HOST, &io_config, &panel_io);
 
-            // 初始化液晶屏驱动芯片9309
+            // Initialize the LCD driver IC GC9309
             ESP_LOGI(TAG, "Install LCD driver");
             esp_lcd_panel_dev_config_t panel_config = {};
             panel_config.reset_gpio_num = GPIO_NUM_NC;

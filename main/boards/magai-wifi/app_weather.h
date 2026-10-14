@@ -11,9 +11,9 @@ extern "C" {
 #endif
 
 /**
- * @brief 天气代码
+ * @brief Weather code
  * 
- * 存储当前天气代码，用于查找对应的天气图标
+ * Stores the current weather code, used to look up the corresponding weather icon
  */
 extern char weather_icon[10];
 

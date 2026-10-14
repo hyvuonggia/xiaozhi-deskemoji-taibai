@@ -12,7 +12,7 @@ private:
     float esp32temp = 0.0f;
 public:
     Temperature() : Thing("Temperature", "芯片温度管理") {
-        // 定义设备的属性
+        // define the device properties
         properties_.AddNumberProperty("temp", "当前芯片温度", [this]() -> float {
             auto& board = Board::GetInstance();
             if (board.GetTemperature(esp32temp)) {

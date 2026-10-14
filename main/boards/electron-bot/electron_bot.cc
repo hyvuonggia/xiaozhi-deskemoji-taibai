@@ -21,7 +21,7 @@
 
 #define TAG "ElectronBot"
 
-// 控制器初始化函数声明
+// Controller initialization function declaration
 void InitializeElectronBotController();
 
 LV_FONT_DECLARE(font_puhui_20_4);
@@ -46,7 +46,7 @@ private:
         ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &buscfg, SPI_DMA_CH_AUTO));
     }
 
-    // GC9A01初始化
+    // GC9A01 initialization
     void InitializeGc9a01Display() {
         ESP_LOGI(TAG, "Init GC9A01 display");
 

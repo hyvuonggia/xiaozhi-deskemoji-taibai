@@ -21,12 +21,12 @@
 
 static const char *TAG = "app_animation";
 
-// 天气代码在 app_weather.c 中定义，这里通过头文件引用
+// The weather codes are defined in app_weather.c and referenced here via the header
 
 void updata_weather_icon(void)
 {
-    // 使用weather_display_new.c中的函数来更新天气图标
-    // 这样可以确保使用统一的图标对象和逻辑
+    // Use the functions in weather_display_new.c to update the weather icon
+    // This ensures a unified icon object and logic are used
     extern void weather_icon_new_update(const char* weather_code);
     
     if (strlen(weather_icon) > 0) {
@@ -39,11 +39,11 @@ void updata_weather_icon(void)
 }
 
 /**
- * @brief 初始化天气图标显示
+ * @brief Initialize the weather icon display
  * 
- * 初始化天气图标显示系统，使用SPIFFS文件系统加载PNG格式的天气图标
+ * Initialize the weather icon display system, loading PNG weather icons from the SPIFFS filesystem
  * 
- * @return esp_err_t 初始化结果
+ * @return esp_err_t Initialization result
  */
 esp_err_t app_animation_start(void)
 {

@@ -122,9 +122,9 @@ private:
         power_save_timer_->OnShutdownRequest([this]() {
             ESP_LOGI(TAG, "Shutting down");
             rtc_gpio_set_level(GPIO_NUM_21, 0);
-            // 启用保持功能，确保睡眠期间电平不变
+            // Enable the hold function to keep the level unchanged during sleep
             rtc_gpio_hold_en(GPIO_NUM_21);
-            esp_lcd_panel_disp_on_off(panel_, false); //关闭显示
+            esp_lcd_panel_disp_on_off(panel_, false); // turn off the display
             esp_deep_sleep_start();
         });
         power_save_timer_->SetEnabled(true);
@@ -203,7 +203,7 @@ public:
         boot_button_(BOOT_BUTTON_GPIO),
         volume_up_button_(VOLUME_UP_BUTTON_GPIO),
         volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
-        Initializegpio21_45(); // 初始时，拉高21引脚，保证4g模块正常工作
+        Initializegpio21_45(); // initially pull pin 21 high to keep the 4G module working properly
         InitializePowerManager();
         InitializePowerSaveTimer();
         InitializeSpi();

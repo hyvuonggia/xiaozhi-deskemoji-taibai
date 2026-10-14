@@ -1,8 +1,8 @@
 /**
  * @file test_c_array.c
- * @brief C数组格式天气图标测试程序
+ * @brief Test program for C-array weather icons
  * 
- * 用于测试C数组格式的天气图标显示功能
+ * Tests the display of weather icons in C array format
  */
 
 #include "weather_display_new.h"
@@ -13,30 +13,30 @@
 static const char *TAG = "test_c_array";
 
 /**
- * @brief C数组测试任务
+ * @brief C array test task
  */
 void test_c_array_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Starting C-array weather icon test");
     
-    // 等待系统初始化完成
+    // Wait for system initialization to complete
     vTaskDelay(pdMS_TO_TICKS(2000));
     
-    // 调用C数组测试函数
+    // Call the C array test function
     weather_icon_test_c_array();
     
     ESP_LOGI(TAG, "C-array weather icon test complete");
     
-    // 删除任务
+    // Delete the task
     vTaskDelete(NULL);
 }
 
 /**
- * @brief 启动C数组测试
+ * @brief Start the C array test
  */
 void start_c_array_test(void)
 {
-    // 创建测试任务
+    // Create the test task
     xTaskCreate(
         test_c_array_task,
         "test_c_array",

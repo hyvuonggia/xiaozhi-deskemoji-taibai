@@ -490,22 +490,22 @@ private:
         auto touchpad = board.GetTouchpad();
         static bool was_touched = false;
         static int64_t touch_start_time = 0;
-        const int64_t TOUCH_THRESHOLD_MS = 500;  // 触摸时长阈值，超过500ms视为长按
+        const int64_t TOUCH_THRESHOLD_MS = 500;  // touch duration threshold; over 500ms counts as a long press
         
         touchpad->UpdateTouchPoint();
         auto touch_point = touchpad->GetTouchPoint();
         
-        // 检测触摸开始
+        // detect touch start
         if (touch_point.num > 0 && !was_touched) {
             was_touched = true;
-            touch_start_time = esp_timer_get_time() / 1000; // 转换为毫秒
+            touch_start_time = esp_timer_get_time() / 1000; // convert to milliseconds
         } 
-        // 检测触摸释放
+        // detect touch release
         else if (touch_point.num == 0 && was_touched) {
             was_touched = false;
             int64_t touch_duration = (esp_timer_get_time() / 1000) - touch_start_time;
             
-            // 只有短触才触发
+            // only a short touch triggers it
             if (touch_duration < TOUCH_THRESHOLD_MS) {
                 auto& app = Application::GetInstance();
                 if (app.GetDeviceState() == kDeviceStateStarting && 
@@ -521,7 +521,7 @@ private:
         ESP_LOGI(TAG, "Init Cst816s");
         cst816s_ = new Cst816s(i2c_bus_, 0x15);
         
-        // 创建定时器，10ms 间隔
+        // create the timer, 10ms interval
         esp_timer_create_args_t timer_args = {
             .callback = touchpad_timer_callback,
             .arg = NULL,
@@ -574,7 +574,7 @@ private:
         ESP_LOGI(TAG, "Install ST77916 panel driver");
         
         st77916_vendor_config_t vendor_config = {
-            .init_cmds = lcd_init_cmds, // 如果使用自定义初始化命令，请取消注释这些行
+            .init_cmds = lcd_init_cmds, // uncomment these lines if using custom init commands
             .init_cmds_size = sizeof(lcd_init_cmds) / sizeof(st77916_lcd_init_cmd_t),
             .flags = {
                 .use_qspi_interface = 1,

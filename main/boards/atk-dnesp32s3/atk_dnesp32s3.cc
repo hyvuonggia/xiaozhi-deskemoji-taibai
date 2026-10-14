@@ -102,7 +102,7 @@ private:
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
         ESP_LOGD(TAG, "Install panel IO");
-        // 液晶屏控制IO初始化
+        // LCD control IO initialization
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = LCD_CS_PIN;
         io_config.dc_gpio_num = LCD_DC_PIN;
@@ -113,7 +113,7 @@ private:
         io_config.lcd_param_bits = 8;
         esp_lcd_new_panel_io_spi(SPI2_HOST, &io_config, &panel_io);
 
-        // 初始化液晶屏驱动芯片ST7789
+        // Initialize the LCD driver IC ST7789
         ESP_LOGD(TAG, "Install LCD driver");
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = GPIO_NUM_NC;
@@ -143,20 +143,20 @@ private:
                                     });
     }
 
-    // 初始化摄像头：ov2640；
-    // 根据正点原子官方示例参数
+    // Initialize the camera: OV2640;
+    // Parameters based on the ATK (ALIENTEK) official example
     void InitializeCamera() {
         
-        xl9555_->SetOutputState(OV_PWDN_IO, 0); // PWDN=低 (上电)
-        xl9555_->SetOutputState(OV_RESET_IO, 0); // 确保复位
-        vTaskDelay(pdMS_TO_TICKS(50));           // 延长复位保持时间
-        xl9555_->SetOutputState(OV_RESET_IO, 1); // 释放复位
-        vTaskDelay(pdMS_TO_TICKS(50));           // 延长 50ms
+        xl9555_->SetOutputState(OV_PWDN_IO, 0); // PWDN=low (power on)
+        xl9555_->SetOutputState(OV_RESET_IO, 0); // Ensure reset
+        vTaskDelay(pdMS_TO_TICKS(50));           // Extend the reset hold time
+        xl9555_->SetOutputState(OV_RESET_IO, 1); // Release reset
+        vTaskDelay(pdMS_TO_TICKS(50));           // Extend by 50ms
 
         camera_config_t config = {};
 
-        config.pin_pwdn = CAM_PIN_PWDN;  // 实际由 XL9555 控制
-        config.pin_reset = CAM_PIN_RESET;// 实际由 XL9555 控制
+        config.pin_pwdn = CAM_PIN_PWDN;  // Actually controlled by the XL9555
+        config.pin_reset = CAM_PIN_RESET;// Actually controlled by the XL9555
         config.pin_xclk = CAM_PIN_XCLK;
         config.pin_sccb_sda = CAM_PIN_SIOD;
         config.pin_sccb_scl = CAM_PIN_SIOC;
@@ -186,15 +186,15 @@ private:
         config.fb_location = CAMERA_FB_IN_PSRAM;
         config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
-        esp_err_t err = esp_camera_init(&config); // 测试相机是否存在
+        esp_err_t err = esp_camera_init(&config); // Test whether the camera is present
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Camera is not plugged in or not supported, error: %s", esp_err_to_name(err));
-            // 如果摄像头初始化失败，设置 camera_ 为 nullptr
+            // If camera init fails, set camera_ to nullptr
             camera_ = nullptr;
             return;
         }else
         {
-            esp_camera_deinit();// 释放之前的摄像头资源,为正确初始化做准备
+            esp_camera_deinit();// Release the previous camera resources to allow proper re-initialization
             camera_ = new Esp32Camera(config);
         }
         

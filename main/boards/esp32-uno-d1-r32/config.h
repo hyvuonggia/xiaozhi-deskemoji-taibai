@@ -1,8 +1,8 @@
 /**
  * @file config.h
- * @brief ESP32 UNO D1 R32开发板配置文件
+ * @brief ESP32 UNO D1 R32 board configuration file
  * 
- * 本文件定义了ESP32 UNO D1 R32开发板的针脚配置和其他参数
+ * This file defines the pin configuration and other parameters for the ESP32 UNO D1 R32 board
  */
 
 #ifndef _BOARD_CONFIG_H_
@@ -10,53 +10,53 @@
 
 #include <driver/gpio.h>
 
-// 音频采样率配置
+// Audio sample rate configuration
 #define AUDIO_INPUT_SAMPLE_RATE  16000
-#define AUDIO_OUTPUT_SAMPLE_RATE 24000  // 与服务器匹配的采样率，避免重采样
+#define AUDIO_OUTPUT_SAMPLE_RATE 24000  // Sample rate matched to the server to avoid resampling
 
-// 音频缓冲区和DMA配置
-#define AUDIO_DMA_DESC_NUM       32     // 进一步增加DMA描述符数量，提高缓冲能力
-#define AUDIO_DMA_FRAME_NUM      1024   // 进一步增加DMA帧数，减少缓冲区不足导致的卡顿
-#define AUDIO_BATCH_SIZE         128    // 调整批处理大小，平衡处理延迟和平滑度
+// Audio buffer and DMA configuration
+#define AUDIO_DMA_DESC_NUM       32     // Further increase the number of DMA descriptors to improve buffering
+#define AUDIO_DMA_FRAME_NUM      1024   // Further increase the DMA frame count to reduce stutter caused by buffer underrun
+#define AUDIO_BATCH_SIZE         128    // Tune the batch size to balance processing latency and smoothness
 
-// I2S时钟配置
-#define AUDIO_MCLK_MULTIPLE      256    // 使用标准的256倍数，提高兼容性
+// I2S clock configuration
+#define AUDIO_MCLK_MULTIPLE      256    // Use the standard 256 multiple for better compatibility
 
-// 使用Simplex I2S模式
+// Use Simplex I2S mode
 #define AUDIO_I2S_METHOD_SIMPLEX
 
-// INMP441麦克风I2S配置
+// INMP441 microphone I2S configuration
 #define AUDIO_I2S_MIC_GPIO_WS   GPIO_NUM_16  // WS (Word Select)
 #define AUDIO_I2S_MIC_GPIO_SCK  GPIO_NUM_14  // SCK (Serial Clock)
 #define AUDIO_I2S_MIC_GPIO_DIN  GPIO_NUM_17  // SD (Serial Data)
 
-// MAX98357A音频放大器I2S配置
+// MAX98357A audio amplifier I2S configuration
 #define AUDIO_I2S_SPK_GPIO_DOUT GPIO_NUM_25  // DIN
 #define AUDIO_I2S_SPK_GPIO_BCLK GPIO_NUM_26  // BCLK
 #define AUDIO_I2S_SPK_GPIO_LRCK GPIO_NUM_27  // LRC
-// 注意：MAX98357A的SD引脚应该保持悬空，不要接GND，否则没有声音输出
+// Note: the MAX98357A SD pin should be left floating, not tied to GND, otherwise there is no audio output
 
-// 音频音量设置（0-100）
-#define AUDIO_VOLUME            90     // 调整音量到更高水平，提高信号强度
+// Audio volume setting (0-100)
+#define AUDIO_VOLUME            90     // Raise the volume to a higher level to increase signal strength
 
-// 触摸传感器配置
-#define TOUCH_SENSOR_GPIO       GPIO_NUM_4   // 触摸传感器引脚
-#define TOUCH_THRESHOLD         1000         // 触摸阈值（电容式触摸传感器）
-#define TOUCH_SENSOR_TYPE       1            // 0: ESP32内置电容式触摸传感器, 1: 外部TTP223触摸模块
+// Touch sensor configuration
+#define TOUCH_SENSOR_GPIO       GPIO_NUM_4   // Touch sensor pin
+#define TOUCH_THRESHOLD         1000         // Touch threshold (capacitive touch sensor)
+#define TOUCH_SENSOR_TYPE       1            // 0: ESP32 built-in capacitive touch sensor, 1: external TTP223 touch module
 
-// 按钮配置
-#define BOOT_BUTTON_GPIO        GPIO_NUM_0   // 板载BOOT按钮
-#define ASR_BUTTON_GPIO         GPIO_NUM_19  // 语音识别按钮（可选）
-#define BUILTIN_LED_GPIO        GPIO_NUM_2   // 板载LED
+// Button configuration
+#define BOOT_BUTTON_GPIO        GPIO_NUM_0   // Onboard BOOT button
+#define ASR_BUTTON_GPIO         GPIO_NUM_19  // Speech recognition button (optional)
+#define BUILTIN_LED_GPIO        GPIO_NUM_2   // Onboard LED
 
-// 按钮长按时间定义（毫秒）
-#define BUTTON_LONG_PRESS_TIME  1000         // 1秒
+// Button long-press duration definition (milliseconds)
+#define BUTTON_LONG_PRESS_TIME  1000         // 1 second
 
-// 舵机配置
-#define SERVO_HORIZONTAL_PIN    GPIO_NUM_19  // 水平舵机控制引脚
-#define SERVO_VERTICAL_PIN      GPIO_NUM_18  // 垂直舵机控制引脚
+// Servo configuration
+#define SERVO_HORIZONTAL_PIN    GPIO_NUM_19  // Horizontal servo control pin
+#define SERVO_VERTICAL_PIN      GPIO_NUM_18  // Vertical servo control pin
 
-// OLED显示屏I2C配置
+// OLED display I2C configuration
 #define DISPLAY_SDA_PIN GPIO_NUM_21
 #define DISPLAY_SCL_PIN GPIO_NUM_22
 #define DISPLAY_WIDTH   128
@@ -66,7 +66,7 @@
 #elif CONFIG_OLED_SSD1306_128X64
 #define DISPLAY_HEIGHT  64
 #else
-#define DISPLAY_HEIGHT  64  // 默认使用128x64 OLED
+#define DISPLAY_HEIGHT  64  // Use 128x64 OLED by default
 #endif
 
 #define DISPLAY_MIRROR_X true

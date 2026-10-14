@@ -4,7 +4,7 @@
 #ifdef __cplusplus
 #include "../common/wifi_board.h"
 
-// 前向声明 magai_wifi 类
+// Forward declaration of the magai_wifi class
 class magai_wifi;
 #endif // __cplusplus
 

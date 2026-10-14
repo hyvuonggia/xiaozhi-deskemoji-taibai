@@ -1,5 +1,5 @@
 /*
-    Otto机器人控制器 - MCP协议版本
+    Otto robot controller - MCP protocol version
 */
 
 #include <cJSON.h>
@@ -144,7 +144,7 @@ private:
     }
 
     void QueueAction(int action_type, int steps, int speed, int direction, int amount) {
-        // 检查手部动作
+        // Check hand action
         if ((action_type >= ACTION_HANDS_UP && action_type <= ACTION_HAND_WAVE) && !has_hands_) {
             ESP_LOGW(TAG, "Attempted hand action, but no hand servos are configured");
             return;
@@ -186,7 +186,7 @@ public:
 
         action_queue_ = xQueueCreate(10, sizeof(OttoActionParams));
 
-        QueueAction(ACTION_HOME, 1, 1000, 1, 0);  // direction=1表示复位手部
+        QueueAction(ACTION_HOME, 1, 1000, 1, 0);  // direction=1 resets the hands
 
         RegisterMcpTools();
     }
@@ -196,7 +196,7 @@ public:
 
         ESP_LOGI(TAG, "Starting MCP tool registration...");
 
-        // 基础移动动作
+        // Basic movement actions
         mcp_server.AddTool("self.otto.walk_forward",
                            "行走。steps: 行走步数(1-100); speed: 行走速度(500-1500，数值越小越快); "
                            "direction: 行走方向(-1=后退, 1=前进); arm_swing: 手臂摆动幅度(0-170度)",
@@ -240,7 +240,7 @@ public:
                                return true;
                            });
 
-        // 特殊动作
+        // Special actions
         mcp_server.AddTool("self.otto.swing",
                            "左右摇摆。steps: 摇摆次数(1-100); speed: "
                            "摇摆速度(500-1500，数值越小越快); amount: 摇摆幅度(0-170度)",
@@ -313,7 +313,7 @@ public:
                                return true;
                            });
 
-        // 手部动作（仅在有手部舵机时可用）
+        // Hand actions (only available when hand servos are configured)
         if (has_hands_) {
             mcp_server.AddTool(
                 "self.otto.hands_up",
@@ -355,7 +355,7 @@ public:
                 });
         }
 
-        // 系统工具
+        // System tools
         mcp_server.AddTool("self.otto.stop", "立即停止", PropertyList(),
                            [this](const PropertyList& properties) -> ReturnValue {
                                if (action_task_handle_ != nullptr) {
@@ -382,7 +382,7 @@ public:
 
                 ESP_LOGI(TAG, "Setting servo trim: %s = %d degrees", servo_type.c_str(), trim_value);
 
-                // 获取当前所有微调值
+                // Get all current trim values
                 Settings settings("otto_trims", true);
                 int left_leg = settings.GetInt("left_leg", 0);
                 int right_leg = settings.GetInt("right_leg", 0);
@@ -391,7 +391,7 @@ public:
                 int left_hand = settings.GetInt("left_hand", 0);
                 int right_hand = settings.GetInt("right_hand", 0);
 
-                // 更新指定舵机的微调值
+                // Update the trim value of the specified servo
                 if (servo_type == "left_leg") {
                     left_leg = trim_value;
                     settings.SetInt("left_leg", left_leg);

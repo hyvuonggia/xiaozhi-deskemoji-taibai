@@ -60,7 +60,7 @@ class CustomLcdDisplay : public SpiLcdDisplay {
             lv_obj_set_style_pad_top(status_bar_, 10, 0);
             lv_obj_set_style_pad_bottom(status_bar_, 1, 0);
 
-            // 针对圆形屏幕调整位置
+            // Adjust position for the round screen
             //      network  battery  mute     //
             //               status            //
             lv_obj_align(battery_label_, LV_ALIGN_TOP_MID, -2.5*fonts_.icon_font->line_height, 0);
@@ -196,7 +196,7 @@ private:
         int current_volume = codec->output_volume();
         int new_volume = current_volume + (clockwise ? -5 : 5); 
 
-        // 确保音量在有效范围内
+        // Ensure the volume is within the valid range
         if (new_volume > 100) {
             new_volume = 100;
             ESP_LOGW(TAG, "Volume reached maximum limit: %d", new_volume);
@@ -208,7 +208,7 @@ private:
         codec->SetOutputVolume(new_volume);
         ESP_LOGI(TAG, "Volume changed from %d to %d", current_volume, new_volume);
         
-        // 显示通知前检查实际变化
+        // Check for an actual change before showing the notification
         if (new_volume != codec->output_volume()) {
             ESP_LOGE(TAG, "Failed to set volume! Expected:%d Actual:%d", 
                    new_volume, codec->output_volume());
@@ -227,10 +227,10 @@ private:
     }
 
     void InitializeButton() {
-        // 设置静态实例指针
+        // Set the static instance pointer
         instance_ = this;
         
-        // watcher 是通过长按滚轮进行开机的, 需要等待滚轮释放, 否则用户开机松手时可能会误触成单击
+        // The watcher is powered on by long-pressing the wheel, so wait for the wheel to be released; otherwise releasing it on power-on may register as a single click
         ESP_LOGI(TAG, "waiting for knob button release");
         while(IoExpanderGetLevel(BSP_KNOB_BTN) == 0) {
             vTaskDelay(pdMS_TO_TICKS(50));
@@ -272,8 +272,8 @@ private:
 
         iot_button_register_cb(btns, BUTTON_LONG_PRESS_HOLD, nullptr, [](void* button_handle, void* usr_data) {
             auto self = static_cast<SensecapWatcher*>(usr_data);
-            self->long_press_cnt_++; // 每隔20ms加一
-            // 长按10s 恢复出厂设置: 2+0.02*400 = 10
+            self->long_press_cnt_++; // increment every 20ms
+            // 10s long press restores factory settings: 2 + 0.02*400 = 10
             if (self->long_press_cnt_ > 400) {
                 ESP_LOGI(TAG, "Factory reset");
                 nvs_flash_erase();
@@ -347,7 +347,7 @@ private:
         display_ = new CustomLcdDisplay(panel_io_, panel_,
             DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
         
-        // 使每次刷新的起始列数索引是4的倍数且列数总数是4的倍数，以满足SPD2010的要求
+        // Make the start column index of every refresh, and the total column count, multiples of 4 to satisfy the SPD2010 requirement
         lv_display_add_event_cb(lv_display_get_default(), [](lv_event_t *e) {
             lv_area_t *area = (lv_area_t *)lv_event_get_param(e);
             uint16_t x1 = area->x1;
@@ -529,11 +529,11 @@ public:
         InitializeI2c();
         InitializeSpi();
         InitializeExpander();
-        InitializeCmd();  //工厂生产测试使用
+        InitializeCmd();  //used for factory production testing
         InitializeButton();
         InitializeKnob();
         Initializespd2010Display();
-        GetBacklight()->RestoreBrightness();  // 对于不带摄像头的版本，InitializeCamera需要3s, 所以先恢复背光亮度
+        GetBacklight()->RestoreBrightness();  // On versions without a camera InitializeCamera takes 3s, so restore the backlight brightness first
         InitializeCamera();
     }
 
@@ -563,9 +563,9 @@ public:
         return &backlight;
     }
 
-    // 根据 https://github.com/Seeed-Studio/OSHW-SenseCAP-Watcher/blob/main/Hardware/SenseCAP_Watcher_v1.0_SCH.pdf
-    // RGB LED型号为 ws2813 mini, 连接在GPIO 40，供电电压 3.3v, 没有连接 BIN 双信号线
-    // 可以直接兼容SingleLED采用的ws2812
+    // According to https://github.com/Seeed-Studio/OSHW-SenseCAP-Watcher/blob/main/Hardware/SenseCAP_Watcher_v1.0_SCH.pdf
+    // The RGB LED is a ws2813 mini connected to GPIO 40, powered at 3.3V, with no BIN dual-signal line connected
+    // It is directly compatible with the ws2812 used by SingleLED
     virtual Led* GetLed() override {
         static SingleLed led(BUILTIN_LED_GPIO);
         return &led;
@@ -602,5 +602,5 @@ public:
 
 DECLARE_BOARD(SensecapWatcher);
 
-// 定义静态成员变量
+// Define static member variables
 SensecapWatcher* SensecapWatcher::instance_ = nullptr;

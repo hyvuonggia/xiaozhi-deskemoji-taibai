@@ -20,7 +20,7 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
     spi_io_config.cs_gpio_num = BSP_SSCMA_CLIENT_SPI_CS;
     spi_io_config.pclk_hz = BSP_SSCMA_CLIENT_SPI_CLK;
     spi_io_config.spi_mode = 0;
-    spi_io_config.wait_delay = 10; //两个transfer之间至少延时4ms,但当前 FREERTOS_HZ=100, 延时精度只能达到10ms, 
+    spi_io_config.wait_delay = 10; // At least a 4ms delay is required between two transfers, but with the current FREERTOS_HZ=100 the delay resolution is only 10ms, 
     spi_io_config.user_ctx = NULL;
     spi_io_config.io_expander = io_exp_handle;
     spi_io_config.flags.sync_use_expander = BSP_SSCMA_CLIENT_RST_USE_EXPANDER;
@@ -55,12 +55,12 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
         if (sscma_utils_fetch_image_from_reply(reply, &img, &img_size) == ESP_OK)
         {
             ESP_LOGI(TAG, "image_size: %d\n", img_size);
-            // 将数据通过队列发送出去
+            // Send the data out through the queue
             SscmaData data;
             data.img = (uint8_t*)img;
             data.len = img_size;
 
-            // 清空队列，保证只保存最新的数据
+            // Clear the queue so that only the latest data is kept
             SscmaData dummy;
             while (xQueueReceive(self->sscma_data_queue_, &dummy, 0) == pdPASS) {
                 if (dummy.img) {
@@ -68,7 +68,7 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
                 }
             }
             xQueueSend(self->sscma_data_queue_, &data, 0);
-            // 注意：img 的释放由接收方负责
+            // Note: the receiver is responsible for freeing img
         }
     };
     callback.on_connect = [](sscma_client_handle_t client, const sscma_client_reply_t *reply, void *user_ctx) {
@@ -84,7 +84,7 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
     sscma_client_init(sscma_client_handle_);
 
     ESP_LOGI(TAG, "SSCMA client initialized");
-    // 设置分辨率
+    // Set resolution
     // 3 = 640x480
     if (sscma_client_set_sensor(sscma_client_handle_, 1, 3, true)) {
         ESP_LOGE(TAG, "Failed to set sensor");
@@ -93,14 +93,14 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
         return;
     }
 
-    // 获取设备信息
+    // Get device info
     sscma_client_info_t *info;
     if (sscma_client_get_info(sscma_client_handle_, &info, true) == ESP_OK) {
         ESP_LOGI(TAG, "Device Info - ID: %s, Name: %s", 
             info->id ? info->id : "NULL", 
             info->name ? info->name : "NULL");
     }
-    // 初始化JPEG数据的内存
+    // Allocate memory for JPEG data
     jpeg_data_.len = 0;
     jpeg_data_.buf = (uint8_t*)heap_caps_malloc(IMG_JPEG_BUF_SIZE, MALLOC_CAP_SPIRAM);;
     if ( jpeg_data_.buf == nullptr ) {
@@ -108,7 +108,7 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
         return;
     }
 
-    //初始化JPEG解码
+    // Initialize JPEG decoding
     jpeg_error_t err;
     jpeg_dec_config_t config = { .output_type = JPEG_PIXEL_FORMAT_RGB565_LE, .rotate = JPEG_ROTATE_0D };
     err = jpeg_dec_open(&config, &jpeg_dec_);
@@ -133,7 +133,7 @@ SscmaCamera::SscmaCamera(esp_io_expander_handle_t io_exp_handle) {
     }
     memset(jpeg_out_, 0, sizeof(jpeg_dec_header_info_t));
 
-    // 初始化预览图片的内存
+    // Allocate memory for the preview image
     memset(&preview_image_, 0, sizeof(preview_image_));
     preview_image_.header.magic = LV_IMAGE_HEADER_MAGIC;
     preview_image_.header.cf = LV_COLOR_FORMAT_RGB565;
@@ -196,12 +196,12 @@ bool SscmaCamera::Capture() {
 
     ESP_LOGI(TAG, "Capturing image...");
 
-    // himax 有缓存数据,需要拍两张照片, 只获取最新的照片即可.
+    // himax buffers data, so two photos must be taken; only the latest one is kept.
     if (sscma_client_sample(sscma_client_handle_, 2) ) {
         ESP_LOGE(TAG, "Failed to capture image from SSCMA client");
         return false;
     }
-    vTaskDelay(pdMS_TO_TICKS(500)); // 等待SSCMA客户端处理数据
+    vTaskDelay(pdMS_TO_TICKS(500)); // Wait for the SSCMA client to process the data
     if (xQueueReceive(sscma_data_queue_, &data, pdMS_TO_TICKS(1000)) != pdPASS) {
         ESP_LOGE(TAG, "Failed to receive JPEG data from SSCMA client");
         return false;
@@ -242,7 +242,7 @@ bool SscmaCamera::Capture() {
         return true;
     }
 
-    // 显示预览图片
+    // Show preview image
     auto display = Board::GetInstance().GetDisplay();
     if (display != nullptr) {
         display->SetPreviewImage(&preview_image_);
@@ -258,21 +258,21 @@ bool SscmaCamera::SetVFlip(bool enabled) {
 }
 
 /**
- * @brief 将摄像头捕获的图像发送到远程服务器进行AI分析和解释
+ * @brief Send the image captured by the camera to a remote server for AI analysis and interpretation
  * 
- * 该函数将当前摄像头缓冲区中的图像编码为JPEG格式，并通过HTTP POST请求
- * 以multipart/form-data的形式发送到指定的解释服务器。服务器将根据提供的
- * 问题对图像进行AI分析并返回结果。
+ * This function encodes the image in the current camera buffer as JPEG and sends it in
+ * multipart/form-data form via an HTTP POST request to the specified explanation server. The server analyzes the image
+ * with AI based on the provided question and returns the result.
  * 
- * @param question 要向AI提出的关于图像的问题，将作为表单字段发送
- * @return std::string 服务器返回的JSON格式响应字符串
- *         成功时包含AI分析结果，失败时包含错误信息
- *         格式示例：{"success": true, "result": "分析结果"}
- *                  {"success": false, "message": "错误信息"}
+ * @param question The question about the image to ask the AI, sent as a form field
+ * @return std::string The JSON-format response string returned by the server
+ *         Contains the AI analysis result on success, or error information on failure
+ *         Format example: {"success": true, "result": "analysis result"}
+ *                  {"success": false, "message": "error message"}
  * 
- * @note 调用此函数前必须先调用SetExplainUrl()设置服务器URL
- * @note 函数会等待之前的编码线程完成后再开始新的处理
- * @warning 如果摄像头缓冲区为空或网络连接失败，将返回错误信息
+ * @note SetExplainUrl() must be called first to set the server URL before calling this function
+ * @note The function waits for the previous encoding thread to finish before starting new processing
+ * @warning If the camera buffer is empty or the network connection fails, error information is returned
  */
 std::string SscmaCamera::Explain(const std::string& question) {
     if (explain_url_.empty()) {
@@ -281,28 +281,28 @@ std::string SscmaCamera::Explain(const std::string& question) {
 
     auto network = Board::GetInstance().GetNetwork();
     auto http = network->CreateHttp(3);
-    // 构造multipart/form-data请求体
+    // Build the multipart/form-data request body
     std::string boundary = "----ESP32_CAMERA_BOUNDARY";
     
-    // 构造question字段
+    // Build the question field
     std::string question_field;
     question_field += "--" + boundary + "\r\n";
     question_field += "Content-Disposition: form-data; name=\"question\"\r\n";
     question_field += "\r\n";
     question_field += question + "\r\n";
     
-    // 构造文件字段头部
+    // Build the file field header
     std::string file_header;
     file_header += "--" + boundary + "\r\n";
     file_header += "Content-Disposition: form-data; name=\"file\"; filename=\"camera.jpg\"\r\n";
     file_header += "Content-Type: image/jpeg\r\n";
     file_header += "\r\n";
     
-    // 构造尾部
+    // Build the trailer
     std::string multipart_footer;
     multipart_footer += "\r\n--" + boundary + "--\r\n";
 
-    // 配置HTTP客户端，使用分块传输编码
+    // Configure the HTTP client with chunked transfer encoding
     http->SetHeader("Device-Id", SystemInfo::GetMacAddress().c_str());
     http->SetHeader("Client-Id", Board::GetInstance().GetUuid().c_str());
     if (!explain_token_.empty()) {
@@ -315,19 +315,19 @@ std::string SscmaCamera::Explain(const std::string& question) {
         return "{\"success\": false, \"message\": \"Failed to connect to explain URL\"}";
     }
     
-    // 第一块：question字段
+    // First chunk: question field
     http->Write(question_field.c_str(), question_field.size());
     
-    // 第二块：文件字段头部
+    // Second chunk: file field header
     http->Write(file_header.c_str(), file_header.size());
     
-    // 第三块：JPEG数据
+    // Third chunk: JPEG data
     http->Write((const char*)jpeg_data_.buf, jpeg_data_.len);
 
-    // 第四块：multipart尾部
+    // Fourth chunk: multipart trailer
     http->Write(multipart_footer.c_str(), multipart_footer.size());
     
-    // 结束块
+    // End chunk
     http->Write("", 0);
 
     if (http->GetStatusCode() != 200) {

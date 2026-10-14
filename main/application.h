@@ -35,7 +35,7 @@ public:
         static Application instance;
         return instance;
     }
-    // 删除拷贝构造函数和赋值运算符
+    // Delete the copy constructor and assignment operator
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 

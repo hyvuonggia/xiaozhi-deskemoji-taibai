@@ -4,31 +4,31 @@
 #include <esp_log.h>
 #include <cstring>
 
-// 声明表情GIF
-LV_IMAGE_DECLARE(staticstate);  // 静态状态/中性表情
-LV_IMAGE_DECLARE(sad);          // 悲伤
-LV_IMAGE_DECLARE(happy);        // 开心
-LV_IMAGE_DECLARE(scare);        // 惊吓/惊讶
-LV_IMAGE_DECLARE(buxue);        // 不学/困惑
-LV_IMAGE_DECLARE(anger);        // 愤怒
+// Declare expression GIFs
+LV_IMAGE_DECLARE(staticstate);  // Static state / neutral expression
+LV_IMAGE_DECLARE(sad);          // Sad
+LV_IMAGE_DECLARE(happy);        // Happy
+LV_IMAGE_DECLARE(scare);        // Startled / surprised
+LV_IMAGE_DECLARE(buxue);        // Refuse-to-learn / confused
+LV_IMAGE_DECLARE(anger);        // Angry
 
 /**
- * @brief 根据表情名称获取对应的GIF图像资源
+ * @brief Get the corresponding GIF image resource by expression name
  * 
- * @param name 表情名称
- * @return const lv_img_dsc_t* GIF图像资源，如果不存在则返回nullptr
+ * @param name Expression name
+ * @return const lv_img_dsc_t* GIF image resource, or nullptr if it does not exist
  */
 inline const lv_img_dsc_t* otto_emoji_gif_get_by_name(const char* name) {
     if (!name) return nullptr;
 
-    // 中性/平静类表情
+    // Neutral / calm expressions
     if (strcmp(name, "neutral") == 0 || 
         strcmp(name, "relaxed") == 0 || 
         strcmp(name, "sleepy") == 0) {
         return &staticstate;
     }
     
-    // 开心类表情
+    // Happy expressions
     if (strcmp(name, "happy") == 0 || 
         strcmp(name, "laughing") == 0 || 
         strcmp(name, "funny") == 0 ||
@@ -42,30 +42,30 @@ inline const lv_img_dsc_t* otto_emoji_gif_get_by_name(const char* name) {
         return &happy;
     }
     
-    // 悲伤类表情
+    // Sad expressions
     if (strcmp(name, "sad") == 0 || 
         strcmp(name, "crying") == 0) {
         return &sad;
     }
     
-    // 愤怒类表情
+    // Angry expressions
     if (strcmp(name, "angry") == 0) {
         return &anger;
     }
     
-    // 惊讶类表情
+    // Surprised expressions
     if (strcmp(name, "surprised") == 0 || 
         strcmp(name, "shocked") == 0) {
         return &scare;
     }
     
-    // 思考/困惑类表情
+    // Thinking / confused expressions
     if (strcmp(name, "thinking") == 0 || 
         strcmp(name, "confused") == 0 || 
         strcmp(name, "embarrassed") == 0) {
         return &buxue;
     }
     
-    // 默认返回中性表情
+    // Default to a neutral expression
     return &staticstate;
 } 

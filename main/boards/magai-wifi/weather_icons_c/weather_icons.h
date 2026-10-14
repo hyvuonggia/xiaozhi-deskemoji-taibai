@@ -3,73 +3,73 @@
 
 #include "lvgl.h"
 
-// 天气图标C数组声明
-// 变量名使用icon_前缀以避免数字开头的问题
+// Weather icon C array declarations
+// Variable names use the icon_ prefix to avoid names starting with a digit
 
-// 声明外部变量
-extern const lv_image_dsc_t _icon_100;  // 对应100.c中的变量
-extern const lv_image_dsc_t _icon_101;  // 对应101.c中的变量
-extern const lv_image_dsc_t _icon_102;  // 对应102.c中的变量
-extern const lv_image_dsc_t _icon_103;  // 对应103.c中的变量
-extern const lv_image_dsc_t _icon_104;  // 对应104.c中的变量
-extern const lv_image_dsc_t _icon_150;  // 对应150.c中的变量
-extern const lv_image_dsc_t _icon_151;  // 对应151.c中的变量
-extern const lv_image_dsc_t _icon_154;  // 对应154.c中的变量
-extern const lv_image_dsc_t _icon_300;  // 对应300.c中的变量
-extern const lv_image_dsc_t _icon_301;  // 对应301.c中的变量
-extern const lv_image_dsc_t _icon_302;  // 对应302.c中的变量
-extern const lv_image_dsc_t _icon_303;  // 对应303.c中的变量
-extern const lv_image_dsc_t _icon_304;  // 对应304.c中的变量
-extern const lv_image_dsc_t _icon_305;  // 对应305.c中的变量
-extern const lv_image_dsc_t _icon_306;  // 对应306.c中的变量
-extern const lv_image_dsc_t _icon_307;  // 对应307.c中的变量
-extern const lv_image_dsc_t _icon_308;  // 对应308.c中的变量
-extern const lv_image_dsc_t _icon_309;  // 对应309.c中的变量
-extern const lv_image_dsc_t _icon_310;  // 对应310.c中的变量
-extern const lv_image_dsc_t _icon_311;  // 对应311.c中的变量
-extern const lv_image_dsc_t _icon_312;  // 对应312.c中的变量
-extern const lv_image_dsc_t _icon_313;  // 对应313.c中的变量
-extern const lv_image_dsc_t _icon_314;  // 对应314.c中的变量
-extern const lv_image_dsc_t _icon_315;  // 对应315.c中的变量
-extern const lv_image_dsc_t _icon_316;  // 对应316.c中的变量
-extern const lv_image_dsc_t _icon_317;  // 对应317.c中的变量
-extern const lv_image_dsc_t _icon_318;  // 对应318.c中的变量
-extern const lv_image_dsc_t _icon_350;  // 对应350.c中的变量
-extern const lv_image_dsc_t _icon_351;  // 对应351.c中的变量
-extern const lv_image_dsc_t _icon_399;  // 对应399.c中的变量
-extern const lv_image_dsc_t _icon_400;  // 对应400.c中的变量
-extern const lv_image_dsc_t _icon_401;  // 对应401.c中的变量
-extern const lv_image_dsc_t _icon_402;  // 对应402.c中的变量
-extern const lv_image_dsc_t _icon_403;  // 对应403.c中的变量
-extern const lv_image_dsc_t _icon_404;  // 对应404.c中的变量
-extern const lv_image_dsc_t _icon_405;  // 对应405.c中的变量
-extern const lv_image_dsc_t _icon_406;  // 对应406.c中的变量
-extern const lv_image_dsc_t _icon_407;  // 对应407.c中的变量
-extern const lv_image_dsc_t _icon_408;  // 对应408.c中的变量
-extern const lv_image_dsc_t _icon_409;  // 对应409.c中的变量
-extern const lv_image_dsc_t _icon_410;  // 对应410.c中的变量
-extern const lv_image_dsc_t _icon_456;  // 对应456.c中的变量
-extern const lv_image_dsc_t _icon_457;  // 对应457.c中的变量
-extern const lv_image_dsc_t _icon_499;  // 对应499.c中的变量
-extern const lv_image_dsc_t _icon_500;  // 对应500.c中的变量
-extern const lv_image_dsc_t _icon_501;  // 对应501.c中的变量
-extern const lv_image_dsc_t _icon_502;  // 对应502.c中的变量
-extern const lv_image_dsc_t _icon_503;  // 对应503.c中的变量
-extern const lv_image_dsc_t _icon_504;  // 对应504.c中的变量
-extern const lv_image_dsc_t _icon_507;  // 对应507.c中的变量
-extern const lv_image_dsc_t _icon_508;  // 对应508.c中的变量
-extern const lv_image_dsc_t _icon_509;  // 对应509.c中的变量
-extern const lv_image_dsc_t _icon_510;  // 对应510.c中的变量
-extern const lv_image_dsc_t _icon_511;  // 对应511.c中的变量
-extern const lv_image_dsc_t _icon_512;  // 对应512.c中的变量
-extern const lv_image_dsc_t _icon_513;  // 对应513.c中的变量
-extern const lv_image_dsc_t _icon_514;  // 对应514.c中的变量
-extern const lv_image_dsc_t _icon_515;  // 对应515.c中的变量
-extern const lv_image_dsc_t _icon_900;  // 对应900.c中的变量
-extern const lv_image_dsc_t _icon_901;  // 对应901.c中的变量
-extern const lv_image_dsc_t _icon_999;  // 对应999.c中的变量
+// Declare external variables
+extern const lv_image_dsc_t _icon_100;  // Corresponds to the variable in 100.c
+extern const lv_image_dsc_t _icon_101;  // Corresponds to the variable in 101.c
+extern const lv_image_dsc_t _icon_102;  // Corresponds to the variable in 102.c
+extern const lv_image_dsc_t _icon_103;  // Corresponds to the variable in 103.c
+extern const lv_image_dsc_t _icon_104;  // Corresponds to the variable in 104.c
+extern const lv_image_dsc_t _icon_150;  // Corresponds to the variable in 150.c
+extern const lv_image_dsc_t _icon_151;  // Corresponds to the variable in 151.c
+extern const lv_image_dsc_t _icon_154;  // Corresponds to the variable in 154.c
+extern const lv_image_dsc_t _icon_300;  // Corresponds to the variable in 300.c
+extern const lv_image_dsc_t _icon_301;  // Corresponds to the variable in 301.c
+extern const lv_image_dsc_t _icon_302;  // Corresponds to the variable in 302.c
+extern const lv_image_dsc_t _icon_303;  // Corresponds to the variable in 303.c
+extern const lv_image_dsc_t _icon_304;  // Corresponds to the variable in 304.c
+extern const lv_image_dsc_t _icon_305;  // Corresponds to the variable in 305.c
+extern const lv_image_dsc_t _icon_306;  // Corresponds to the variable in 306.c
+extern const lv_image_dsc_t _icon_307;  // Corresponds to the variable in 307.c
+extern const lv_image_dsc_t _icon_308;  // Corresponds to the variable in 308.c
+extern const lv_image_dsc_t _icon_309;  // Corresponds to the variable in 309.c
+extern const lv_image_dsc_t _icon_310;  // Corresponds to the variable in 310.c
+extern const lv_image_dsc_t _icon_311;  // Corresponds to the variable in 311.c
+extern const lv_image_dsc_t _icon_312;  // Corresponds to the variable in 312.c
+extern const lv_image_dsc_t _icon_313;  // Corresponds to the variable in 313.c
+extern const lv_image_dsc_t _icon_314;  // Corresponds to the variable in 314.c
+extern const lv_image_dsc_t _icon_315;  // Corresponds to the variable in 315.c
+extern const lv_image_dsc_t _icon_316;  // Corresponds to the variable in 316.c
+extern const lv_image_dsc_t _icon_317;  // Corresponds to the variable in 317.c
+extern const lv_image_dsc_t _icon_318;  // Corresponds to the variable in 318.c
+extern const lv_image_dsc_t _icon_350;  // Corresponds to the variable in 350.c
+extern const lv_image_dsc_t _icon_351;  // Corresponds to the variable in 351.c
+extern const lv_image_dsc_t _icon_399;  // Corresponds to the variable in 399.c
+extern const lv_image_dsc_t _icon_400;  // Corresponds to the variable in 400.c
+extern const lv_image_dsc_t _icon_401;  // Corresponds to the variable in 401.c
+extern const lv_image_dsc_t _icon_402;  // Corresponds to the variable in 402.c
+extern const lv_image_dsc_t _icon_403;  // Corresponds to the variable in 403.c
+extern const lv_image_dsc_t _icon_404;  // Corresponds to the variable in 404.c
+extern const lv_image_dsc_t _icon_405;  // Corresponds to the variable in 405.c
+extern const lv_image_dsc_t _icon_406;  // Corresponds to the variable in 406.c
+extern const lv_image_dsc_t _icon_407;  // Corresponds to the variable in 407.c
+extern const lv_image_dsc_t _icon_408;  // Corresponds to the variable in 408.c
+extern const lv_image_dsc_t _icon_409;  // Corresponds to the variable in 409.c
+extern const lv_image_dsc_t _icon_410;  // Corresponds to the variable in 410.c
+extern const lv_image_dsc_t _icon_456;  // Corresponds to the variable in 456.c
+extern const lv_image_dsc_t _icon_457;  // Corresponds to the variable in 457.c
+extern const lv_image_dsc_t _icon_499;  // Corresponds to the variable in 499.c
+extern const lv_image_dsc_t _icon_500;  // Corresponds to the variable in 500.c
+extern const lv_image_dsc_t _icon_501;  // Corresponds to the variable in 501.c
+extern const lv_image_dsc_t _icon_502;  // Corresponds to the variable in 502.c
+extern const lv_image_dsc_t _icon_503;  // Corresponds to the variable in 503.c
+extern const lv_image_dsc_t _icon_504;  // Corresponds to the variable in 504.c
+extern const lv_image_dsc_t _icon_507;  // Corresponds to the variable in 507.c
+extern const lv_image_dsc_t _icon_508;  // Corresponds to the variable in 508.c
+extern const lv_image_dsc_t _icon_509;  // Corresponds to the variable in 509.c
+extern const lv_image_dsc_t _icon_510;  // Corresponds to the variable in 510.c
+extern const lv_image_dsc_t _icon_511;  // Corresponds to the variable in 511.c
+extern const lv_image_dsc_t _icon_512;  // Corresponds to the variable in 512.c
+extern const lv_image_dsc_t _icon_513;  // Corresponds to the variable in 513.c
+extern const lv_image_dsc_t _icon_514;  // Corresponds to the variable in 514.c
+extern const lv_image_dsc_t _icon_515;  // Corresponds to the variable in 515.c
+extern const lv_image_dsc_t _icon_900;  // Corresponds to the variable in 900.c
+extern const lv_image_dsc_t _icon_901;  // Corresponds to the variable in 901.c
+extern const lv_image_dsc_t _icon_999;  // Corresponds to the variable in 999.c
 
-// 宏定义用于方便访问
+// Macros for convenient access
 #define WEATHER_ICON_100 (&_icon_100)
 #define WEATHER_ICON_101 (&_icon_101)
 #define WEATHER_ICON_102 (&_icon_102)
@@ -132,7 +132,7 @@ extern const lv_image_dsc_t _icon_999;  // 对应999.c中的变量
 #define WEATHER_ICON_901 (&_icon_901)
 #define WEATHER_ICON_999 (&_icon_999)
 
-// 函数声明
+// Function declarations
 const lv_image_dsc_t* get_weather_icon_c_array(int weather_code);
 
 #endif // WEATHER_ICONS_H

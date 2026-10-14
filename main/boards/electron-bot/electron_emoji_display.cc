@@ -10,14 +10,14 @@
 
 #define TAG "ElectronEmojiDisplay"
 
-// 表情映射表 - 将多种表情映射到现有6个GIF
+// Emotion mapping table - map various emotions to the existing 6 GIFs
 const ElectronEmojiDisplay::EmotionMap ElectronEmojiDisplay::emotion_maps_[] = {
-    // 中性/平静类表情 -> staticstate
+    // Neutral/calm emotions -> staticstate
     {"neutral", &staticstate},
     {"relaxed", &staticstate},
     {"sleepy", &staticstate},
 
-    // 积极/开心类表情 -> happy
+    // Positive/happy emotions -> happy
     {"happy", &happy},
     {"laughing", &happy},
     {"funny", &happy},
@@ -29,23 +29,23 @@ const ElectronEmojiDisplay::EmotionMap ElectronEmojiDisplay::emotion_maps_[] = {
     {"kissy", &happy},
     {"silly", &happy},
 
-    // 悲伤类表情 -> sad
+    // Sad emotions -> sad
     {"sad", &sad},
     {"crying", &sad},
 
-    // 愤怒类表情 -> anger
+    // Angry emotions -> anger
     {"angry", &anger},
 
-    // 惊讶类表情 -> scare
+    // Surprised emotions -> scare
     {"surprised", &scare},
     {"shocked", &scare},
 
-    // 思考/困惑类表情 -> buxue
+    // Thinking/confused emotions -> buxue
     {"thinking", &buxue},
     {"confused", &buxue},
     {"embarrassed", &buxue},
 
-    {nullptr, nullptr}  // 结束标记
+    {nullptr, nullptr}  // End marker
 };
 
 ElectronEmojiDisplay::ElectronEmojiDisplay(esp_lcd_panel_io_handle_t panel_io,

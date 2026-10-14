@@ -181,7 +181,7 @@ private:
     void InitializeSt7789Display() {
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
-        // 液晶屏控制IO初始化
+        // Initialize the LCD control IO
         ESP_LOGD(TAG, "Install panel IO");
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = LCD_CS;
@@ -193,7 +193,7 @@ private:
         io_config.lcd_param_bits = 8;
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(SPI3_HOST, &io_config, &panel_io));
 
-        // 初始化液晶屏驱动芯片ST7789
+        // Initialize the ST7789 LCD driver chip
         ESP_LOGD(TAG, "Install LCD driver");
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = LCD_RST;
@@ -233,8 +233,8 @@ private:
 
     void InitializeCamera() {
         camera_config_t config = {};
-        config.ledc_channel = LEDC_CHANNEL_2;   // LEDC通道选择  用于生成XCLK时钟 但是S3不用
-        config.ledc_timer = LEDC_TIMER_2;       // LEDC timer选择  用于生成XCLK时钟 但是S3不用
+        config.ledc_channel = LEDC_CHANNEL_2;   // LEDC channel selection, used to generate the XCLK clock, but not needed on S3
+        config.ledc_timer = LEDC_TIMER_2;       // LEDC timer selection, used to generate the XCLK clock, but not needed on S3
         config.pin_d0 = Y2_GPIO_NUM;
         config.pin_d1 = Y3_GPIO_NUM;
         config.pin_d2 = Y4_GPIO_NUM;
@@ -248,9 +248,9 @@ private:
         config.pin_vsync = VSYNC_GPIO_NUM;
         config.pin_href = HREF_GPIO_NUM;
 #ifdef CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_0_V1_1
-        config.pin_sccb_sda = -1;   // 这里如果写-1 表示使用已经初始化的I2C接口
+        config.pin_sccb_sda = -1;   // -1 here means use the already initialized I2C interface
         config.pin_sccb_scl = SIOC_GPIO_NUM;
-        config.sccb_i2c_port = 0;   //  这里如果写0 默认使用I2C0
+        config.sccb_i2c_port = 0;   // 0 here means I2C0 is used by default
 #elif defined CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_2
         config.pin_sccb_sda = SIOD_GPIO_NUM;  
         config.pin_sccb_scl = SIOC_GPIO_NUM;

@@ -13,18 +13,18 @@ extern "C" {
 #endif
 
 /**
- * @brief 更新天气图标
+ * @brief Update the weather icon
  * 
- * 根据天气代码更新UI上的天气图标
+ * Update the weather icon on the UI based on the weather code
  */
 void updata_weather_icon(void);
 
 /**
- * @brief 初始化天气图标显示
+ * @brief Initialize weather icon display
  * 
- * 初始化天气图标显示系统，使用SPIFFS文件系统加载PNG格式的天气图标
+ * Initialize the weather icon display system, loading PNG weather icons from SPIFFS
  * 
- * @return esp_err_t 初始化结果
+ * @return esp_err_t Initialization result
  */
 esp_err_t app_animation_start(void);
 

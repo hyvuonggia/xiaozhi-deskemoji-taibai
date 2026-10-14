@@ -11,14 +11,14 @@
 
 #define TAG "OttoEmojiDisplay"
 
-// 表情映射表 - 将原版21种表情映射到现有6个GIF
+// Expression mapping table - maps the original 21 expressions onto the existing 6 GIFs
 const OttoEmojiDisplay::EmotionMap OttoEmojiDisplay::emotion_maps_[] = {
-    // 中性/平静类表情 -> staticstate
+    // Neutral / calm expressions -> staticstate
     {"neutral", &staticstate},
     {"relaxed", &staticstate},
     {"sleepy", &staticstate},
 
-    // 积极/开心类表情 -> happy
+    // Positive / happy expressions -> happy
     {"happy", &happy},
     {"laughing", &happy},
     {"funny", &happy},
@@ -30,23 +30,23 @@ const OttoEmojiDisplay::EmotionMap OttoEmojiDisplay::emotion_maps_[] = {
     {"kissy", &happy},
     {"silly", &happy},
 
-    // 悲伤类表情 -> sad
+    // Sad expressions -> sad
     {"sad", &sad},
     {"crying", &sad},
 
-    // 愤怒类表情 -> anger
+    // Angry expressions -> anger
     {"angry", &anger},
 
-    // 惊讶类表情 -> scare
+    // Surprised expressions -> scare
     {"surprised", &scare},
     {"shocked", &scare},
 
-    // 思考/困惑类表情 -> buxue
+    // Thinking / confused expressions -> buxue
     {"thinking", &buxue},
     {"confused", &buxue},
     {"embarrassed", &buxue},
 
-    {nullptr, nullptr}  // 结束标记
+    {nullptr, nullptr}  // End marker
 };
 
 OttoEmojiDisplay::OttoEmojiDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,

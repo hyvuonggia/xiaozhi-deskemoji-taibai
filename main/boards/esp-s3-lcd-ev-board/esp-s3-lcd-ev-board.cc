@@ -150,7 +150,7 @@ private:
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_));
 
          //add support ev board lcd amp
-        //初始化扩展io口
+        // Initialize the expansion IO port
         esp_io_expander_new_i2c_tca9554(codec_i2c_bus_, 0x20, &expander);
         /* Setup power amplifier pin, set default to enable */
         esp_io_expander_set_dir(expander, BSP_POWER_AMP_IO, IO_EXPANDER_OUTPUT);
@@ -181,7 +181,7 @@ public:
     }
 
 
-    //es7210用作音频采集
+    // es7210 is used for audio capture
     virtual AudioCodec* GetAudioCodec() override {
         static BoxAudioCodec audio_codec(
             codec_i2c_bus_, 
@@ -205,7 +205,7 @@ public:
         return display_;
     }
     
-    //添加彩灯显示状态，如果亮度太暗可以去更改默认亮度值 DEFAULT_BRIGHTNESS 在led的sigle_led.cc中
+    // Add the LED status display; if it is too dim, change the default brightness DEFAULT_BRIGHTNESS in led/single_led.cc
     virtual Led* GetLed() override {
         static SingleLed led(BUILTIN_LED_GPIO);
         return &led;

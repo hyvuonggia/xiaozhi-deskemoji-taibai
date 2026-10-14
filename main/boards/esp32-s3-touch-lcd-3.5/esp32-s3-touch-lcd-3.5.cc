@@ -216,15 +216,15 @@ private:
         config.fb_location = CAMERA_FB_IN_PSRAM;
         config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
-        esp_err_t err = esp_camera_init(&config); // 测试相机是否存在
+        esp_err_t err = esp_camera_init(&config); // Test whether the camera exists
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Camera is not plugged in or not supported, error: %s", esp_err_to_name(err));
-            // 如果摄像头初始化失败，设置 camera_ 为 nullptr
+            // If camera initialization fails, set camera_ to nullptr
             camera_ = nullptr;
             return;
         }else
         {
-            esp_camera_deinit();// 释放之前的摄像头资源,为正确初始化做准备
+            esp_camera_deinit();// Release the previous camera resources to prepare for a correct initialization
             camera_ = new Esp32Camera(config);
         }
         
@@ -265,7 +265,7 @@ private:
     void InitializeLcdDisplay() {
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
-        // 液晶屏控制IO初始化
+        // Initialize the LCD control IOs
         ESP_LOGI(TAG, "Install panel IO");
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = DISPLAY_CS_PIN;
@@ -282,7 +282,7 @@ private:
             .init_cmds_size = sizeof(st7796_lcd_init_cmds) / sizeof(st7796_lcd_init_cmd_t),
         };      
 
-        // 初始化液晶屏驱动芯片
+        // Initialize the LCD driver chip
         ESP_LOGI(TAG, "Install LCD driver");
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = DISPLAY_RST_PIN;
@@ -321,7 +321,7 @@ private:
         });
     }
 
-    // 初始化工具
+    // Initialize tools
     void InitializeTools() {
         auto &mcp_server = McpServer::GetInstance();
         mcp_server.AddTool("self.system.reconfigure_wifi",
@@ -342,7 +342,7 @@ public:
         InitializeAxp2101();
         InitializeSpi();
         InitializeLcdDisplay();
-        // 解决部分开机黑屏的问题
+        // Work around the black screen on some boots
         if (esp_reset_reason() == ESP_RST_POWERON) {
             fflush(stdout);
             esp_restart();

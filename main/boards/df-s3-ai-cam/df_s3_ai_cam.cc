@@ -31,8 +31,8 @@ class DfrobotEsp32S3AiCam : public WifiBoard {
 
     void InitializeCamera() {
         camera_config_t config = {};
-        config.ledc_channel = LEDC_CHANNEL_2;   // LEDC通道选择  用于生成XCLK时钟 但是S3不用
-        config.ledc_timer = LEDC_TIMER_2;       // LEDC timer选择  用于生成XCLK时钟 但是S3不用
+        config.ledc_channel = LEDC_CHANNEL_2;   // LEDC channel selection; used to generate the XCLK clock, but not needed on the S3
+        config.ledc_timer = LEDC_TIMER_2;       // LEDC timer selection; used to generate the XCLK clock, but not needed on the S3
         config.pin_d0 = CAMERA_PIN_D0;
         config.pin_d1 = CAMERA_PIN_D1;
         config.pin_d2 = CAMERA_PIN_D2;
@@ -45,9 +45,9 @@ class DfrobotEsp32S3AiCam : public WifiBoard {
         config.pin_pclk = CAMERA_PIN_PCLK;
         config.pin_vsync = CAMERA_PIN_VSYNC;
         config.pin_href = CAMERA_PIN_HREF;
-        config.pin_sccb_sda = CAMERA_PIN_SIOD;  // 这里如果写-1 表示使用已经初始化的I2C接口
+        config.pin_sccb_sda = CAMERA_PIN_SIOD;  // Writing -1 here means use the already initialized I2C interface
         config.pin_sccb_scl = CAMERA_PIN_SIOC;
-        config.sccb_i2c_port = 1;               //  这里如果写1 默认使用I2C1
+        config.sccb_i2c_port = 1;               //  Writing 1 here defaults to I2C1
         config.pin_pwdn = CAMERA_PIN_PWDN;
         config.pin_reset = CAMERA_PIN_RESET;
         config.xclk_freq_hz = XCLK_FREQ_HZ;

@@ -1,8 +1,8 @@
 /**
  * @file weather_display_new.c
- * @brief 天气图标显示模块实现 - 新版本
+ * @brief weather icon display module implementation - new version
  * 
- * 本模块提供天气图标显示相关的功能实现，使用SPIFFS文件系统加载PNG格式的天气图标文件。
+ * This module implements weather-icon display functionality, loading PNG weather icon files from the SPIFFS filesystem.
  */
 
 #include "weather_display_new.h"
@@ -19,37 +19,37 @@
 
 #define TAG "weather_display_new"
 
-// 全局变量
+// Global variables
 static lv_obj_t *weather_icon_obj = NULL;
-static char weather_icon_path[64];         // PNG图标文件路径
+static char weather_icon_path[64];         // PNG icon file path
 
 /**
- * @brief 初始化天气图标显示模块
+ * @brief Initialize the weather icon display module
  * 
- * 初始化天气图标显示相关的资源。
- * 必须在使用其他天气图标功能之前调用此函数。
+ * Initializes the resources for weather icon display.
+ * This function must be called before using any other weather icon feature.
  * 
- * @param parent 父对象，天气图标将作为此对象的子对象创建
- * @return esp_err_t 初始化结果
- *         - ESP_OK: 初始化成功
- *         - ESP_FAIL: 初始化失败
+ * @param parent Parent object; the weather icon is created as a child of it
+ * @return esp_err_t Initialization result
+ *         - ESP_OK: initialization succeeded
+ *         - ESP_FAIL: initialization failed
  */
 esp_err_t weather_icon_new_init(lv_obj_t *parent)
 {
     ESP_LOGI(TAG, "Initializing weather icon display module");
     
-    // 创建天气图标对象 - 使用图像对象
+    // Create the weather icon object - using an image object
     weather_icon_obj = lv_image_create(parent);
     if (weather_icon_obj == NULL) {
         ESP_LOGE(TAG, "Failed to create weather icon object");
         return ESP_FAIL;
     }
     
-    // 设置图标位置和大小
-    lv_obj_set_size(weather_icon_obj, 110, 110);  // 设置合适的大小
-    lv_obj_align(weather_icon_obj, LV_ALIGN_CENTER, 0, 0);  // 居中对齐
+    // Set the icon position and size
+    lv_obj_set_size(weather_icon_obj, 110, 110);  // Set an appropriate size
+    lv_obj_align(weather_icon_obj, LV_ALIGN_CENTER, 0, 0);  // Center alignment
     
-    // 设置对象可见
+    // Make the object visible
     lv_obj_clear_flag(weather_icon_obj, LV_OBJ_FLAG_HIDDEN);
     
     ESP_LOGI(TAG, "Weather icon display module initialized successfully");
@@ -57,33 +57,33 @@ esp_err_t weather_icon_new_init(lv_obj_t *parent)
 }
 
 /**
- * @brief 显示指定天气代码的天气图标
+ * @brief Display the weather icon for a given weather code
  * 
- * 根据提供的天气代码显示对应的天气图标。
- * 从SPIFFS文件系统加载对应的PNG图标文件。
+ * Displays the matching weather icon for the given weather code.
+ * Loads the corresponding PNG icon file from the SPIFFS filesystem.
  * 
- * @param weather_code 天气代码字符串（如 "100", "101", "200" 等）
+ * @param weather_code Weather code string (e.g. "100", "101", "200")
  */
 void weather_icon_new_show(const char *weather_code)
 {
-    // 检查图标对象是否已初始化
+    // Check whether the icon object has been initialized
     if (weather_icon_obj == NULL) {
         ESP_LOGE(TAG, "Weather icon object not initialized");
         return;
     }
     
-    // 检查天气代码是否有效
+    // Check whether the weather code is valid
     if (weather_code == NULL || strlen(weather_code) == 0) {
         ESP_LOGW(TAG, "Invalid weather code, using default sunny icon");
-        weather_code = "100"; // 默认使用晴天代码
+        weather_code = "100"; // Default to the sunny code
     }
     
     ESP_LOGI(TAG, "Displaying weather icon for code: %s", weather_code);
     
-    // 构建PNG图标文件路径 (使用LVGL驱动器前缀 - 驱动器字母A对应ASCII 65)
+    // Build the PNG icon file path (using the LVGL drive prefix - drive letter A corresponds to ASCII 65)
     snprintf(weather_icon_path, sizeof(weather_icon_path), "A:/spiffs/%s.png", weather_code);
     
-    // 检查文件是否存在 (使用POSIX路径格式)
+    // Check whether the file exists (using POSIX path format)
     char posix_path[128];
     snprintf(posix_path, sizeof(posix_path), "/spiffs/%s.png", weather_code);
     FILE *file = fopen(posix_path, "r");
@@ -91,21 +91,21 @@ void weather_icon_new_show(const char *weather_code)
         fclose(file);
         ESP_LOGI(TAG, "Found weather icon: %s", weather_icon_path);
         
-        // 设置PNG图像源
+        // Set the PNG image source
         lv_image_set_src(weather_icon_obj, weather_icon_path);
         
-        // 确保图标可见
+        // Ensure the icon is visible
         lv_obj_clear_flag(weather_icon_obj, LV_OBJ_FLAG_HIDDEN);
-        // 移动到前景
+        // Move to the foreground
         lv_obj_move_foreground(weather_icon_obj);
-        // 强制刷新显示
+        // Force a display refresh
         lv_obj_invalidate(weather_icon_obj);
         
         ESP_LOGI(TAG, "Weather icon loaded successfully for code: %s", weather_code);
     } else {
         ESP_LOGW(TAG, "Weather icon file not found: %s, trying fallback", weather_icon_path);
         
-        // 尝试使用默认图标
+        // Try to use the default icon
         snprintf(weather_icon_path, sizeof(weather_icon_path), "A:/spiffs/100.png");
         snprintf(posix_path, sizeof(posix_path), "/spiffs/100.png");
         file = fopen(posix_path, "r");
@@ -120,52 +120,52 @@ void weather_icon_new_show(const char *weather_code)
 }
 
 /**
- * @brief 更新天气图标
+ * @brief Update the weather icon
  * 
- * 根据提供的天气代码更新天气图标。
- * 直接使用天气代码作为文件名，从SPIFFS文件系统加载对应的PNG图标。
+ * Updates the weather icon for the given weather code.
+ * Uses the weather code directly as the file name and loads the corresponding PNG icon from the SPIFFS filesystem.
  * 
- * @param weather_code 心知天气API返回的天气代码字符串
+ * @param weather_code Weather code string returned by the Seniverse weather API
  */
 void weather_icon_new_update(const char *weather_code)
 {
-    // 检查图标对象是否已初始化
+    // Check whether the icon object has been initialized
     if (weather_icon_obj == NULL) {
         ESP_LOGE(TAG, "Weather icon object not initialized");
         return;
     }
     
-    // 检查天气代码是否有效
+    // Check whether the weather code is valid
     if (weather_code == NULL || strlen(weather_code) == 0) {
         ESP_LOGW(TAG, "Invalid weather code, using default sunny icon");
-        weather_code = "100"; // 默认使用晴天代码
+        weather_code = "100"; // Default to the sunny code
     }
     
     ESP_LOGI(TAG, "Updating weather icon for code: %s", weather_code);
     
-    // 天气代码映射：将API返回的简短代码映射到标准的三位数代码
+    // Weather code mapping: map the short codes returned by the API to standard three-digit codes
     char mapped_code[10];
     if (strcmp(weather_code, "0") == 0 || strcmp(weather_code, "1") == 0) {
-        strcpy(mapped_code, "100"); // 晴天
+        strcpy(mapped_code, "100"); // sunny
     } else if (strcmp(weather_code, "2") == 0) {
-        strcpy(mapped_code, "101"); // 多云
+        strcpy(mapped_code, "101"); // cloudy
     } else if (strcmp(weather_code, "3") == 0) {
-        strcpy(mapped_code, "104"); // 阴天
+        strcpy(mapped_code, "104"); // overcast
     } else if (strlen(weather_code) < 3) {
-        // 对于其他短代码，尝试补零到三位数
+        // For other short codes, try zero-padding to three digits
         snprintf(mapped_code, sizeof(mapped_code), "%03d", atoi(weather_code));
     } else {
-        // 已经是三位数代码，直接使用
+        // Already a three-digit code, use it as is
         strncpy(mapped_code, weather_code, sizeof(mapped_code) - 1);
         mapped_code[sizeof(mapped_code) - 1] = '\0';
     }
     
     ESP_LOGI(TAG, "Mapped weather code from %s to %s", weather_code, mapped_code);
     
-    // 构建PNG图标文件路径 (使用LVGL驱动器前缀 - 驱动器字母A对应ASCII 65)
+    // Build the PNG icon file path (using the LVGL drive prefix - drive letter A corresponds to ASCII 65)
         snprintf(weather_icon_path, sizeof(weather_icon_path), "A:/spiffs/%s.png", mapped_code);
     
-    // 检查文件是否存在 (使用POSIX路径格式)
+    // Check whether the file exists (using POSIX path format)
     char posix_path[128];
     snprintf(posix_path, sizeof(posix_path), "/spiffs/%s.png", mapped_code);
     FILE *file = fopen(posix_path, "r");
@@ -173,35 +173,35 @@ void weather_icon_new_update(const char *weather_code)
         fclose(file);
         ESP_LOGI(TAG, "Found weather icon: %s", weather_icon_path);
         
-        // 设置PNG图像源
+        // Set the PNG image source
         ESP_LOGI(TAG, "Setting image source: %s", weather_icon_path);
         lv_image_set_src(weather_icon_obj, weather_icon_path);
         
-        // 处理LVGL任务以确保图像加载
+        // Process LVGL tasks to ensure the image loads
         lv_task_handler();
-        vTaskDelay(pdMS_TO_TICKS(50)); // 等待50ms让图像加载
+        vTaskDelay(pdMS_TO_TICKS(50)); // Wait 50 ms for the image to load
         
-        // 检查图像是否加载成功
+        // Check whether the image loaded successfully
         const void* src = lv_image_get_src(weather_icon_obj);
         lv_coord_t w = lv_obj_get_width(weather_icon_obj);
         lv_coord_t h = lv_obj_get_height(weather_icon_obj);
         ESP_LOGI(TAG, "Image source: %p, size: %dx%d", src, (int)w, (int)h);
         
-        // 应用图像优化设置
-        // 注释掉自适应尺寸设置，保持固定尺寸
-        // lv_obj_set_size(weather_icon_obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);  // 设置为内容自适应尺寸
-        lv_obj_set_style_img_recolor_opa(weather_icon_obj, LV_OPA_0, 0);  // 禁用重新着色
-        lv_obj_set_style_transform_angle(weather_icon_obj, 0, 0);  // 确保角度为0
-        lv_obj_set_style_transform_zoom(weather_icon_obj, 256, 0);  // 设置缩放为1.0倍
+        // Apply image optimization settings
+        // Auto-size setting commented out to keep a fixed size
+        // lv_obj_set_size(weather_icon_obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);  // Set to content-adaptive size
+        lv_obj_set_style_img_recolor_opa(weather_icon_obj, LV_OPA_0, 0);  // Disable recoloring
+        lv_obj_set_style_transform_angle(weather_icon_obj, 0, 0);  // Ensure the angle is 0
+        lv_obj_set_style_transform_zoom(weather_icon_obj, 256, 0);  // Set zoom to 1.0x
         
-        // 确保图标可见
+        // Ensure the icon is visible
         lv_obj_clear_flag(weather_icon_obj, LV_OBJ_FLAG_HIDDEN);
-        // 移动到前景
+        // Move to the foreground
         lv_obj_move_foreground(weather_icon_obj);
-        // 强制刷新显示
+        // Force a display refresh
         lv_obj_invalidate(weather_icon_obj);
         
-        // 再次检查尺寸
+        // Check the size again
         w = lv_obj_get_width(weather_icon_obj);
         h = lv_obj_get_height(weather_icon_obj);
         ESP_LOGI(TAG, "Final image size: %dx%d", (int)w, (int)h);
@@ -210,7 +210,7 @@ void weather_icon_new_update(const char *weather_code)
     } else {
         ESP_LOGW(TAG, "Weather icon file not found: %s, trying fallback", weather_icon_path);
         
-        // 尝试使用默认图标
+        // Try to use the default icon
         snprintf(weather_icon_path, sizeof(weather_icon_path), "A:/spiffs/100.png");
         snprintf(posix_path, sizeof(posix_path), "/spiffs/100.png");
         file = fopen(posix_path, "r");
@@ -225,43 +225,43 @@ void weather_icon_new_update(const char *weather_code)
 }
 
 /**
- * @brief 显示指定类型的天气图标
+ * @brief Display the weather icon for a given type
  * 
- * 根据提供的天气类型索引直接显示对应的天气图标。
- * 从SPIFFS文件系统加载对应的PNG图标。
+ * Directly displays the matching weather icon for the given weather type index.
+ * Loads the corresponding PNG icon from the SPIFFS filesystem.
  * 
- * @param type 天气类型索引（0-6）：
- *             0-晴天, 1-多云, 2-阴天, 3-雨天, 4-雪天, 5-雾天, 6-雷暴
+ * @param type Weather type index (0-6):
+ *             0-sunny, 1-cloudy, 2-overcast, 3-rainy, 4-snowy, 5-foggy, 6-thunderstorm
  */
 void weather_icon_new_show_type(int type)
 {
-    // 检查图标对象是否已初始化
+    // Check whether the icon object has been initialized
     if (weather_icon_obj == NULL) {
         ESP_LOGE(TAG, "Weather icon object not initialized");
         return;
     }
     
-    // 检查天气类型是否有效
+    // Check whether the weather type is valid
     if (type < 0 || type > 6) {
         ESP_LOGW(TAG, "Invalid weather type: %d, using default sunny type", type);
-        type = 0; // 默认使用晴天类型
+        type = 0; // Default to the sunny type
     }
     
-    // 天气类型对应的天气代码
+    // Weather codes corresponding to each weather type
     const char *weather_codes[] = {
-        "100", // 晴天
-        "104", // 多云
-        "101", // 多云（原阴天）
-        "300", // 雨天
-        "400", // 雪天
-        "500", // 雾天
-        "302"  // 雷暴
+        "100", // sunny
+        "104", // cloudy
+        "101", // cloudy (previously overcast)
+        "300", // rainy
+        "400", // snowy
+        "500", // foggy
+        "302"  // thunderstorm
     };
     
-    // 构建PNG图标文件路径 (使用LVGL驱动器前缀 - 驱动器字母A对应ASCII 65)
+    // Build the PNG icon file path (using the LVGL drive prefix - drive letter A corresponds to ASCII 65)
     snprintf(weather_icon_path, sizeof(weather_icon_path), "A:/spiffs/%s.png", weather_codes[type]);
     
-    // 检查文件是否存在 (使用POSIX路径格式)
+    // Check whether the file exists (using POSIX path format)
     char posix_path[128];
     snprintf(posix_path, sizeof(posix_path), "/spiffs/%s.png", weather_codes[type]);
     FILE *file = fopen(posix_path, "r");
@@ -269,21 +269,21 @@ void weather_icon_new_show_type(int type)
         fclose(file);
         ESP_LOGI(TAG, "Found weather icon: %s", weather_icon_path);
         
-        // 设置PNG图像源
+        // Set the PNG image source
         lv_image_set_src(weather_icon_obj, weather_icon_path);
         
-        // 应用图像优化设置
-        // 注释掉自适应尺寸设置，保持固定尺寸
-        // lv_obj_set_size(weather_icon_obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);  // 设置为内容自适应尺寸
-        lv_obj_set_style_img_recolor_opa(weather_icon_obj, LV_OPA_0, 0);  // 禁用重新着色
-        lv_obj_set_style_transform_angle(weather_icon_obj, 0, 0);  // 确保角度为0
-        lv_obj_set_style_transform_zoom(weather_icon_obj, 256, 0);  // 设置缩放为1.0倍
+        // Apply image optimization settings
+        // Auto-size setting commented out to keep a fixed size
+        // lv_obj_set_size(weather_icon_obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);  // Set to content-adaptive size
+        lv_obj_set_style_img_recolor_opa(weather_icon_obj, LV_OPA_0, 0);  // Disable recoloring
+        lv_obj_set_style_transform_angle(weather_icon_obj, 0, 0);  // Ensure the angle is 0
+        lv_obj_set_style_transform_zoom(weather_icon_obj, 256, 0);  // Set zoom to 1.0x
         
-        // 确保图标可见
+        // Ensure the icon is visible
         lv_obj_clear_flag(weather_icon_obj, LV_OBJ_FLAG_HIDDEN);
-        // 移动到前景
+        // Move to the foreground
         lv_obj_move_foreground(weather_icon_obj);
-        // 强制刷新显示
+        // Force a display refresh
         lv_obj_invalidate(weather_icon_obj);
         
         ESP_LOGI(TAG, "Loading weather icon from SPIFFS: %s with optimization", weather_icon_path);
@@ -293,16 +293,16 @@ void weather_icon_new_show_type(int type)
 }
 
 /**
- * @brief 测试SPIFFS分区和天气图标文件
+ * @brief Test the SPIFFS partition and weather icon files
  * 
- * 用于诊断天气图标显示问题的测试函数。
- * 检查SPIFFS挂载状态、文件列表和文件读取。
+ * Test function for diagnosing weather icon display problems.
+ * Checks the SPIFFS mount status, file listing, and file reads.
  */
 void weather_icon_test_spiffs(void)
 {
     ESP_LOGI(TAG, "=== Starting SPIFFS weather icon diagnostic test ===");
     
-    // 1. 检查SPIFFS分区信息
+    // 1. Check SPIFFS partition information
     size_t total = 0, used = 0;
     esp_err_t ret = esp_spiffs_info("weather", &total, &used);
     if (ret != ESP_OK) {
@@ -312,7 +312,7 @@ void weather_icon_test_spiffs(void)
     ESP_LOGI(TAG, "SPIFFS partition: total=%d KB, used=%d KB, available=%d KB",
              total/1024, used/1024, (total-used)/1024);
     
-    // 2. 列出/spiffs目录下的文件
+    // 2. List the files in the /spiffs directory
     ESP_LOGI(TAG, "Files in /spiffs:");
     DIR *dir = opendir("/spiffs");
     if (dir == NULL) {
@@ -323,7 +323,7 @@ void weather_icon_test_spiffs(void)
     struct dirent *entry;
     int file_count = 0;
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG) { // 只显示文件，不显示目录
+        if (entry->d_type == DT_REG) { // Only show files, not directories
             file_count++;
             ESP_LOGI(TAG, "  File %d: %s", file_count, entry->d_name);
         }
@@ -331,7 +331,7 @@ void weather_icon_test_spiffs(void)
     closedir(dir);
     ESP_LOGI(TAG, "Found %d files in total", file_count);
     
-    // 3. 测试常见天气图标文件是否存在
+    // 3. Test whether the common weather icon files exist
     ESP_LOGI(TAG, "Checking common weather icon files:");
     const char* test_icons[] = {"100", "101", "104", "300", "400", "500", "302"};
     const char* icon_names[] = {"Sunny", "Cloudy", "Overcast", "Rainy", "Snowy", "Foggy", "Thunderstorm"};
@@ -351,7 +351,7 @@ void weather_icon_test_spiffs(void)
         }
     }
     
-    // 4. 验证PNG文件头
+    // 4. Validate the PNG header
     FILE *file = fopen("/spiffs/100.png", "rb");
     if (file) {
         uint8_t header[8];
@@ -363,7 +363,7 @@ void weather_icon_test_spiffs(void)
                      header[0], header[1], header[2], header[3], 
                      header[4], header[5], header[6], header[7]);
             
-            // PNG文件头应该是: 89 50 4E 47 0D 0A 1A 0A
+            // The PNG header should be: 89 50 4E 47 0D 0A 1A 0A
             if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
                 ESP_LOGI(TAG, "✓ PNG header validation passed");
             } else {
@@ -376,20 +376,20 @@ void weather_icon_test_spiffs(void)
 }
 
 /**
- * @brief 测试PNG解码器功能
+ * @brief Test the PNG decoder
  * 
- * 用于验证LVGL的PNG解码器是否正常工作的测试函数。
- * 创建临时图像对象来实际测试PNG解码和显示。
+ * Test function that verifies the LVGL PNG decoder works correctly.
+ * Creates a temporary image object to actually test PNG decoding and display.
  */
 void weather_icon_test_png_decoder(void)
 {
     ESP_LOGI(TAG, "=== Starting PNG decoder test ===");
     
-    // 测试LVGL是否能正确加载PNG图像
-    const char* test_file_lvgl = "A:/spiffs/100.png";  // LVGL路径格式
-    const char* test_file_posix = "/spiffs/100.png";   // POSIX路径格式
+    // Test whether LVGL can load a PNG image correctly
+    const char* test_file_lvgl = "A:/spiffs/100.png";  // LVGL path format
+    const char* test_file_posix = "/spiffs/100.png";   // POSIX path format
     
-    // 检查文件是否存在（使用POSIX路径）
+    // Check whether the file exists (using the POSIX path)
     FILE *file = fopen(test_file_posix, "rb");
     if (!file) {
         ESP_LOGE(TAG, "Test file %s does not exist", test_file_posix);
@@ -398,7 +398,7 @@ void weather_icon_test_png_decoder(void)
     fclose(file);
     ESP_LOGI(TAG, "File existence check passed: %s", test_file_posix);
     
-    // 验证PNG文件头
+    // Validate the PNG header
     file = fopen(test_file_posix, "rb");
     if (file) {
         uint8_t header[8];
@@ -410,7 +410,7 @@ void weather_icon_test_png_decoder(void)
                      header[0], header[1], header[2], header[3], 
                      header[4], header[5], header[6], header[7]);
             
-            // PNG文件头应该是: 89 50 4E 47 0D 0A 1A 0A
+            // The PNG header should be: 89 50 4E 47 0D 0A 1A 0A
             if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
                 ESP_LOGI(TAG, "✓ PNG header validation passed; file format is valid");
             } else {
@@ -420,17 +420,17 @@ void weather_icon_test_png_decoder(void)
         }
     }
     
-    // 实际测试LVGL PNG解码器
+    // Actually test the LVGL PNG decoder
     ESP_LOGI(TAG, "Starting LVGL PNG decoder test...");
     
-    // 获取当前活动屏幕
+    // Get the current active screen
     lv_obj_t* screen = lv_screen_active();
     if (!screen) {
         ESP_LOGE(TAG, "Could not get active screen");
         return;
     }
     
-    // 创建临时图像对象进行测试
+    // Create a temporary image object for testing
     lv_obj_t* test_img = lv_image_create(screen);
     if (!test_img) {
         ESP_LOGE(TAG, "Failed to create test image object");
@@ -439,39 +439,39 @@ void weather_icon_test_png_decoder(void)
     
     ESP_LOGI(TAG, "Temporary image object created successfully");
     
-    // 设置图像位置（屏幕正中央，更明显的位置）
+    // Set the image position (center of the screen, a more visible spot)
     lv_obj_set_pos(test_img, (LV_HOR_RES - 60) / 2, (LV_VER_RES - 60) / 2);
     lv_obj_set_size(test_img, 60, 60);
     
-    // 设置高层级确保在最前面显示
+    // Raise the layer level so it is drawn on top
     lv_obj_move_foreground(test_img);
     
-    // 尝试加载PNG图像
+    // Try to load the PNG image
     ESP_LOGI(TAG, "Attempting to load PNG image: %s", test_file_lvgl);
     lv_image_set_src(test_img, test_file_lvgl);
     
-    // 确保图像可见并设置透明度
+    // Ensure the image is visible and set its opacity
     lv_obj_clear_flag(test_img, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_opa(test_img, LV_OPA_COVER, 0);
     lv_obj_move_foreground(test_img);
     
-    // 处理LVGL任务以确保图像被处理
+    // Process LVGL tasks to ensure the image is handled
     for (int i = 0; i < 5; i++) {
         lv_task_handler();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 检查图像是否成功加载
+    // Check whether the image loaded successfully
     const void* src = lv_image_get_src(test_img);
     if (src) {
         ESP_LOGI(TAG, "✓ PNG image source set successfully");
         
-        // 获取图像实际尺寸
+        // Get the actual image dimensions
          lv_coord_t width = lv_obj_get_width(test_img);
          lv_coord_t height = lv_obj_get_height(test_img);
          ESP_LOGI(TAG, "Image dimensions: %dx%d", (int)width, (int)height);
         
-        // 显示测试图像3秒钟
+        // Show the test image for 3 seconds
         ESP_LOGI(TAG, "Test image will be displayed for 3 seconds; check for a weather icon in the center of the screen");
         vTaskDelay(pdMS_TO_TICKS(3000));
         
@@ -479,11 +479,11 @@ void weather_icon_test_png_decoder(void)
         ESP_LOGE(TAG, "✗ Failed to load PNG image");
     }
     
-    // 清理测试对象（使用延迟删除避免内存问题）
+    // Clean up the test object (delayed delete to avoid memory issues)
     ESP_LOGI(TAG, "Cleaning up test object...");
-    lv_obj_delete_delayed(test_img, 100);  // 延迟100ms删除
+    lv_obj_delete_delayed(test_img, 100);  // Delete after a 100 ms delay
     
-    // 处理LVGL任务以确保删除操作完成
+    // Process LVGL tasks to ensure the deletion completes
     for (int i = 0; i < 3; i++) {
         lv_task_handler();
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -493,55 +493,55 @@ void weather_icon_test_png_decoder(void)
 }
 
 /**
- * @brief 反初始化天气图标显示模块
+ * @brief Deinitialize the weather icon display module
  * 
- * 清理天气图标显示相关的资源。
- * 在不再需要天气图标功能时调用此函数。
+ * Cleans up the resources related to weather icon display.
+ * Call this function when the weather icon feature is no longer needed.
  */
 void weather_icon_new_deinit(void)
 {
     ESP_LOGI(TAG, "Deinitializing weather icon display module");
     
-    // 清理路径缓冲区
+    // Clear the path buffer
     memset(weather_icon_path, 0, sizeof(weather_icon_path));
     
-    // 注意：weather_icon_obj 由 LVGL 管理，不需要手动释放
+    // Note: weather_icon_obj is managed by LVGL and does not need to be freed manually
     weather_icon_obj = NULL;
     
     ESP_LOGI(TAG, "Weather icon display module deinitialized");
 }
 
 /**
- * @brief 获取天气图标对象
+ * @brief Get the weather icon object
  * 
- * 返回当前的天气图标对象，可用于进一步自定义或操作。
+ * Returns the current weather icon object for further customization or manipulation.
  * 
- * @return lv_obj_t* 天气图标对象，如果未初始化则返回NULL
+ * @return lv_obj_t* The weather icon object, or NULL if not initialized
  */
 lv_obj_t* weather_icon_new_get_obj(void)
 {
-    // 返回天气图标对象指针
+    // Return the weather icon object pointer
     return weather_icon_obj;
 }
 
 /**
- * @brief 测试C文件格式天气图标显示
+ * @brief Test weather icon display from C file format
  * 
- * 用于验证C数组格式的天气图标是否能正常显示的测试函数。
- * 直接使用转换好的C文件中的图像数据进行显示测试。
+ * Test function that verifies weather icons in C array format display correctly.
+ * Uses the image data in the converted C file directly for the display test.
  */
 void weather_icon_test_c_array(void)
 {
     ESP_LOGI(TAG, "=== Starting C-array weather icon test ===");
     
-    // 获取当前活动屏幕
+    // Get the current active screen
     lv_obj_t* screen = lv_screen_active();
     if (!screen) {
         ESP_LOGE(TAG, "Could not get active screen");
         return;
     }
     
-    // 创建临时图像对象进行测试
+    // Create a temporary image object for testing
     lv_obj_t* test_img = lv_image_create(screen);
     if (!test_img) {
         ESP_LOGE(TAG, "Failed to create test image object");
@@ -550,41 +550,41 @@ void weather_icon_test_c_array(void)
     
     ESP_LOGI(TAG, "Temporary image object created successfully");
     
-    // 设置图像位置（屏幕正中央）
+    // Set the image position (center of the screen)
     lv_obj_set_pos(test_img, (LV_HOR_RES - 60) / 2, (LV_VER_RES - 60) / 2);
     lv_obj_set_size(test_img, 60, 60);
     
-    // 设置高层级确保在最前面显示
+    // Raise the layer level so it is drawn on top
     lv_obj_move_foreground(test_img);
     
-    // 尝试加载C数组图像
+    // Try to load the C array image
     ESP_LOGI(TAG, "Attempting to load C-array image data");
     
-    // 使用头文件中定义的天气图标变量
+    // Use the weather icon variable defined in the header file
     lv_image_set_src(test_img, &_icon_100);
     
-    // 确保图像可见并设置透明度
+    // Ensure the image is visible and set its opacity
     lv_obj_clear_flag(test_img, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_opa(test_img, LV_OPA_COVER, 0);
     lv_obj_move_foreground(test_img);
     
-    // 处理LVGL任务以确保图像被处理
+    // Process LVGL tasks to ensure the image is handled
     for (int i = 0; i < 5; i++) {
         lv_task_handler();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // 检查图像是否成功加载
+    // Check whether the image loaded successfully
     const void* src = lv_image_get_src(test_img);
     if (src) {
         ESP_LOGI(TAG, "✓ C-array image source set successfully");
         
-        // 获取图像实际尺寸
+        // Get the actual image dimensions
         lv_coord_t width = lv_obj_get_width(test_img);
         lv_coord_t height = lv_obj_get_height(test_img);
         ESP_LOGI(TAG, "Image dimensions: %dx%d", (int)width, (int)height);
         
-        // 显示测试图像3秒钟
+        // Show the test image for 3 seconds
         ESP_LOGI(TAG, "Test image will be displayed for 3 seconds; check for a weather icon in the center of the screen");
         vTaskDelay(pdMS_TO_TICKS(3000));
         
@@ -592,11 +592,11 @@ void weather_icon_test_c_array(void)
         ESP_LOGE(TAG, "✗ Failed to load C-array image");
     }
     
-    // 清理测试对象（使用延迟删除避免内存问题）
+    // Clean up the test object (delayed delete to avoid memory issues)
     ESP_LOGI(TAG, "Cleaning up test object...");
-    lv_obj_delete_delayed(test_img, 100);  // 延迟100ms删除
+    lv_obj_delete_delayed(test_img, 100);  // Delete after a 100 ms delay
     
-    // 处理LVGL任务以确保删除操作完成
+    // Process LVGL tasks to ensure the deletion completes
     for (int i = 0; i < 3; i++) {
         lv_task_handler();
         vTaskDelay(pdMS_TO_TICKS(50));

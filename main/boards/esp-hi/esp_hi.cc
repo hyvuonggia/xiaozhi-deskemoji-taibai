@@ -245,7 +245,7 @@ private:
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
 
-        // 液晶屏控制IO初始化
+        // LCD control IO initialization
         ESP_LOGD(TAG, "Install panel IO");
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = DISPLAY_CS_PIN;
@@ -257,7 +257,7 @@ private:
         io_config.lcd_param_bits = 8;
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(SPI2_HOST, &io_config, &panel_io));
 
-        // 初始化液晶屏驱动芯片
+        // Initialize the LCD driver IC
         ESP_LOGD(TAG, "Install LCD driver");
         const ili9341_vendor_config_t vendor_config = {
             .init_cmds = &vendor_specific_init[0],
@@ -301,7 +301,7 @@ private:
     {
         auto& mcp_server = McpServer::GetInstance();
         
-        // 基础动作控制
+        // Basic movement control
         mcp_server.AddTool("self.dog.basic_control", "机器人的基础动作。机器人可以做以下基础动作：\n"
             "forward: 向前移动\nbackward: 向后移动\nturn_left: 向左转\nturn_right: 向右转\nstop: 立即停止当前动作", 
             PropertyList({
@@ -324,7 +324,7 @@ private:
                 return true;
             });
         
-        // 扩展动作控制
+        // Extended movement control
         mcp_server.AddTool("self.dog.advanced_control", "机器人的扩展动作。机器人可以做以下扩展动作：\n"
             "sway_back_forth: 前后摇摆\nlay_down: 趴下\nsway: 左右摇摆\nretract_legs: 收回腿部\n"
             "shake_hand: 握手\nshake_back_legs: 伸懒腰\njump_forward: 向前跳跃", 
@@ -355,7 +355,7 @@ private:
                 return true;
             });
 
-        // 灯光控制
+        // Light control
         mcp_server.AddTool("self.light.get_power", "获取灯是否打开", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             return led_on_;
         });

@@ -1,14 +1,14 @@
 /**
  * @file weather_display_new.h
- * @brief 天气图标显示模块头文件 - 新版本
+ * @brief Weather icon display module header file - new version
  * 
- * 本模块提供天气图标显示相关的功能，包括：
- * 1. 初始化天气图标显示
- * 2. 更新天气图标
- * 3. 显示指定类型的天气图标
- * 4. 获取天气图标对象
+ * This module provides weather icon display related functionality, including:
+ * 1. Initialize the weather icon display
+ * 2. Update the weather icon
+ * 3. Display a weather icon of the given type
+ * 4. Get the weather icon object
  * 
- * 本模块直接加载PNG格式的天气图标，通过SPIFFS文件系统访问。
+ * This module loads PNG weather icons directly, accessed through the SPIFFS filesystem.
  */
 
 #pragma once
@@ -21,87 +21,87 @@ extern "C" {
 #endif
 
 /**
- * @brief 初始化天气图标显示模块
+ * @brief Initialize the weather icon display module
  * 
- * 初始化天气图标显示相关的资源。
- * 必须在使用其他天气图标功能之前调用此函数。
+ * Initialize weather icon display related resources.
+ * Must be called before using any other weather icon function.
  * 
- * @param parent 父对象，天气图标将作为此对象的子对象创建
- * @return esp_err_t 初始化结果
- *         - ESP_OK: 初始化成功
- *         - ESP_FAIL: 初始化失败
+ * @param parent Parent object; the weather icon is created as a child of this object
+ * @return esp_err_t Initialization result
+ *         - ESP_OK: initialization succeeded
+ *         - ESP_FAIL: initialization failed
  */
 esp_err_t weather_icon_new_init(lv_obj_t *parent);
 
 /**
- * @brief 显示指定天气代码的天气图标
+ * @brief Display the weather icon for the given weather code
  * 
- * 根据提供的天气代码显示对应的天气图标。
- * 从SPIFFS文件系统加载对应的PNG图标文件。
+ * Display the weather icon corresponding to the provided weather code.
+ * Load the corresponding PNG icon file from the SPIFFS filesystem.
  * 
- * @param weather_code 天气代码字符串（如 "100", "101", "200" 等）
+ * @param weather_code Weather code string (e.g. "100", "101", "200")
  */
 void weather_icon_new_show(const char *weather_code);
 
 /**
- * @brief 更新天气图标
+ * @brief Update the weather icon
  * 
- * 根据提供的天气代码更新天气图标。
- * 直接使用天气代码作为文件名，从SPIFFS文件系统加载对应的PNG图标。
+ * Update the weather icon according to the provided weather code.
+ * Use the weather code directly as the file name and load the corresponding PNG icon from the SPIFFS filesystem.
  * 
- * @param weather_code 心知天气API返回的天气代码字符串
+ * @param weather_code Weather code string returned by the Seniverse weather API
  */
 void weather_icon_new_update(const char *weather_code);
 
 /**
- * @brief 显示指定类型的天气图标
+ * @brief Display a weather icon of the given type
  * 
- * 根据提供的天气类型索引直接显示对应的天气图标。
- * 从SPIFFS文件系统加载对应的PNG图标。
+ * Display the weather icon for the provided weather type index directly.
+ * Load the corresponding PNG icon from the SPIFFS filesystem.
  * 
- * @param type 天气类型索引（0-6）：
- *             0-晴天, 1-多云, 2-阴天, 3-雨天, 4-雪天, 5-雾天, 6-雷暴
+ * @param type Weather type index (0-6):
+ *             0-sunny, 1-cloudy, 2-overcast, 3-rainy, 4-snowy, 5-foggy, 6-thunderstorm
  */
 void weather_icon_new_show_type(int type);
 
 /**
- * @brief 测试SPIFFS分区和天气图标文件
+ * @brief Test the SPIFFS partition and the weather icon files
  * 
- * 用于诊断天气图标显示问题的测试函数。
- * 检查SPIFFS挂载状态、文件列表和文件读取。
+ * Test function used to diagnose weather icon display problems.
+ * Checks the SPIFFS mount status, the file listing and file reads.
  */
 void weather_icon_test_spiffs(void);
 
 /**
- * @brief 测试PNG解码器功能
+ * @brief Test the PNG decoder
  * 
- * 用于测试PNG解码器是否正常工作的测试函数。
- * 检查PNG解码器的初始化和解码功能。
+ * Test function that checks whether the PNG decoder works correctly.
+ * Checks PNG decoder initialization and decoding.
  */
 void weather_icon_test_png_decoder(void);
 
 /**
- * @brief 反初始化天气图标显示模块
+ * @brief Deinitialize the weather icon display module
  * 
- * 清理天气图标显示相关的资源。
- * 在不再需要天气图标功能时调用此函数。
+ * Release weather icon display related resources.
+ * Call this function when the weather icon feature is no longer needed.
  */
 void weather_icon_new_deinit(void);
 
 /**
- * @brief 获取天气图标对象
+ * @brief Get the weather icon object
  * 
- * 返回当前的天气图标对象，可用于进一步自定义或操作。
+ * Returns the current weather icon object for further customization or manipulation.
  * 
- * @return lv_obj_t* 天气图标对象，如果未初始化则返回NULL
+ * @return lv_obj_t* Weather icon object, or NULL if not initialized
  */
 lv_obj_t* weather_icon_new_get_obj(void);
 
 /**
- * @brief 测试C文件格式天气图标显示
+ * @brief Test displaying a weather icon in C file format
  * 
- * 用于验证C数组格式的天气图标是否能正常显示的测试函数。
- * 直接使用转换好的C文件中的图像数据进行显示测试。
+ * Test function that verifies whether weather icons in C array format display correctly.
+ * Uses the image data from the converted C file directly for a display test.
  */
 void weather_icon_test_c_array(void);
 

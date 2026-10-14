@@ -12,7 +12,7 @@
 
 #include <cJSON.h>
 
-// 添加类型别名
+// Add type alias
 using ReturnValue = std::variant<bool, int, std::string>;
 
 enum PropertyType {
@@ -27,8 +27,8 @@ private:
     PropertyType type_;
     std::variant<bool, int, std::string> value_;
     bool has_default_value_;
-    std::optional<int> min_value_;  // 新增：整数最小值
-    std::optional<int> max_value_;  // 新增：整数最大值
+    std::optional<int> min_value_;  // New: minimum integer value
+    std::optional<int> max_value_;  // New: maximum integer value
 
 public:
     // Required field constructor
@@ -74,7 +74,7 @@ public:
 
     template<typename T>
     inline void set_value(const T& value) {
-        // 添加对设置的整数值进行范围检查
+        // Add range checking for the setting's integer value
         if constexpr (std::is_same_v<T, int>) {
             if (min_value_.has_value() && value < min_value_.value()) {
                 throw std::invalid_argument("Value is below minimum allowed: " + std::to_string(min_value_.value()));
@@ -225,7 +225,7 @@ public:
 
     std::string Call(const PropertyList& properties) {
         ReturnValue return_value = callback_(properties);
-        // 返回结果
+        // Return the result
         cJSON* result = cJSON_CreateObject();
         cJSON* content = cJSON_CreateArray();
         cJSON* text = cJSON_CreateObject();

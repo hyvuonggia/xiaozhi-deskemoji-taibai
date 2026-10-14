@@ -21,9 +21,9 @@ OledDisplay::OledDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handl
 
     ESP_LOGI(TAG, "Initialize LVGL");
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
-    port_cfg.task_priority = 3;  // 提高任务优先级，避免被其他任务阻塞
-    port_cfg.task_stack = 8192;  // 增加栈大小，防止栈溢出
-    port_cfg.timer_period_ms = 200;  // 大幅增加刷新间隔，从50ms改为200ms，减少I2C压力
+    port_cfg.task_priority = 3;  // Raise task priority to avoid being blocked by other tasks
+    port_cfg.task_stack = 8192;  // Increase stack size to prevent stack overflow
+    port_cfg.timer_period_ms = 200;  // Greatly increase the refresh interval, from 50ms to 200ms, to reduce I2C pressure
     lvgl_port_init(&port_cfg);
 
     ESP_LOGI(TAG, "Adding OLED display");
@@ -149,9 +149,9 @@ void OledDisplay::SetupUI_128x64() {
     lv_obj_set_flex_flow(content_, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_flex_main_place(content_, LV_FLEX_ALIGN_CENTER, 0);
 
-    // 创建左侧固定宽度的容器
+    // Create the fixed-width container on the left
     content_left_ = lv_obj_create(content_);
-    lv_obj_set_size(content_left_, 32, LV_SIZE_CONTENT);  // 固定宽度32像素
+    lv_obj_set_size(content_left_, 32, LV_SIZE_CONTENT);  // Fixed width of 32 pixels
     lv_obj_set_style_pad_all(content_left_, 0, 0);
     lv_obj_set_style_border_width(content_left_, 0, 0);
 
@@ -161,7 +161,7 @@ void OledDisplay::SetupUI_128x64() {
     lv_obj_center(emotion_label_);
     lv_obj_set_style_pad_top(emotion_label_, 8, 0);
 
-    // 创建右侧可扩展的容器
+    // Create the expandable container on the right
     content_right_ = lv_obj_create(content_);
     lv_obj_set_size(content_right_, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(content_right_, 0, 0);
@@ -176,7 +176,7 @@ void OledDisplay::SetupUI_128x64() {
     lv_obj_set_width(chat_message_label_, width_ - 32);
     lv_obj_set_style_pad_top(chat_message_label_, 14, 0);
 
-    // 延迟一定的时间后开始滚动字幕
+    // Start scrolling the subtitle after a delay
     static lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_delay(&a, 1000);
@@ -299,7 +299,7 @@ void OledDisplay::SetupUI_128x32() {
     lv_label_set_long_mode(chat_message_label_, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_label_set_text(chat_message_label_, "");
 
-    // 延迟一定的时间后开始滚动字幕
+    // Start scrolling the subtitle after a delay
     static lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_delay(&a, 1000);

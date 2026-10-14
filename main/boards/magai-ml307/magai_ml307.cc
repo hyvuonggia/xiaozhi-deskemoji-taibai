@@ -58,7 +58,7 @@ private:
     
         i2c_device_config_t i2c_dev_conf = {};
         i2c_master_dev_handle_t i2c_dev_handle = NULL;
-        i2c_dev_conf.dev_addr_length = I2C_ADDR_BIT_LEN_7;  // 7位地址
+        i2c_dev_conf.dev_addr_length = I2C_ADDR_BIT_LEN_7;  // 7-bit address
         i2c_dev_conf.scl_speed_hz = 100000;
         i2c_dev_conf.device_address = 0X15;
         i2c_master_bus_add_device(i2c_bus, &i2c_dev_conf, &i2c_dev_handle);
@@ -155,7 +155,7 @@ private:
             DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
 
     }
-    // 物联网初始化，添加对 AI 可见设备
+    // IoT initialization, add devices visible to the AI
     void InitializeIot() {
         auto& thing_manager = iot::ThingManager::GetInstance();
         thing_manager.AddThing(iot::CreateThing("Speaker"));

@@ -9,7 +9,7 @@
 
 namespace iot {
 
-// 天气状态枚举
+// Weather state enum
 enum class WeatherState {
     SUNNY,
     CLOUDY,
@@ -20,7 +20,7 @@ enum class WeatherState {
     THUNDERSTORM
 };
 
-// 天气文字映射
+// Weather text mapping
 const std::unordered_map<WeatherState, std::string> kWeatherTexts = {
     {WeatherState::SUNNY, "晴"},
     {WeatherState::CLOUDY, "多云"},
@@ -31,7 +31,7 @@ const std::unordered_map<WeatherState, std::string> kWeatherTexts = {
     {WeatherState::THUNDERSTORM, "雷暴"}
 };
 
-// 天气数据结构体
+// Weather data struct
 struct WeatherData {
     std::string city;
     float temperature;
@@ -39,70 +39,70 @@ struct WeatherData {
     std::string weather_code;
 };
 
-// Weather类，继承自Thing
+// Weather class, inherits from Thing
 class Weather : public Thing {
 public:
     Weather();
     ~Weather();
     
-    // 更新天气信息（主要方法）
+    // Update the weather information (main method)
     void UpdateWeather();
     
-    // 自动检测城市并更新天气
+    // Auto-detect the city and update the weather
     bool AutoDetectCity();
     
-    // 设置城市并更新天气
+    // Set the city and update the weather
     void SetCity(const std::string& city);
     
-    // 获取天气数据
+    // Get the weather data
     WeatherData GetWeatherData() const;
     
-    // 获取天气图标对象
+    // Get the weather icon object
     const lv_img_dsc_t* GetWeatherIconObject() const;
     
-    // 便捷访问方法（内部调用GetWeatherData）
+    // Convenience accessors (call GetWeatherData internally)
     std::string GetCity() const;
     float GetTemperature() const;
     std::string GetWeather() const;
     std::string GetWeatherCode() const;
     
 private:
-    // 通过IP获取城市信息
+    // Get the city information via IP
     bool GetCityByIP();
     
-    // 获取公网IP地址
+    // Get the public IP address
     std::string GetPublicIP();
     
-    // 启动定时更新
+    // Start the periodic update
     void StartPeriodicUpdate();
     
-    // 定时器回调函数
+    // Timer callback function
     static void UpdateTimerCallback(void* arg);
     
-    // 天气更新任务函数
+    // Weather update task function
     static void WeatherUpdateTask(void* arg);
     
 public:
-    // 设置用户数据（用于回调）
+    // Set user data (used for callbacks)
     void SetUserData(void* user_data) { user_data_ = user_data; }
     
-    // 获取用户数据
+    // Get user data
     void* GetUserData() const { return user_data_; }
     
-    // 检查天气数据是否就绪
+    // Check whether the weather data is ready
     bool IsDataReady() const { return is_data_ready_; }
     
-    // 成员变量
+    // Member variables
     std::string city_;
     float temperature_;
     std::string weather_;
-    std::string weather_code_; // 天气代码
+    std::string weather_code_; // Weather code
     bool is_updating_;
-    bool is_data_ready_; // 标记天气数据是否已准备好可以显示
+    bool is_data_ready_; // Flag whether the weather data is ready to be displayed
     esp_timer_handle_t update_timer_;
     std::random_device rd_;
     std::mt19937 gen_;
-    void* user_data_; // 用户数据指针，用于回调
+    void* user_data_; // User data pointer, used for callbacks
 };
 
 } // namespace iot

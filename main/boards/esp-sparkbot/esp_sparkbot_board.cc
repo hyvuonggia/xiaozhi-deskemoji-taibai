@@ -94,7 +94,7 @@ private:
         esp_lcd_panel_io_handle_t panel_io = nullptr;
         esp_lcd_panel_handle_t panel = nullptr;
 
-        // 液晶屏控制IO初始化
+        // LCD control IO initialization
         ESP_LOGD(TAG, "Install panel IO");
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = DISPLAY_CS_GPIO;
@@ -106,7 +106,7 @@ private:
         io_config.lcd_param_bits = 8;
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(SPI3_HOST, &io_config, &panel_io));
 
-        // 初始化液晶屏驱动芯片
+        // Initialize the LCD driver chip
         ESP_LOGD(TAG, "Install LCD driver");
 
         esp_lcd_panel_dev_config_t panel_config = {};
@@ -166,14 +166,14 @@ private:
         camera_ = new Esp32Camera(camera_config);
 
         Settings settings("sparkbot", false);
-        // 考虑到部分复刻使用了不可动摄像头的设计，默认启用翻转
+        // Since some replicas use a fixed (non-movable) camera design, flip is enabled by default
         bool camera_flipped = static_cast<bool>(settings.GetInt("camera-flipped", 1));
         camera_->SetHMirror(camera_flipped);
         camera_->SetVFlip(camera_flipped);
     }
 
     /*
-        ESP-SparkBot 的底座
+        ESP-SparkBot chassis
         https://gitee.com/esp-friends/esp_sparkbot/tree/master/example/tank/c2_tracked_chassis
     */
     void InitializeEchoUart() {
@@ -202,7 +202,7 @@ private:
 
     void InitializeTools() {
         auto& mcp_server = McpServer::GetInstance();
-        // 定义设备的属性
+        // Define the device properties
         mcp_server.AddTool("self.chassis.get_light_mode", "获取灯光效果编号", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             if (light_mode_ < 2) {
                 return 1;
@@ -255,7 +255,7 @@ private:
 
         mcp_server.AddTool("self.camera.set_camera_flipped", "翻转摄像头图像方向", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             Settings settings("sparkbot", true);
-            // 考虑到部分复刻使用了不可动摄像头的设计，默认启用翻转
+            // Since some replicas use a fixed (non-movable) camera design, flip is enabled by default
             bool flipped = !static_cast<bool>(settings.GetInt("camera-flipped", 1));
             
             camera_->SetHMirror(flipped);

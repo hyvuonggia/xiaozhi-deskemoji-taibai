@@ -16,7 +16,7 @@
 #define AUDIO_I2S_GPIO_DIN       GPIO_NUM_28
 #define AUDIO_I2S_GPIO_DOUT      GPIO_NUM_26
 
-#define AUDIO_CODEC_PA_PIN       GPIO_NUM_NC // PI4IOE 控制 
+#define AUDIO_CODEC_PA_PIN       GPIO_NUM_NC // Controlled by PI4IOE 
 #define AUDIO_CODEC_I2C_SDA_PIN  GPIO_NUM_31
 #define AUDIO_CODEC_I2C_SCL_PIN  GPIO_NUM_32
 #define AUDIO_CODEC_ES8311_ADDR  ES8311_CODEC_DEFAULT_ADDR
@@ -28,7 +28,7 @@
 #define VOLUME_DOWN_BUTTON_GPIO  GPIO_NUM_NC
 
 /* ---------------------------------------------------------------- */
-// 显示屏相关参数配置
+// Display related parameter configuration
 #define DISPLAY_WIDTH    720
 #define DISPLAY_HEIGHT   1280
 #define DISPLAY_MIRROR_X false
@@ -41,7 +41,7 @@
 #define DISPLAY_BACKLIGHT_PIN GPIO_NUM_22
 #define DISPLAY_BACKLIGHT_OUTPUT_INVERT true
 
-#define TOUCH_INT_GPIO  GPIO_NUM_23  // 触摸中断
+#define TOUCH_INT_GPIO  GPIO_NUM_23  // Touch interrupt
 
 const ili9881c_lcd_init_cmd_t tab5_lcd_ili9881c_specific_init_code_default[] = {
     // {cmd, { data }, data_size, delay}

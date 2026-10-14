@@ -62,7 +62,7 @@ private:
                         self->power_status_ = kDeviceBatterySupply;
                     }
 
-                    /* 低于某个电量，会自动关机 */
+                    /* Below a certain battery level it powers off automatically */
                     if (self->power_manager_->low_voltage_ < 2630 && self->power_status_ == kDeviceBatterySupply) {
                         esp_timer_stop(self->power_manager_->timer_handle_);
 
@@ -481,5 +481,5 @@ public:
 
 DECLARE_BOARD(atk_dnesp32s3_box2_4g);
 
-// 定义静态成员变量
+// Define the static member variable
 atk_dnesp32s3_box2_4g* atk_dnesp32s3_box2_4g::instance_ = nullptr;

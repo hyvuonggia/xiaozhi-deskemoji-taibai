@@ -273,9 +273,9 @@ CustomLcdDisplay::CustomLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_p
 
     ESP_LOGI(TAG, "Initialize LVGL port");
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
-    port_cfg.task_priority = 3;  // 提高任务优先级，避免被其他任务阻塞
-    port_cfg.task_stack = 8192;  // 增加栈大小，防止栈溢出
-    port_cfg.timer_period_ms = 50;  // 保持50ms刷新间隔
+    port_cfg.task_priority = 3;  // Raise the task priority so it is not blocked by other tasks
+    port_cfg.task_stack = 8192;  // Increase the stack size to prevent stack overflow
+    port_cfg.timer_period_ms = 50;  // Keep a 50 ms refresh interval
     lvgl_port_init(&port_cfg);
     trans_done_sem = xSemaphoreCreateCounting(1, 0);
     trans_buf_1 = (uint16_t *)heap_caps_malloc(DISPLAY_TRANS_SIZE * sizeof(uint16_t), MALLOC_CAP_DMA);

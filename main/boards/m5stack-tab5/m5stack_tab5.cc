@@ -49,12 +49,12 @@ public:
         WriteReg(PI4IO_REG_CHIP_RESET, 0xFF);
         uint8_t data = ReadReg(PI4IO_REG_CHIP_RESET);
         WriteReg(PI4IO_REG_IO_DIR, 0b01111111);      // 0: input 1: output
-        WriteReg(PI4IO_REG_OUT_H_IM, 0b00000000);    // 使用到的引脚关闭 High-Impedance
+        WriteReg(PI4IO_REG_OUT_H_IM, 0b00000000);    // Disable High-Impedance for the pins in use
         WriteReg(PI4IO_REG_PULL_SEL, 0b01111111);    // pull up/down select, 0 down, 1 up
         WriteReg(PI4IO_REG_PULL_EN, 0b01111111);     // pull up/down enable, 0 disable, 1 enable
-        WriteReg(PI4IO_REG_IN_DEF_STA, 0b10000000);  // P1, P7 默认高电平
-        WriteReg(PI4IO_REG_INT_MASK, 0b01111111);    // P7 中断使能 0 enable, 1 disable
-        WriteReg(PI4IO_REG_OUT_SET, 0b01110110);     // Output Port Register P1(SPK_EN), P2(EXT5V_EN), P4(LCD_RST), P5(TP_RST), P6(CAM)RST 输出高电平
+        WriteReg(PI4IO_REG_IN_DEF_STA, 0b10000000);  // P1, P7 default to high level
+        WriteReg(PI4IO_REG_INT_MASK, 0b01111111);    // P7 interrupt enable: 0 = enable, 1 = disable
+        WriteReg(PI4IO_REG_OUT_SET, 0b01110110);     // Output Port Register: P1(SPK_EN), P2(EXT5V_EN), P4(LCD_RST), P5(TP_RST), P6(CAM)RST output high level
     }
 };
 
@@ -65,12 +65,12 @@ public:
         WriteReg(PI4IO_REG_CHIP_RESET, 0xFF);
         uint8_t data = ReadReg(PI4IO_REG_CHIP_RESET);
         WriteReg(PI4IO_REG_IO_DIR, 0b10111001);      // 0: input 1: output
-        WriteReg(PI4IO_REG_OUT_H_IM, 0b00000110);    // 使用到的引脚关闭 High-Impedance
+        WriteReg(PI4IO_REG_OUT_H_IM, 0b00000110);    // Disable High-Impedance for the pins in use
         WriteReg(PI4IO_REG_PULL_SEL, 0b10111001);    // pull up/down select, 0 down, 1 up
         WriteReg(PI4IO_REG_PULL_EN, 0b11111001);     // pull up/down enable, 0 disable, 1 enable
-        WriteReg(PI4IO_REG_IN_DEF_STA, 0b01000000);  // P6 默认高电平
-        WriteReg(PI4IO_REG_INT_MASK, 0b10111111);    // P6 中断使能 0 enable, 1 disable
-        WriteReg(PI4IO_REG_OUT_SET, 0b10001001);     // Output Port Register P0(WLAN_PWR_EN), P3(USB5V_EN), P7(CHG_EN) 输出高电平
+        WriteReg(PI4IO_REG_IN_DEF_STA, 0b01000000);  // P6 default to high level
+        WriteReg(PI4IO_REG_INT_MASK, 0b10111111);    // P6 interrupt enable: 0 = enable, 1 = disable
+        WriteReg(PI4IO_REG_OUT_SET, 0b10001001);     // Output Port Register: P0(WLAN_PWR_EN), P3(USB5V_EN), P7(CHG_EN) output high level
     }
 };
 
@@ -164,12 +164,12 @@ private:
         };
         esp_lcd_panel_io_handle_t tp_io_handle = NULL;
         esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
-        tp_io_config.dev_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP; // 更改 GT911 地址 
+        tp_io_config.dev_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP; // Change the GT911 address
         tp_io_config.scl_speed_hz = 100000;
         esp_lcd_new_panel_io_i2c(i2c_bus_, &tp_io_config, &tp_io_handle);
         esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &touch_);
 
-        // 检测不到触摸？待更换设备测试
+        // Touch not detected? Needs testing with a replacement device
         // /* read data test */ 
         // for (uint8_t i = 0; i < 50; i++) {
         //     esp_lcd_touch_read_data(touch_);
