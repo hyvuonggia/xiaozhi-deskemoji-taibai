@@ -3,26 +3,26 @@
 #include <PubSubClient.h>
 #include "Face.h"
 
-// WiFi配置
-const char* ssid = "your";  // 替换为您的WiFi名称
-const char* password = "your";  // 替换为您的WiFi密码
-const char* mqtt_server = "your"; // 替换为您的MQTT代理地址
-const char* mqtt_user = "your"; // 替换为您的MQTT用户名
-const char* mqtt_password = "your"; // 替换为您的MQTT密码
+// WiFi configuration
+const char* ssid = "your";  // Replace with your WiFi name (SSID)
+const char* password = "your";  // Replace with your WiFi password
+const char* mqtt_server = "your"; // Replace with your MQTT broker address
+const char* mqtt_user = "your"; // Replace with your MQTT username
+const char* mqtt_password = "your"; // Replace with your MQTT password
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-// Web服务器对象
+// Web server object
 ESP8266WebServer server(80);
 
-// 面部对象
+// Face object
 Face *face;
 
-// 初始化WiFi连接
+// Initialize the WiFi connection
 void setup_wifi() {
   delay(10);
   Serial.println();
-  Serial.print("连接到 ");
+  Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
 
@@ -32,42 +32,42 @@ void setup_wifi() {
   }
 
   Serial.println("");
-  Serial.println("WiFi已连接");
-  Serial.println("IP地址: ");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 }
 
-// 处理根路径的HTTP请求
+// Handle HTTP requests for the root path
 void handleRoot() {
-  String html = "<html><head><meta charset='UTF-8'></head><body><h1>表情控制台</h1>"
-                "<p><a href=\"/set-emotion?emotion=Normal\">正常</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Angry\">生气</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Glee\">快乐</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Happy\">高兴</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Sad\">悲伤</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Worried\">担忧</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Focused\">专注</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Annoyed\">烦躁</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Surprised\">惊讶</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Skeptic\">怀疑</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Frustrated\">沮丧</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Unimpressed\">无感</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Sleepy\">困倦</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Suspicious\">怀疑</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Squint\">眯眼</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Furious\">狂怒</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Scared\">害怕</a></p>"
-                "<p><a href=\"/set-emotion?emotion=Awe\">敬畏</a></p>"
+  String html = "<html><head><meta charset='UTF-8'></head><body><h1>Bảng điều khiển biểu cảm</h1>"
+                "<p><a href=\"/set-emotion?emotion=Normal\">Bình thường</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Angry\">Giận</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Glee\">Vui sướng</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Happy\">Vui vẻ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Sad\">Buồn</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Worried\">Lo lắng</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Focused\">Tập trung</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Annoyed\">Bực bội</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Surprised\">Ngạc nhiên</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Skeptic\">Nghi ngờ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Frustrated\">Chán nản</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Unimpressed\">Thờ ơ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Sleepy\">Buồn ngủ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Suspicious\">Nghi ngờ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Squint\">Nheo mắt</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Furious\">Cuồng nộ</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Scared\">Sợ hãi</a></p>"
+                "<p><a href=\"/set-emotion?emotion=Awe\">Kinh ngạc</a></p>"
                 "</body></html>";
   server.send(200, "text/html", html);
 }
 
-// 处理设置表情的HTTP请求
+// Handle the set-emotion HTTP request
 void handleSetEmotion() {
   String emotion = server.arg("emotion");
   setEmotion(emotion);
-  server.send(200, "text/html", "<html><head><meta charset='UTF-8'></head><body><h1>表情已设置为 " + emotion + "</h1>"
-                                "<p><a href=\"/\">返回主页面</a></p></body></html>");
+  server.send(200, "text/html", "<html><head><meta charset='UTF-8'></head><body><h1>Đã đặt biểu cảm: " + emotion + "</h1>"
+                                "<p><a href=\"/\">Về trang chính</a></p></body></html>");
 }
 
 void setEmotion(String emotion) {
@@ -113,33 +113,33 @@ void setEmotion(String emotion) {
 void setup() {
   Serial.begin(9600);
 
-  // 初始化WiFi连接
+  // Initialize the WiFi connection
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 
-  // 创建一个新的面部对象，设置屏幕宽度、高度和眼睛大小
+  // Create a new face object; set screen width, height and eye size
   face = new Face(/* screenWidth = */ 128, /* screenHeight = */ 64, /* eyeSize = */ 40);
-  // 设置当前表情为正常
+  // Set the current expression to Normal
   face->Expression.GoTo_Normal();
 
-  // 自动在不同的行为之间切换（基于分配给每种情绪的权重随机选择新的行为）
+  // Automatically switch between behaviors (randomly pick a new behavior, weighted per emotion)
   face->RandomBehavior = true;
 
-  // 自动眨眼
+  // Automatic blinking
   face->RandomBlink = true;
-  // 设置眨眼的间隔时间
+  // Set the blink interval
   face->Blink.Timer.SetIntervalMillis(4000);
 
-  // 自动选择新的随机方向看
+  // Automatically pick a new random look direction
   face->RandomLook = false;
 
-  // 配置Web服务器路由
+  // Configure the web server routes
   server.on("/", handleRoot);
   server.on("/set-emotion", handleSetEmotion);
   server.begin();
 
-  Serial.println("HTTP服务器已启动");
+  Serial.println("HTTP server started");
 }
 
 void loop() {
@@ -147,23 +147,23 @@ void loop() {
     reconnect();
   }
   client.loop();
-  // 处理Web服务器客户端请求
+  // Handle web server client requests
   server.handleClient();
 
-  // 更新面部显示
+  // Update the face display
   face->Update();
 }
 
 void reconnect() {
   while (!client.connected()) {
-    Serial.print("尝试MQTT连接...");
+    Serial.print("Connecting to MQTT...");
     if (client.connect("ESP8266Client_face", mqtt_user, mqtt_password)) {
-      Serial.println("已连接");
+      Serial.println("connected");
       client.subscribe("emotion/control");
     } else {
-      Serial.print("连接失败, rc=");
+      Serial.print("Connection failed, rc=");
       Serial.print(client.state());
-      Serial.println(" 5秒后重试");
+      Serial.println(" retrying in 5 seconds");
       delay(5000);
     }
   }
@@ -177,7 +177,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (String(topic) == "emotion/control") {
     setEmotion(message);
-    String response = "表情设置为 " + message;
+    String response = "Emotion set to " + message;
     Serial.println(response);
     client.publish("emotion/status", response.c_str());
   }
