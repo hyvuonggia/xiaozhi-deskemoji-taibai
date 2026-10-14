@@ -34,7 +34,14 @@ void AfeAudioProcessor::Initialize(AudioCodec* codec, int frame_duration_ms) {
     afe_config_t* afe_config = afe_config_init(input_format.c_str(), NULL, AFE_TYPE_VC, AFE_MODE_HIGH_PERF);
     afe_config->aec_mode = AEC_MODE_VOIP_HIGH_PERF;
     afe_config->vad_mode = VAD_MODE_0;
-    afe_config->vad_min_noise_ms = 100;
+    // End-of-turn silence threshold. esp-sr's default is 1000 ms; the upstream board
+    // config shipped 100 ms, which treats any natural breath pause inside a sentence as
+    // "the user finished talking". Every turn was therefore cut into fragments (the
+    // server received 2-3 word pieces such as "chieu nay", "moi that su"), so commands
+    // like the nod request never arrived intact. Back to the sane 1000 ms default: the
+    // turn now ends only after a real pause. If sentences still get chopped, raise this
+    // (1200-1500 ms) - each extra 100 ms adds the same amount to the reply latency.
+    afe_config->vad_min_noise_ms = 1000;
     if (vad_model_name != nullptr) {
         afe_config->vad_model_name = vad_model_name;
     }

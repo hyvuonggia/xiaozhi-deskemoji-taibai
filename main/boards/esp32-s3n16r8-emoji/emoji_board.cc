@@ -108,6 +108,10 @@ private:
     
     // Expression-mode flag
     bool is_emoji_mode_ = true;  // boot straight into expressive mode (two big eyes)
+
+    // True once Application::Start() has built the display UI: only then is it safe to
+    // create/load the eye screen (see the comment on the deferred init in the ctor)
+    bool ui_ready_ = false;
     
     // Chat-mode screen
     lv_obj_t* chat_screen_ = nullptr;
@@ -367,6 +371,13 @@ private:
             while (true) {
                 if (self->eyes_ != nullptr) {
                     DisplayLockGuard lock(self->display_);
+                    // In eye mode the eye screen must stay visible: if anything switched
+                    // the screen away, take it back (logged, so a thief is easy to spot).
+                    if (self->is_emoji_mode_ && self->eyes_screen_ &&
+                        lv_screen_active() != self->eyes_screen_) {
+                        lv_scr_load(self->eyes_screen_);
+                        ESP_LOGW(TAG, "eye screen was not active - reloaded it");
+                    }
                     self->eyes_->Step();
                 }
                 vTaskDelay(pdMS_TO_TICKS(33));
@@ -377,6 +388,9 @@ private:
     // Enter / leave the expressive-eyes mode - shared by the BOOT long press and startup
     void EnterEmojiMode(bool show_notification) {
         is_emoji_mode_ = true;
+        if (!eyes_screen_ && ui_ready_) {
+            CreateEyesScreen();
+        }
         SwitchScreen(true);
         emoji_controller_->StartBlinkTimer();
         emoji_controller_->EyeCenter();
@@ -459,10 +473,22 @@ public:
         
         // Boot straight into the expressive-eyes mode and stay there.
         // The BOOT long press still toggles with the chat screen.
-        CreateEyesScreen();
-        EnterEmojiMode(false);
+        //
+        // The eye screen must NOT be created here. Application::Start() calls
+        // Display::SetupUI() a few hundred ms later and builds the chat container on
+        // whichever screen is active AT THAT MOMENT - loading the eye screen this early
+        // makes SetupUI parent its opaque, full-size container to the eye screen, which
+        // then covers the canvas and leaves the OLED looking blank. So: start the
+        // renderer now, create and load the eye screen once the UI exists.
         StartEyesTask();
-        ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup (esp32-eyes style)");
+        xTaskCreate([](void* arg) {
+            EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+            vTaskDelay(pdMS_TO_TICKS(3000));   // let Application::Start()/SetupUI finish
+            self->ui_ready_ = true;
+            self->EnterEmojiMode(false);
+            ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup (esp32-eyes style)");
+            vTaskDelete(nullptr);
+        }, "eyes_init", 4096, this, 2, nullptr);
         
         // Create a task that monitors device state changes
         TaskParams* state_params = new TaskParams();
