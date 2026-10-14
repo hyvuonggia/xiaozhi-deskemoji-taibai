@@ -12,7 +12,7 @@
 #include "emoji_controller.h"
 #include "servo_controller.h"
 #include "emotion_response_controller.h"
-#include "esp_eyes.h"
+#include "robot_eyes.h"
 
 #include <wifi_station.h>
 #include <esp_log.h>
@@ -103,7 +103,7 @@ private:
     EmotionResponseController* emotion_controller_ = nullptr;
 
     // Mat kieu esp32-eyes (canvas rieng, khong dung emoji_controller de ve mat)
-    EspEyes* eyes_ = nullptr;
+    RobotEyes* eyes_ = nullptr;
     lv_obj_t* eyes_screen_ = nullptr;
     
     // 表情模式标志
@@ -304,22 +304,41 @@ private:
             });
 
         mcp.AddTool("self.eyes.set_style",
-            std::string("Change the robot's eye style / expression shape. Available styles: ") +
-                EspEyes::StyleNames(),
+            std::string("Change the robot's eye expression (mood). Available styles: ") +
+                RobotEyes::StyleNames(),
             PropertyList({
                 Property("style", kPropertyTypeString)
             }),
             [this](const PropertyList& properties) -> ReturnValue {
                 std::string style = properties["style"].value<std::string>();
-                if (eyes_ == nullptr || !EspEyes::IsValidStyle(style.c_str())) {
-                    return std::string("unknown style, available: ") + EspEyes::StyleNames();
+                if (eyes_ == nullptr || !RobotEyes::IsValidStyle(style.c_str())) {
+                    return std::string("unknown style, available: ") + RobotEyes::StyleNames();
                 }
                 DisplayLockGuard lock(display_);
-                eyes_->SetPreset(style.c_str());
+                eyes_->SetMood(style.c_str());
                 return true;
             });
 
-        ESP_LOGI(TAG, "Registered 5 head tools + self.eyes.set_style");
+        mcp.AddTool("self.eyes.gesture",
+            "Trigger an eye gesture: blink, wink, winkleft, doubletake (startled glance + blink) "
+            "or demo (resume automatic mood cycling).",
+            PropertyList({
+                Property("gesture", kPropertyTypeString)
+            }),
+            [this](const PropertyList& properties) -> ReturnValue {
+                std::string g = properties["gesture"].value<std::string>();
+                std::transform(g.begin(), g.end(), g.begin(), [](unsigned char c){ return std::tolower(c); });
+                if (eyes_ == nullptr) return false;
+                DisplayLockGuard lock(display_);
+                if (g == "blink") { eyes_->Blink(); return true; }
+                if (g == "wink") { eyes_->Wink(true); return true; }
+                if (g == "winkleft") { eyes_->Wink(false); return true; }
+                if (g == "doubletake") { eyes_->DoubleTake(true); return true; }
+                if (g == "demo") { eyes_->SetDemo(true); return true; }
+                return std::string("unknown gesture, use: blink, wink, winkleft, doubletake, demo");
+            });
+
+        ESP_LOGI(TAG, "Registered 5 head tools + self.eyes.set_style + self.eyes.gesture");
     }
 
     void InitializeIot() {
@@ -336,7 +355,7 @@ private:
         lv_obj_set_size(eyes_screen_, DISPLAY_WIDTH, DISPLAY_HEIGHT);
         lv_obj_set_style_bg_color(eyes_screen_, lv_color_white(), 0);
         lv_obj_set_style_border_width(eyes_screen_, 0, 0);
-        eyes_ = new EspEyes();
+        eyes_ = new RobotEyes();
         eyes_->Initialize(eyes_screen_);
     }
 
@@ -701,6 +720,10 @@ static void StateMonitorTask(void* arg) {
                     board->emoji_controller_->SetRandomAnimationEnabled(true);
                     ESP_LOGI(TAG, "Conversation ended; resuming random expression animation");
                 }
+                if (board->eyes_) {
+                    DisplayLockGuard eyes_lock(board->display_);
+                    board->eyes_->SetIdleBehaviors(true);
+                }
                 
                 // 触发中性情感
                 emotion_controller->TriggerEmotion("neutral");
@@ -853,7 +876,7 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         // Doi dang mat ben bo esp32-eyes theo cam xuc (giu nguyen animation/servo cu)
         if (board_ && board_->eyes_) {
             DisplayLockGuard eyes_lock(board_->display_);
-            board_->eyes_->SetPresetForEmotion(mapped_emotion.c_str());
+            board_->eyes_->SetMoodForEmotion(mapped_emotion.c_str());
         }
         
         // 创建一个单独的任务来执行表情动作，避免阻塞主线程
