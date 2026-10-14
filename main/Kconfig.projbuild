@@ -350,7 +350,7 @@ choice BOARD_TYPE
         bool "Surfer-C3-1-14TFT"
         depends on IDF_TARGET_ESP32C3
     config BOARD_TYPE_ESP32_S3N16R8_EMOJI
-        bool "ESP32-S3N16R8-EMOJI 表情机器人开发板"
+        bool "ESP32-S3N16R8-EMOJI | Bảng mạch robot biểu cảm"
         depends on IDF_TARGET_ESP32S3
 endchoice
 

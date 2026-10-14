@@ -28,12 +28,12 @@ set(SOURCES "audio/audio_codec.cc"
 
 set(INCLUDE_DIRS "." "display" "audio" "protocols")
 
-# 添加板级公共文件
+# Add board-level common files
 file(GLOB BOARD_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/boards/common/*.cc)
 list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
 list(APPEND INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards/common)
 
-# 根据 BOARD_TYPE 配置添加对应的板级文件
+# Add the board files matching the BOARD_TYPE config
 if(CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI)
     set(BOARD_TYPE "bread-compact-wifi")
 elseif(CONFIG_BOARD_TYPE_BREAD_COMPACT_ML307)
@@ -244,7 +244,7 @@ elseif(CONFIG_USE_CUSTOM_WAKE_WORD)
     list(APPEND SOURCES "audio/wake_words/custom_wake_word.cc")
 endif()
 
-# 根据Kconfig选择语言目录
+# Select the language directory from Kconfig
 if(CONFIG_LANGUAGE_ZH_CN)
     set(LANG_DIR "zh-CN")
 elseif(CONFIG_LANGUAGE_ZH_TW)
@@ -291,13 +291,13 @@ elseif(CONFIG_LANGUAGE_RO_RO)
     set(LANG_DIR "ro-RO")
 endif()
 
-# 定义生成路径
+# Define the generated-file paths
 set(LANG_JSON "${CMAKE_CURRENT_SOURCE_DIR}/assets/locales/${LANG_DIR}/language.json")
 set(LANG_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/assets/lang_config.h")
 file(GLOB LANG_SOUNDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/locales/${LANG_DIR}/*.ogg)
 file(GLOB COMMON_SOUNDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/common/*.ogg)
 
-# 如果目标芯片是 ESP32，则排除特定文件
+# Exclude specific files when the target chip is ESP32
 if(CONFIG_IDF_TARGET_ESP32)
     list(REMOVE_ITEM SOURCES "audio/codecs/box_audio_codec.cc"
                              "audio/codecs/es8388_audio_codec.cc"
@@ -312,8 +312,8 @@ idf_component_register(SRCS ${SOURCES}
                     WHOLE_ARCHIVE
                     )
 
-# 使用 target_compile_definitions 来定义 BOARD_TYPE, BOARD_NAME
-# 如果 BOARD_NAME 为空，则使用 BOARD_TYPE
+# Use target_compile_definitions to define BOARD_TYPE and BOARD_NAME
+# Fall back to BOARD_TYPE when BOARD_NAME is empty
 if(NOT BOARD_NAME)
     set(BOARD_NAME ${BOARD_TYPE})
 endif()
@@ -321,7 +321,7 @@ target_compile_definitions(${COMPONENT_LIB}
                     PRIVATE BOARD_TYPE=\"${BOARD_TYPE}\" BOARD_NAME=\"${BOARD_NAME}\"
                     )
 
-# 添加生成规则
+# Add the generation rules
 add_custom_command(
     OUTPUT ${LANG_HEADER}
     COMMAND ${PYTHON} ${PROJECT_DIR}/scripts/gen_lang.py
@@ -333,7 +333,7 @@ add_custom_command(
     COMMENT "Generating ${LANG_DIR} language config"
 )
 
-# 强制建立生成依赖
+# Force the build dependency
 add_custom_target(lang_header ALL
     DEPENDS ${LANG_HEADER}
 )
@@ -359,7 +359,7 @@ foreach(FILENAME IN LISTS FILES_TO_DOWNLOAD)
     set(REMOTE_FILE "${URL}/${FILENAME}")
     set(LOCAL_FILE "${SPIFFS_DIR}/${FILENAME}")
     
-    # 检查本地文件是否存在
+    # Check whether the local file exists
     if(EXISTS ${LOCAL_FILE})
         message(STATUS "File ${FILENAME} already exists, skipping download")
     else()
