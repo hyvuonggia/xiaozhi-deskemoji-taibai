@@ -33,7 +33,13 @@ void AfeAudioProcessor::Initialize(AudioCodec* codec, int frame_duration_ms) {
     
     afe_config_t* afe_config = afe_config_init(input_format.c_str(), NULL, AFE_TYPE_VC, AFE_MODE_HIGH_PERF);
     afe_config->aec_mode = AEC_MODE_VOIP_HIGH_PERF;
-    afe_config->vad_mode = VAD_MODE_0;
+    // VAD aggressiveness. The esp-sr scale is MODE_0 (Normal) .. MODE_4 (most
+    // aggressive); MODE_0 lets background noise through as "speech", which the server
+    // then transcribes into junk fragments ("mau", "chris"). MODE_1 (Aggressive)
+    // rejects faint room noise while still opening for normal conversational speech.
+    // Do NOT go to MODE_2+ without re-testing: from across the room soft consonants
+    // (like the "g" in "gat") may no longer open the gate at all.
+    afe_config->vad_mode = VAD_MODE_1;
     // End-of-turn silence threshold. esp-sr's default is 1000 ms; the upstream board
     // config shipped 100 ms, which treats any natural breath pause inside a sentence as
     // "the user finished talking". Every turn was therefore cut into fragments (the
