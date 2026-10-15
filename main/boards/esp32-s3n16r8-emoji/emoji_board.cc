@@ -628,10 +628,15 @@ static void StateMonitorTask(void* arg) {
     bool in_conversation = false;
 
     // --- Context-aware behaviour ---
-    // idle -> (6s of silence) bored -> (20s) suspicious; while listening -> curious + head up
+    // idle -> (6s of silence) bored -> (20s) suspicious -> (120s) sleepy eyes ->
+    // (180s) panel asleep (screen off); any wake word / button press leaves idle and
+    // wakes the screen back up. While listening -> curious + head up
     TickType_t idle_since = xTaskGetTickCount();
     bool idle_bored_done = false;
     bool idle_suspicious_done = false;
+    bool idle_sleepy_done = false;
+    bool idle_asleep_done = false;
+    bool screen_asleep = false;
 
     auto set_eyes_mood = [&](const char* mood) {
         if (board->eyes_ == nullptr) return;
@@ -658,6 +663,16 @@ static void StateMonitorTask(void* arg) {
         // Log the device state when it changes
         if (current_state != last_state) {
             ESP_LOGI(TAG, "Device state changed: %d -> %d", last_state, current_state);
+            // Leaving idle (wake word, button, ...) while the panel is asleep means
+            // the boss is back: power the screen up again before anything else draws.
+            if (last_state == kDeviceStateIdle && screen_asleep && board->panel_ != nullptr) {
+                if (esp_lcd_panel_disp_on_off(board->panel_, true) == ESP_OK) {
+                    screen_asleep = false;
+                    ESP_LOGI(TAG, "Woke up: panel back on");
+                } else {
+                    ESP_LOGW(TAG, "Woke up but the panel would not turn back on");
+                }
+            }
         }
         
         // A transition from idle to speaking or listening means a conversation has started
@@ -779,6 +794,8 @@ static void StateMonitorTask(void* arg) {
                 idle_since = xTaskGetTickCount();
                 idle_bored_done = false;
                 idle_suspicious_done = false;
+                idle_sleepy_done = false;
+                idle_asleep_done = false;
                 
                 // Trigger the neutral emotion
                 emotion_controller->TriggerEmotion("neutral");
@@ -792,6 +809,8 @@ static void StateMonitorTask(void* arg) {
                 idle_since = xTaskGetTickCount();
                 idle_bored_done = false;
                 idle_suspicious_done = false;
+                idle_sleepy_done = false;
+                idle_asleep_done = false;
             }
             uint32_t idle_ms = (uint32_t)((xTaskGetTickCount() - idle_since) * portTICK_PERIOD_MS);
             if (!idle_bored_done && idle_ms > 6000) {
@@ -803,6 +822,25 @@ static void StateMonitorTask(void* arg) {
                 idle_suspicious_done = true;
                 set_eyes_mood("suspicious");
                 ESP_LOGI(TAG, "Idle 20s -> eyes=suspicious");
+            }
+            if (!idle_sleepy_done && idle_ms > 120000) {
+                idle_sleepy_done = true;
+                set_eyes_mood("sleepy");
+                ESP_LOGI(TAG, "Idle 120s -> eyes=sleepy (drowsy)");
+            }
+            if (!idle_asleep_done && idle_ms > 180000) {
+                idle_asleep_done = true;
+                // Panel sleep keeps the OLED RAM but stops driving the glass: the
+                // screen goes fully dark and sips power. The eyes engine keeps running
+                // so that the moment the boss returns (wake word / button) the face
+                // is back instantly after disp_on_off(true).
+                if (board->panel_ != nullptr &&
+                    esp_lcd_panel_disp_on_off(board->panel_, false) == ESP_OK) {
+                    screen_asleep = true;
+                    ESP_LOGI(TAG, "Idle 180s -> panel asleep (screen off)");
+                } else {
+                    ESP_LOGW(TAG, "Idle 180s -> wanted panel sleep but disp_on_off failed");
+                }
             }
         }
         
