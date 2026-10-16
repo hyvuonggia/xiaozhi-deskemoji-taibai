@@ -96,6 +96,12 @@ private:
     // traffic, and saturating the bus is what used to stall the LVGL flush for seconds
     // (task watchdog + a frozen state machine on top).
     bool panel_asleep_ = false;
+    // Heartbeat published by the eyes render task after every completed frame. The
+    // display supervisor below watches it: the panel I/O submits I2C transfers with
+    // timeout -1 (wait forever), so electrical noise on the bus can hang a flush
+    // permanently - and that hangs every task that touches LVGL, including the state
+    // machine (stuck green LED, deaf to the wake word).
+    volatile TickType_t display_beat_ = 0;
     Button boot_button_;
     Button volume_up_button_;
     Button volume_down_button_;
@@ -389,10 +395,59 @@ private:
                         ESP_LOGW(TAG, "eye screen was not active - reloaded it");
                     }
                     self->eyes_->Step();
+                    // Publish the heartbeat only after a full frame made it out, so the
+                    // supervisor below can tell "rendering fine" from "flush is hung".
+                    self->display_beat_ = xTaskGetTickCount();
                 }
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
         }, "eyes_render", 4096, this, 2, nullptr);
+    }
+
+    // Display supervisor: the SH1106 panel driver submits I2C transfers with timeout
+    // -1 (wait forever), so a single noisy bus transaction hangs the LVGL flush, and
+    // with it every task that wants the display lock - the state machine goes deaf and
+    // the LED freezes. The eyes task publishes display_beat_ after each frame; if that
+    // heartbeat goes quiet for 8 s the bus is hung. Reset it (i2c_master_bus_reset),
+    // give the driver a moment to recover, and hard-restart the chip if it does not.
+    void StartDisplaySupervisorTask() {
+        xTaskCreate([](void* arg) {
+            EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+            bool reset_attempted = false;
+            while (true) {
+                vTaskDelay(pdMS_TO_TICKS(3000));
+                if (self->panel_asleep_) {          // nothing is being drawn: no stall
+                    reset_attempted = false;
+                    continue;
+                }
+                const TickType_t silence =
+                    xTaskGetTickCount() - self->display_beat_;
+                if (silence < pdMS_TO_TICKS(8000)) { // rendering fine
+                    reset_attempted = false;
+                    continue;
+                }
+                ESP_LOGE(TAG, "Display stalled: no frame for %u ms (bus is hung)",
+                         (unsigned)silence);
+                if (self->display_i2c_bus_ == nullptr) {
+                    vTaskDelay(pdMS_TO_TICKS(5000));
+                    continue;
+                }
+                if (!reset_attempted) {
+                    ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
+                    esp_err_t err = i2c_master_bus_reset(self->display_i2c_bus_);
+                    ESP_LOGW(TAG, "i2c_master_bus_reset -> %s", esp_err_to_name(err));
+                    reset_attempted = true;
+                    // A reset aborts the in-flight transfer, so the flush should return
+                    // and the heartbeat resume within a few seconds.
+                    vTaskDelay(pdMS_TO_TICKS(6000));
+                    continue;
+                }
+                // Still silent after a bus reset: the driver is wedged for good.
+                ESP_LOGE(TAG, "Display still stalled after a bus reset - restarting");
+                vTaskDelay(pdMS_TO_TICKS(500));      // let the log reach the port
+                esp_restart();
+            }
+        }, "disp_super", 4096, this, 1, nullptr);
     }
 
     // Enter / leave the expressive-eyes mode - shared by the BOOT long press and startup
@@ -491,6 +546,7 @@ public:
         // then covers the canvas and leaves the OLED looking blank. So: start the
         // renderer now, create and load the eye screen once the UI exists.
         StartEyesTask();
+        StartDisplaySupervisorTask();
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             vTaskDelay(pdMS_TO_TICKS(3000));   // let Application::Start()/SetupUI finish
