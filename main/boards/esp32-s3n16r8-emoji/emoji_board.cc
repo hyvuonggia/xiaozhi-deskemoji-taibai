@@ -33,6 +33,7 @@
 #include <driver/i2c.h>
 #include <driver/i2c_master.h>  // Include the new I2C driver API header
 #include <driver/gpio.h>
+#include <esp_attr.h>           // RTC_NOINIT_ATTR for the restart counter below
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -54,6 +55,12 @@ class EmojiBoard;
 
 // Global variable used to store and access the EmojiBoard instance
 EmojiBoard* g_board_instance = nullptr;
+
+// Supervisor restart counter, kept in RTC slow memory so it survives esp_restart()
+// (but not a power loss): this is what stops a wedged display from reboot-looping.
+// RTC slow memory is garbage after a power loss, hence the magic word validation.
+static RTC_NOINIT_ATTR uint32_t supervisor_magic_;
+static RTC_NOINIT_ATTR uint32_t supervisor_restarts_;
 
 // Task function declaration
 static void StateMonitorTask(void* arg);
@@ -408,11 +415,19 @@ private:
     // -1 (wait forever), so a single noisy bus transaction hangs the LVGL flush, and
     // with it every task that wants the display lock - the state machine goes deaf and
     // the LED freezes. The eyes task publishes display_beat_ after each frame; if that
-    // heartbeat goes quiet for 8 s the bus is hung. Reset it (i2c_master_bus_reset),
-    // give the driver a moment to recover, and hard-restart the chip if it does not.
+    // heartbeat goes quiet for 8 s the bus is hung. Reset it (i2c_master_bus_reset).
+    // A chip restart is the last resort and is deliberately rate-limited: restarting
+    // into the same wedge every 30 s (reboot loop) is worse than a frozen screen, so
+    // at most 2 supervisor restarts per power cycle, and never within the first 4
+    // minutes of uptime (early wedges are retried with bus resets only).
     void StartDisplaySupervisorTask() {
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+            // Validate the RTC counter (garbage after power loss).
+            if (supervisor_magic_ != 0xC0FFEE42) {
+                supervisor_magic_ = 0xC0FFEE42;
+                supervisor_restarts_ = 0;
+            }
             bool reset_attempted = false;
             while (true) {
                 vTaskDelay(pdMS_TO_TICKS(3000));
@@ -420,10 +435,18 @@ private:
                     reset_attempted = false;
                     continue;
                 }
+                if (self->display_beat_ == 0) {     // renderer never ran yet: booting
+                    continue;
+                }
                 const TickType_t silence =
                     xTaskGetTickCount() - self->display_beat_;
                 if (silence < pdMS_TO_TICKS(8000)) { // rendering fine
                     reset_attempted = false;
+                    // A long healthy stretch forgives past restarts.
+                    if (silence < pdMS_TO_TICKS(1000) &&
+                        xTaskGetTickCount() > pdMS_TO_TICKS(600000)) {
+                        supervisor_restarts_ = 0;
+                    }
                     continue;
                 }
                 ESP_LOGE(TAG, "Display stalled: no frame for %u ms (bus is hung)",
@@ -442,10 +465,17 @@ private:
                     vTaskDelay(pdMS_TO_TICKS(6000));
                     continue;
                 }
-                // Still silent after a bus reset: the driver is wedged for good.
-                ESP_LOGE(TAG, "Display still stalled after a bus reset - restarting");
-                vTaskDelay(pdMS_TO_TICKS(500));      // let the log reach the port
-                esp_restart();
+                // Still silent after a bus reset: restart, but rate-limited (see above).
+                if (xTaskGetTickCount() > pdMS_TO_TICKS(240000) &&
+                    supervisor_restarts_ < 2) {
+                    ESP_LOGE(TAG, "Display still stalled after a bus reset - restarting");
+                    supervisor_restarts_++;
+                    vTaskDelay(pdMS_TO_TICKS(500));  // let the log reach the port
+                    esp_restart();
+                }
+                ESP_LOGE(TAG, "Display wedged; restart withheld (loop protection) - "
+                              "power-cycle the board and check the 3V3 rail / USB supply");
+                vTaskDelay(pdMS_TO_TICKS(30000));
             }
         }, "disp_super", 4096, this, 1, nullptr);
     }
