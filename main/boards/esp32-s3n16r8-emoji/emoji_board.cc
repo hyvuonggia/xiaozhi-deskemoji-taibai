@@ -474,6 +474,26 @@ private:
                     ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
                     esp_err_t err = i2c_master_bus_reset(self->display_i2c_bus_);
                     ESP_LOGW(TAG, "i2c_master_bus_reset -> %s", esp_err_to_name(err));
+                    // A bus reset only fixes the master side. If the SH1106 itself
+                    // crashed (controller hung mid-byte holding SDA), only a fresh
+                    // init sequence revives it - so re-run one, fire-and-forget: these
+                    // calls can block on the wedged bus too, and the supervisor must
+                    // keep watching instead of hanging with them.
+                    xTaskCreate([](void* arg) {
+                        EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+                        if (self->panel_ == nullptr) {
+                            vTaskDelete(nullptr);
+                        }
+                        ESP_LOGW(TAG, "Re-init worker: resetting the panel");
+                        if (esp_lcd_panel_reset(self->panel_) != ESP_OK ||
+                            esp_lcd_panel_init(self->panel_) != ESP_OK ||
+                            esp_lcd_panel_disp_on_off(self->panel_, true) != ESP_OK) {
+                            ESP_LOGE(TAG, "Re-init worker: panel did not come back");
+                        } else {
+                            ESP_LOGW(TAG, "Re-init worker: panel back on");
+                        }
+                        vTaskDelete(nullptr);
+                    }, "panel_reinit", 4096, self, 1, nullptr);
                     reset_attempted = true;
                     // A reset aborts the in-flight transfer, so the flush should return
                     // and the heartbeat resume within a few seconds.
