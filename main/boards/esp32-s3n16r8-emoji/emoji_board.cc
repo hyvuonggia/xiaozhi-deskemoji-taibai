@@ -91,6 +91,11 @@ private:
     esp_lcd_panel_io_handle_t panel_io_ = nullptr;
     esp_lcd_panel_handle_t panel_ = nullptr;
     Display* display_ = nullptr;
+    // True while the panel is in sleep mode (screen dark). The eyes render task checks
+    // this and skips drawing entirely: pushing pixels at a sleeping panel is pure I2C
+    // traffic, and saturating the bus is what used to stall the LVGL flush for seconds
+    // (task watchdog + a frozen state machine on top).
+    bool panel_asleep_ = false;
     Button boot_button_;
     Button volume_up_button_;
     Button volume_down_button_;
@@ -364,12 +369,17 @@ private:
         eyes_->Initialize(eyes_screen_);
     }
 
-    // Eye rendering task at ~30 fps (holds the LVGL lock while drawing)
+    // Eye rendering task at ~10 fps: plenty smooth for a 128x64 OLED, and 3x less I2C
+    // traffic than 30 fps. Each full-screen flush moves ~1 KB over a 100 kHz bus
+    // (~100 ms); at 30 fps the flushes back up, LVGL waits with the display lock held
+    // for seconds (DisplayLockGuard blocks up to 30 s), the main task's state changes
+    // stall behind it (stuck green "speaking", deaf to the wake word) and the task
+    // watchdog barks. While the panel sleeps, skip drawing altogether.
     void StartEyesTask() {
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             while (true) {
-                if (self->eyes_ != nullptr) {
+                if (self->eyes_ != nullptr && !self->panel_asleep_) {
                     DisplayLockGuard lock(self->display_);
                     // In eye mode the eye screen must stay visible: if anything switched
                     // the screen away, take it back (logged, so a thief is easy to spot).
@@ -380,7 +390,7 @@ private:
                     }
                     self->eyes_->Step();
                 }
-                vTaskDelay(pdMS_TO_TICKS(33));
+                vTaskDelay(pdMS_TO_TICKS(100));
             }
         }, "eyes_render", 4096, this, 2, nullptr);
     }
@@ -636,7 +646,8 @@ static void StateMonitorTask(void* arg) {
     bool idle_suspicious_done = false;
     bool idle_sleepy_done = false;
     bool idle_asleep_done = false;
-    bool screen_asleep = false;
+    // Panel sleep state lives on the board (panel_asleep_) so the eyes render task can
+    // see it too; no local copy here.
 
     auto set_eyes_mood = [&](const char* mood) {
         if (board->eyes_ == nullptr) return;
@@ -665,9 +676,9 @@ static void StateMonitorTask(void* arg) {
             ESP_LOGI(TAG, "Device state changed: %d -> %d", last_state, current_state);
             // Leaving idle (wake word, button, ...) while the panel is asleep means
             // the boss is back: power the screen up again before anything else draws.
-            if (last_state == kDeviceStateIdle && screen_asleep && board->panel_ != nullptr) {
+            if (last_state == kDeviceStateIdle && board->panel_asleep_ && board->panel_ != nullptr) {
                 if (esp_lcd_panel_disp_on_off(board->panel_, true) == ESP_OK) {
-                    screen_asleep = false;
+                    board->panel_asleep_ = false;
                     ESP_LOGI(TAG, "Woke up: panel back on");
                 } else {
                     ESP_LOGW(TAG, "Woke up but the panel would not turn back on");
@@ -836,7 +847,7 @@ static void StateMonitorTask(void* arg) {
                 // is back instantly after disp_on_off(true).
                 if (board->panel_ != nullptr &&
                     esp_lcd_panel_disp_on_off(board->panel_, false) == ESP_OK) {
-                    screen_asleep = true;
+                    board->panel_asleep_ = true;
                     ESP_LOGI(TAG, "Idle 180s -> panel asleep (screen off)");
                 } else {
                     ESP_LOGW(TAG, "Idle 180s -> wanted panel sleep but disp_on_off failed");
