@@ -69,6 +69,7 @@ private:
     lv_obj_t* screen_ = nullptr;
     lv_obj_t* canvas_ = nullptr;
     uint8_t* buf_ = nullptr;      // 1-bit scratch buffer the drawing primitives write into
+    uint8_t* pbuf_ = nullptr;     // previous 1-bit frame: if identical, skip blit+invalidate (zero I2C)
     uint16_t* rgb_ = nullptr;     // RGB565 canvas buffer (what LVGL actually renders)
 
     int mood_ = 0;                  // 0 = neutral

@@ -74,6 +74,11 @@ void RobotEyes::Initialize(lv_obj_t* screen) {
     buf_ = (uint8_t*)heap_caps_malloc(bits, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!buf_) buf_ = (uint8_t*)malloc(bits);
     memset(buf_, 0xFF, bits);
+    // Previous-frame copy for change detection (1 KB); 0x00 forces the first frame
+    // to always count as changed so something is drawn at startup.
+    pbuf_ = (uint8_t*)heap_caps_malloc(bits, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!pbuf_) pbuf_ = (uint8_t*)malloc(bits);
+    if (pbuf_) memset(pbuf_, 0x00, bits);
 
     // RGB565 canvas on purpose, NOT an indexed (I1) one: an indexed canvas keeps its
     // palette INSIDE the buffer (LVGL writes the palette at offset 0 of the very buffer
@@ -291,7 +296,7 @@ void RobotEyes::UpdateLook(uint32_t now) {
 
     if (idle_ && now - last_look_change_ > next_look_interval_) {
         last_look_change_ = now;
-        next_look_interval_ = 1500 + rand_int(0, 2500);
+        next_look_interval_ = 3000 + rand_int(0, 4000);
         if (mood_ == M_SHY) {
             look_tx_ = rand_int(-14, -4);
             look_ty_ = rand_int(4, 10);
@@ -522,6 +527,17 @@ void RobotEyes::Render() {
         int total = WIDTH * HEIGHT;
         ESP_LOGI(TAG, "diag frame %d: mood=%s look=(%.0f,%.0f) background bits=%d eye pixels=%d",
                  diag_frames, kMoodNames[mood_], look_x_, look_y_, ones, total - ones);
+    }
+    // Render-on-change: the 1-bit frame is only 1 KB, so compare it with the previous
+    // frame first. Identical (eyes holding still between blinks) -> skip blit AND
+    // invalidate entirely: zero LVGL work, zero I2C traffic, zero chance for this frame
+    // to wedge the bus. A blink or glance changes pixels and flows through as usual.
+    static constexpr size_t kFrameBytes = (size_t)(WIDTH * HEIGHT) / 8;
+    if (pbuf_ != nullptr && memcmp(buf_, pbuf_, kFrameBytes) == 0) {
+        return;
+    }
+    if (pbuf_ != nullptr) {
+        memcpy(pbuf_, buf_, kFrameBytes);
     }
     blit();
     lv_obj_invalidate(canvas_);

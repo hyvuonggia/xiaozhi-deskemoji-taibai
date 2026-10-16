@@ -5,6 +5,7 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "lvgl.h"
 
 static const char *TAG = "sh1106_panel";
 static constexpr int PANEL_WIDTH = 128;
@@ -67,12 +68,31 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
 
     const auto *frame = static_cast<const uint8_t *>(data);
     for (int page = ys / 8; page <= (ye - 1) / 8; ++page) {
-        ESP_RETURN_ON_ERROR(send_cmd(p, 0xB0 | page), TAG, "set page failed");
-        int column = xs + COLUMN_OFFSET;
-        ESP_RETURN_ON_ERROR(send_cmd(p, column & 0x0F), TAG, "set column low failed");
-        ESP_RETURN_ON_ERROR(send_cmd(p, 0x10 | ((column >> 4) & 0x0F)), TAG, "set column high failed");
-        const uint8_t *page_data = frame + page * PANEL_WIDTH + xs;
-        ESP_RETURN_ON_ERROR(esp_lcd_panel_io_tx_color(p->io, -1, page_data, xe - xs), TAG, "write page data failed");
+        // One immediate retry: transient bus noise usually passes on the second try.
+        bool ok = false;
+        for (int attempt = 0; attempt < 2 && !ok; ++attempt) {
+            if (send_cmd(p, 0xB0 | page) != ESP_OK) continue;
+            int column = xs + COLUMN_OFFSET;
+            if (send_cmd(p, column & 0x0F) != ESP_OK) continue;
+            if (send_cmd(p, 0x10 | ((column >> 4) & 0x0F)) != ESP_OK) continue;
+            const uint8_t *page_data = frame + page * PANEL_WIDTH + xs;
+            if (esp_lcd_panel_io_tx_color(p->io, -1, page_data, xe - xs) != ESP_OK) continue;
+            ok = true;
+        }
+        if (!ok) {
+            // A dead frame must never wedge LVGL: the port only marks a flush done via
+            // on_color_trans_done, which the panel-I/O layer skips on error, and the
+            // port ignores draw_bitmap's return code. So finish the flush here ourselves
+            // (dropping this one frame) instead of leaving disp->flushing == 1 forever -
+            // that used to freeze taskLVGL holding the LVGL mutex and kill mic, servo
+            // and the state machine along with the screen.
+            ESP_LOGW(TAG, "page %d failed twice, dropping frame", page);
+            lv_display_t *disp = lv_display_get_default();
+            if (disp != nullptr) {
+                lv_disp_flush_ready(disp);
+            }
+            return ESP_OK;  // deliberate: the error is already logged, the frame is skipped
+        }
     }
     return ESP_OK;
 }

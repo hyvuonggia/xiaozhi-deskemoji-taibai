@@ -624,14 +624,9 @@ public:
             vTaskDelay(pdMS_TO_TICKS(3000));   // let Application::Start()/SetupUI finish
             self->ui_ready_ = true;
             self->EnterEmojiMode(false);
-            // Lively idle face: cycle through moods every few seconds while nobody is
-            // talking (blinks and glances were already on, but a static mood looks
-            // dead). Demo pauses itself during conversation (it requires idle_) so the
-            // assistant's emotions still rule while speaking/listening.
-            if (self->eyes_ != nullptr) {
-                DisplayLockGuard lock(self->display_);
-                self->eyes_->SetDemo(true);
-            }
+            // Type-B idle face (calm): NO demo mood cycling - the mood stays put and only
+            // blinks (2-6 s) and occasional glances move. Combined with render-on-change
+            // below, a still face generates zero I2C traffic, which is the whole point.
             ESP_LOGI(TAG, "Emoji (eyes) mode is ON at startup (esp32-eyes style)");
             vTaskDelete(nullptr);
         }, "eyes_init", 4096, this, 2, nullptr);
