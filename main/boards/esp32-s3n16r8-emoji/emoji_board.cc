@@ -199,8 +199,23 @@ private:
         ESP_ERROR_CHECK(esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_));
         ESP_LOGI(TAG, "SH1106-compatible driver installed successfully");
 
-        ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
-        if (esp_lcd_panel_init(panel_) != ESP_OK) {
+        // The very first I2C transaction after power-up sometimes fails (bus noise
+        // while the chip rails settle), which used to give up immediately and leave
+        // the robot permanently screenless (NoDisplay) until the next power cycle -
+        // showing a frozen stale frame. Retry the reset+init sequence instead.
+        static constexpr int kPanelInitRetries = 5;
+        esp_err_t err = ESP_FAIL;
+        for (int attempt = 1; attempt <= kPanelInitRetries; ++attempt) {
+            ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
+            err = esp_lcd_panel_init(panel_);
+            if (err == ESP_OK) {
+                break;
+            }
+            ESP_LOGW(TAG, "Display init attempt %d/%d failed (%s), retrying",
+                     attempt, kPanelInitRetries, esp_err_to_name(err));
+            vTaskDelay(pdMS_TO_TICKS(300));
+        }
+        if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize display");
             display_ = new NoDisplay();
             return;
