@@ -62,7 +62,12 @@ Display::~Display() {
 }
 
 void Display::SetStatus(const char* status) {
-    DisplayLockGuard lock(this);
+    // Best-effort: never stall the caller (often the main state machine) behind a
+    // hung display flush; a skipped status line beats a deaf robot.
+    DisplayTryLockGuard lock(this);
+    if (!lock.locked()) {
+        return;
+    }
     if (status_label_ == nullptr) {
         return;
     }
@@ -205,7 +210,10 @@ void Display::SetEmotion(const char* emotion) {
 }
 
 void Display::SetIcon(const char* icon) {
-    DisplayLockGuard lock(this);
+    DisplayTryLockGuard lock(this);
+    if (!lock.locked()) {
+        return;
+    }
     if (emotion_label_ == nullptr) {
         return;
     }

@@ -408,7 +408,14 @@ private:
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             while (true) {
                 if (self->eyes_ != nullptr && !self->panel_asleep_) {
-                    DisplayLockGuard lock(self->display_);
+                    // Best-effort: when a display flush is hung the LVGL lock stays
+                    // held, and blocking here would stall eye animation behind it.
+                    // Skip the frame instead; the next one follows in 100 ms.
+                    DisplayTryLockGuard lock(self->display_);
+                    if (!lock.locked()) {
+                        vTaskDelay(pdMS_TO_TICKS(100));
+                        continue;
+                    }
                     // In eye mode the eye screen must stay visible: if anything switched
                     // the screen away, take it back (logged, so a thief is easy to spot).
                     if (self->is_emoji_mode_ && self->eyes_screen_ &&
@@ -780,12 +787,14 @@ static void StateMonitorTask(void* arg) {
 
     auto set_eyes_mood = [&](const char* mood) {
         if (board->eyes_ == nullptr) return;
-        DisplayLockGuard lock(board->display_);
+        DisplayTryLockGuard lock(board->display_);
+        if (!lock.locked()) return;   // display busy/hung: mood update is expendable
         board->eyes_->SetMood(mood);
     };
     auto set_eyes_idle = [&](bool on) {
         if (board->eyes_ == nullptr) return;
-        DisplayLockGuard lock(board->display_);
+        DisplayTryLockGuard lock(board->display_);
+        if (!lock.locked()) return;
         board->eyes_->SetIdleBehaviors(on);   // turn random eye glances/blinks on/off plus demo mode
     };
     

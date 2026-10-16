@@ -61,6 +61,7 @@ protected:
     esp_timer_handle_t notification_timer_ = nullptr;
 
     friend class DisplayLockGuard;
+    friend class DisplayTryLockGuard;
     virtual bool Lock(int timeout_ms = 0) = 0;
     virtual void Unlock() = 0;
 };
@@ -79,6 +80,29 @@ public:
 
 private:
     Display *display_;
+};
+
+// Best-effort twin of DisplayLockGuard for runtime paths (state machine, eye
+// renderer): tries the LVGL lock once and skips the update when it is held -
+// typically by a display flush hung on a noisy I2C bus. Blocking up to 30 s
+// here used to freeze the whole device (stuck LED, deaf to the wake word) over
+// a stuck screen. Callers MUST check locked() and return early when false;
+// unlike DisplayLockGuard this one never unlocks what it did not lock.
+class DisplayTryLockGuard {
+public:
+    explicit DisplayTryLockGuard(Display *display) : display_(display) {
+        locked_ = display_->Lock(0);
+    }
+    ~DisplayTryLockGuard() {
+        if (locked_) {
+            display_->Unlock();
+        }
+    }
+    bool locked() const { return locked_; }
+
+private:
+    Display *display_;
+    bool locked_ = false;
 };
 
 class NoDisplay : public Display {

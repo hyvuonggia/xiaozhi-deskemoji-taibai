@@ -96,7 +96,12 @@ void OledDisplay::Unlock() {
 }
 
 void OledDisplay::SetChatMessage(const char* role, const char* content) {
-    DisplayLockGuard lock(this);
+    // Best-effort like the other runtime setters: chat text arrives on the main
+    // task mid-conversation, exactly when a hung flush would otherwise freeze it.
+    DisplayTryLockGuard lock(this);
+    if (!lock.locked()) {
+        return;
+    }
     if (chat_message_label_ == nullptr) {
         return;
     }

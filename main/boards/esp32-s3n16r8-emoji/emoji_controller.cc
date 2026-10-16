@@ -316,7 +316,8 @@ void EmojiController::DrawEmoji(bool is_blinking) {
     while (!lock_success && retry_count < max_retries) {
         if (display_) {
             try {
-                DisplayLockGuard lock(display_);
+                DisplayTryLockGuard lock(display_);
+                if (!lock.locked()) return;  // display hung: skip this animation step
                 
                 // update the eye position and size
                 lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
@@ -361,7 +362,8 @@ void EmojiController::EyeCenter(bool update_display) {
         
         if (display_) {
             try {
-                DisplayLockGuard lock(display_);
+                DisplayTryLockGuard lock(display_);
+                if (!lock.locked()) return;  // display hung: skip this animation step
                 
                 // update the eye objects directly
                 lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
@@ -442,7 +444,8 @@ void EmojiController::MoveEye(int direction) {
     // phase 1: the eye moves in the given direction while shrinking
     for (int i = 0; i < 3; i++) {  // reduce the step count to stay consistent with the original code
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ += direction_movement_amplitude * direction;
             right_eye_x_ += direction_movement_amplitude * direction;
@@ -473,7 +476,8 @@ void EmojiController::MoveEye(int direction) {
     // phase 2: keep moving in the given direction while the eye regains height
     for (int i = 0; i < 3; i++) {  // reduce the step count to stay consistent with the original code
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ += direction_movement_amplitude * direction;
             right_eye_x_ += direction_movement_amplitude * direction;
@@ -773,7 +777,8 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
             for (int blink = 0; blink < blink_count; blink++) {
                 // eye closing phase
                 for (int i = 0; i < steps; i++) {
-                    DisplayLockGuard lock(display_);
+                    DisplayTryLockGuard lock(display_);
+                    if (!lock.locked()) return;  // display hung: skip this animation step
                     
                     left_eye_height_ -= left_step;
                     right_eye_height_ -= right_step;
@@ -829,7 +834,8 @@ void EmojiController::ExecuteBlinkAnimation(int speed) {
                 
                 // eye opening phase
                 for (int i = 0; i < steps; i++) {
-                    DisplayLockGuard lock(display_);
+                    DisplayTryLockGuard lock(display_);
+                    if (!lock.locked()) return;  // display hung: skip this animation step
                     
                     left_eye_height_ += left_step;
                     right_eye_height_ += right_step;
@@ -882,7 +888,8 @@ void EmojiController::ExecuteHappyAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // create the happy expression - simplified version with fewer iterations and delay
             // first make sure the eyes are visible
@@ -1007,7 +1014,8 @@ void EmojiController::ExecuteSadAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // create the sad expression - using triangles
             // first make sure the eyes are visible
@@ -1160,7 +1168,8 @@ void EmojiController::ExecuteLaughingAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size
             const int original_left_width_ = left_eye_width_;
@@ -1279,7 +1288,8 @@ void EmojiController::ExecuteConfidentAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1379,7 +1389,8 @@ void EmojiController::ExecuteSillyAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1482,7 +1493,8 @@ void EmojiController::ExecuteDeliciousAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1587,7 +1599,8 @@ void EmojiController::ExecuteKissyAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1724,7 +1737,8 @@ void EmojiController::ExecuteCoolAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1824,7 +1838,8 @@ void EmojiController::ExecuteRelaxedAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -1920,7 +1935,8 @@ void EmojiController::ExecuteShockedAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -2039,7 +2055,8 @@ void EmojiController::ExecuteThinkingAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -2141,7 +2158,8 @@ void EmojiController::ExecuteLovingAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size
             const int original_left_width_ = left_eye_width_;
@@ -2276,7 +2294,8 @@ void EmojiController::ExecuteEmbarrassedAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             // unused variable, commented out
@@ -2400,7 +2419,8 @@ void EmojiController::ExecuteFunnyAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size
             // unused variable, commented out
@@ -2492,7 +2512,8 @@ void EmojiController::ExecuteAngerAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
                         // save the original size
             const int original_left_width_ = left_eye_width_;
@@ -2656,7 +2677,8 @@ void EmojiController::ExecuteSurpriseAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // implement the effect where the eyes first shrink 10%, return to the default size, then enlarge 10%
             // save the original size
@@ -2750,7 +2772,8 @@ void EmojiController::ExecuteWakeupAnimation() {
     // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/2);
@@ -2780,7 +2803,8 @@ void EmojiController::ExecuteSleepAnimation() {
     // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // implemented exactly like eye_sleep in boardemoji.ino
             // set the eye height to 2 pixels only, keeping the width unchanged
@@ -2828,7 +2852,8 @@ void EmojiController::ExecuteConfusedAnimation() {
     // use DisplayLockGuard to ensure thread safety
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             lv_obj_set_size(left_eye_, left_eye_width_, left_eye_height_ / 2);
             lv_obj_set_pos(left_eye_, left_eye_x_ - left_eye_width_/2, left_eye_y_ - left_eye_height_/4);
@@ -2877,7 +2902,8 @@ void EmojiController::ExecuteLookLeftAnimation() {
     // phase 3: start recovering, moving in the opposite direction while the eye shrinks
     for (int i = 0; i < 3; i++) {
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ -= direction_movement_amplitude * direction;
             right_eye_x_ -= direction_movement_amplitude * direction;
@@ -2901,7 +2927,8 @@ void EmojiController::ExecuteLookLeftAnimation() {
     // phase 4: keep recovering while the eye regains its height
     for (int i = 0; i < 3; i++) {
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ -= direction_movement_amplitude * direction;
             right_eye_x_ -= direction_movement_amplitude * direction;
@@ -2963,7 +2990,8 @@ void EmojiController::ExecuteLookRightAnimation() {
     // phase 3: start recovering, moving in the opposite direction while the eye shrinks
     for (int i = 0; i < 3; i++) {
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ -= direction_movement_amplitude * direction;
             right_eye_x_ -= direction_movement_amplitude * direction;
@@ -2987,7 +3015,8 @@ void EmojiController::ExecuteLookRightAnimation() {
     // phase 4: keep recovering while the eye regains its height
     for (int i = 0; i < 3; i++) {
         if (display_) {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             left_eye_x_ -= direction_movement_amplitude * direction;
             right_eye_x_ -= direction_movement_amplitude * direction;
@@ -3265,7 +3294,8 @@ void EmojiController::ExecuteAwkwardAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size
             const int original_width = left_eye_width_;
@@ -3395,7 +3425,8 @@ void EmojiController::ExecuteCryAnimation() {
     
     if (display_) {
         try {
-            DisplayLockGuard lock(display_);
+            DisplayTryLockGuard lock(display_);
+            if (!lock.locked()) return;  // display hung: skip this animation step
             
             // save the original size and position
             const int original_width = left_eye_width_;
