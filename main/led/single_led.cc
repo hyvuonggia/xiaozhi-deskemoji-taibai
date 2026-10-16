@@ -129,7 +129,14 @@ void SingleLed::OnStateChanged() {
             StartContinuousBlink(500);
             break;
         case kDeviceStateIdle:
-            TurnOff();
+            // Always-on dim blue = "board is alive and waiting for the wake word".
+            // Upstream turns the LED fully off in idle, which leaves the boss staring
+            // at a dark board with no way to tell "waiting" apart from "crashed / no
+            // power". Full map: dim blue = idle, red = listening (bright red while
+            // voice is detected), green = speaking, blinking = starting/upgrading.
+            // Panel sleep keeps this LED on, so fully dark (screen + LED) = no power.
+            SetColor(0, 0, LOW_BRIGHTNESS);
+            TurnOn();
             break;
         case kDeviceStateConnecting:
             SetColor(0, 0, DEFAULT_BRIGHTNESS);
