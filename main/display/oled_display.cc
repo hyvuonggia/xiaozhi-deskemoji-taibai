@@ -23,6 +23,8 @@ OledDisplay::OledDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handl
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
     port_cfg.task_priority = 3;  // Raise task priority to avoid being blocked by other tasks
     port_cfg.task_stack = 8192;  // Increase stack size to prevent stack overflow
+    port_cfg.task_affinity = 0;  // Pin the display task to CPU0: CPU1 stays fully for
+                                 // audio_input (prio 8) + AFE wake-word/VAD (prio 4)
     port_cfg.timer_period_ms = 200;  // Greatly increase the refresh interval, from 50ms to 200ms, to reduce I2C pressure
     lvgl_port_init(&port_cfg);
 

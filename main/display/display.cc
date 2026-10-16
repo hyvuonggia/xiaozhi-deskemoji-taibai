@@ -19,7 +19,8 @@ Display::Display() {
     esp_timer_create_args_t notification_timer_args = {
         .callback = [](void *arg) {
             Display *display = static_cast<Display*>(arg);
-            DisplayLockGuard lock(display);
+            DisplayTryLockGuard lock(display);
+            if (!lock.locked()) return;  // runtime UI update: skip when display busy
             lv_obj_add_flag(display->notification_label_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_remove_flag(display->status_label_, LV_OBJ_FLAG_HIDDEN);
         },
@@ -83,7 +84,8 @@ void Display::ShowNotification(const std::string &notification, int duration_ms)
 }
 
 void Display::ShowNotification(const char* notification, int duration_ms) {
-    DisplayLockGuard lock(this);
+    DisplayTryLockGuard lock(this);
+    if (!lock.locked()) return;  // runtime UI update: skip when display busy
     if (notification_label_ == nullptr) {
         return;
     }
@@ -102,7 +104,8 @@ void Display::UpdateStatusBar(bool update_all) {
 
     // Update mute icon
     {
-        DisplayLockGuard lock(this);
+        DisplayTryLockGuard lock(this);
+        if (!lock.locked()) return;  // runtime UI update: skip when display busy
         if (mute_label_ == nullptr) {
             return;
         }
@@ -153,7 +156,8 @@ void Display::UpdateStatusBar(bool update_all) {
             };
             icon = levels[battery_level / 20];
         }
-        DisplayLockGuard lock(this);
+        DisplayTryLockGuard lock(this);
+        if (!lock.locked()) return;  // runtime UI update: skip when display busy
         if (battery_label_ != nullptr && battery_icon_ != icon) {
             battery_icon_ = icon;
             lv_label_set_text(battery_label_, battery_icon_);
@@ -189,7 +193,8 @@ void Display::UpdateStatusBar(bool update_all) {
         if (std::find(allowed_states.begin(), allowed_states.end(), device_state) != allowed_states.end()) {
             icon = board.GetNetworkStateIcon();
             if (network_label_ != nullptr && icon != nullptr && network_icon_ != icon) {
-                DisplayLockGuard lock(this);
+                DisplayTryLockGuard lock(this);
+                if (!lock.locked()) return;  // runtime UI update: skip when display busy
                 network_icon_ = icon;
                 lv_label_set_text(network_label_, network_icon_);
             }
@@ -225,7 +230,8 @@ void Display::SetPreviewImage(const lv_img_dsc_t* image) {
 }
 
 void Display::SetChatMessage(const char* role, const char* content) {
-    DisplayLockGuard lock(this);
+    DisplayTryLockGuard lock(this);
+    if (!lock.locked()) return;  // runtime UI update: skip when display busy
     if (chat_message_label_ == nullptr) {
         return;
     }

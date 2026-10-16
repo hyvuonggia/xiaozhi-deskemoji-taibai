@@ -69,8 +69,12 @@ protected:
 
 class DisplayLockGuard {
 public:
+    // NOTE: timeout is deliberately short (2 s). A display flush hung on a noisy bus
+    // used to stall every holder for 30 s and freeze the whole device; with the task
+    // watchdog panicking past 10 s, anything longer than that would reboot the board
+    // over a stuck screen. Runtime paths should prefer DisplayTryLockGuard anyway.
     DisplayLockGuard(Display *display) : display_(display) {
-        if (!display_->Lock(30000)) {
+        if (!display_->Lock(2000)) {
             ESP_LOGE("Display", "Failed to lock display");
         }
     }
@@ -84,9 +88,9 @@ private:
 
 // Best-effort twin of DisplayLockGuard for runtime paths (state machine, eye
 // renderer): tries the LVGL lock once and skips the update when it is held -
-// typically by a display flush hung on a noisy I2C bus. Blocking up to 30 s
-// here used to freeze the whole device (stuck LED, deaf to the wake word) over
-// a stuck screen. Callers MUST check locked() and return early when false;
+// typically by a display flush hung on a noisy I2C bus. Blocking on the lock here
+// used to freeze the whole device (stuck LED, deaf to the wake word) over a stuck
+// screen. Callers MUST check locked() and return early when false;
 // unlike DisplayLockGuard this one never unlocks what it did not lock.
 class DisplayTryLockGuard {
 public:

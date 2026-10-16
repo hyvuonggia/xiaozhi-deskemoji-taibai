@@ -407,7 +407,12 @@ private:
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             while (true) {
-                if (self->eyes_ != nullptr && !self->panel_asleep_) {
+                // Mic-first exclusivity: while the robot is speaking, the speaker draws
+                // peak current (the prime suspect for I2C glitches) and nobody watches
+                // the face anyway - so freeze the eyes and keep the bus silent.
+                // Listening keeps animating (the boss is looking at it).
+                if (self->eyes_ != nullptr && !self->panel_asleep_ &&
+                    Application::GetInstance().GetDeviceState() != kDeviceStateSpeaking) {
                     // Best-effort: when a display flush is hung the LVGL lock stays
                     // held, and blocking here would stall eye animation behind it.
                     // Skip the frame instead; the next one follows in 100 ms.
@@ -553,7 +558,17 @@ private:
     }
 
     void SwitchScreen(bool to_emoji_mode) {
-        DisplayLockGuard lock(display_);
+        // Servo first (needs no display lock), screen load best-effort: skipping a
+        // screen switch under contention is harmless, blocking 30 s is not.
+        if (to_emoji_mode) {
+            if (servo_controller_) {
+                servo_controller_->HeadCenter();
+            }
+        }
+        DisplayTryLockGuard lock(display_);
+        if (!lock.locked()) {
+            return;
+        }
         if (to_emoji_mode) {
             // Still create the emoji screen so the old animation/servo system keeps running (it does not drive the servo),
             // but the VISIBLE screen is the OliEyes canvas.
@@ -782,14 +797,12 @@ static void StateMonitorTask(void* arg) {
 
     auto set_eyes_mood = [&](const char* mood) {
         if (board->eyes_ == nullptr) return;
-        DisplayTryLockGuard lock(board->display_);
-        if (!lock.locked()) return;   // display busy/hung: mood update is expendable
+        // No lock: SetMood only writes an int consumed by the render task (benign).
         board->eyes_->SetMood(mood);
     };
     auto set_eyes_idle = [&](bool on) {
         if (board->eyes_ == nullptr) return;
-        DisplayTryLockGuard lock(board->display_);
-        if (!lock.locked()) return;
+        // No lock: SetIdleBehaviors only flips a bool (benign).
         board->eyes_->SetIdleBehaviors(on);   // turn random eye glances/blinks on/off plus demo mode
     };
     
@@ -1131,8 +1144,8 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
         ESP_LOGI(TAG, "Mapped to our expression action: %s", mapped_emotion.c_str());
 
         // Switch the OliEyes mood from the emotion (the animation/servo pipeline is untouched)
+        // No lock: SetMoodForEmotion only writes state consumed by the render task.
         if (board_ && board_->eyes_) {
-            DisplayLockGuard eyes_lock(board_->display_);
             board_->eyes_->SetMoodForEmotion(mapped_emotion.c_str());
         }
         

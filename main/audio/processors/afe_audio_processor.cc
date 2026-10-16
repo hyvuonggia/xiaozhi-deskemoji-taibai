@@ -61,7 +61,9 @@ void AfeAudioProcessor::Initialize(AudioCodec* codec, int frame_duration_ms) {
     }
 
     afe_config->afe_perferred_core = 1;
-    afe_config->afe_perferred_priority = 1;
+    // Priority 4: above the display task (3) so wake-word/VAD never starve on CPU1,
+    // still below audio_input (8).
+    afe_config->afe_perferred_priority = 4;
     afe_config->agc_init = false;
     afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
 

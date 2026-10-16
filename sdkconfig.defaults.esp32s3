@@ -22,3 +22,8 @@ CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 
 CONFIG_BOARD_TYPE_ESP32_S3N16R8_EMOJI=y
 CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y
+
+# A display flush hung on a noisy I2C bus used to freeze the board forever (the
+# watchdog only barked). Reboot past 10 s of stall instead - sessions re-establish
+# on boot and the display supervisor already rate-limits its own restarts.
+CONFIG_ESP_TASK_WDT_PANIC=y
