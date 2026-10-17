@@ -849,6 +849,7 @@ static void StateMonitorTask(void* arg) {
             set_eyes_idle(false);
             if (current_state == kDeviceStateListening) {
                 set_eyes_mood("curious");
+                board->eyes_->Blink();   // instant ack: one blink the moment the wake word lands
                 if (board->servo_controller_ != nullptr) {
                     board->servo_controller_->HeadUp(10);   // tilt the head slightly up: "I am listening to the boss"
                 }
