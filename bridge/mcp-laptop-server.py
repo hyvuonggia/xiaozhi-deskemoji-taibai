@@ -104,5 +104,58 @@ async def wiki_lookup(query: str) -> str:
         return "Tra cuu that bai, thu lai sau."
 
 
+# SearXNG self-hosted search (LAN, no key, no quota): set SEARXNG_URL. When set, the
+# web_search MCP tool uses it; otherwise the tool reports itself unavailable.
+SEARXNG_URL = "http://192.168.1.106:8888"
+
+
+@mcp.tool()
+async def web_search(query: str) -> str:
+    """Tim kiem web tuoi (gia vang, tin tuc, ti so, su kien moi...) qua may chu tim kiem
+    rieng trong nha. Dung khi wiki_lookup khong co (thong tin thay doi theo gio/ngay).
+    Dung tieng Viet de hoi."""
+    import urllib.parse as _up2
+    import urllib.request as _url2
+
+    if not SEARXNG_URL:
+        return "Tim kiem web chua cau hinh."
+    try:
+        url = ("%s/search?q=%s&language=vi-VN&time_range=month"
+               % (SEARXNG_URL.rstrip("/"), _up2.quote(query, safe="")))
+
+        def _get():
+            req = _url2.Request(url, headers={"User-Agent": "HermesBot/1.0"})
+            with _url2.urlopen(req, timeout=20) as r:
+                return r.read().decode("utf-8", "ignore")
+
+        import html as _html2
+
+        def _clean(h):
+            return _html2.unescape(re.sub(r"<.*?>", "", h, flags=re.S)).strip()
+
+        data = await asyncio.to_thread(_get)
+        # SearXNG HTML layout: <article class="result ..."><h3><a href="URL">TITLE</a></h3><p class="content">SNIPPET</p>
+        arts = re.findall(r"<article[^>]*>(.*?)</article>", data, re.S)
+        out = []
+        for art in arts[:5]:
+            tm = re.search(r"<h3[^>]*>.*?<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", art, re.S)
+            if not tm:
+                continue
+            sm = re.search(r'<p class="content"[^>]*>(.*?)</p>', art, re.S)
+            title = _clean(tm.group(2))
+            if not title:
+                continue
+            line = "%d. %s" % (len(out) + 1, title)
+            if sm and _clean(sm.group(1)):
+                line += " - %s" % _clean(sm.group(1))[:200]
+            out.append(line)
+        if not out:
+            return "Khong tim thay ket qua cho: %s" % query
+        return "Ket qua tuoi cho '%s':\n" % query + "\n".join(out)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("web_search failed: %s", exc)
+        return "Tim kiem that bai, thu lai sau."
+
+
 if __name__ == "__main__":
     asyncio.run(mcp.run_stdio_async())
