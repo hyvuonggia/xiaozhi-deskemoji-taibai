@@ -1,10 +1,10 @@
 """Laptop sensor MCP server (stdio) for the Hermes gateway.
-
 Exposes read-only LAN senses so agent sessions (including the desk robot) can
 measure things themselves instead of being spoon-fed answers. Started by the
 gateway per mcp_servers config; speaks MCP over stdin/stdout.
 """
 import asyncio
+import json
 import logging
 import re
 import sys
@@ -46,6 +46,62 @@ async def get_laptop_temp() -> str:
     if not m:
         return "Khong doc duoc nhiet do laptop (may co the dang tat hoac mat mang)."
     return "Nhiet do CPU laptop hien tai: %s do C." % m.group(1)
+
+
+@mcp.tool()
+async def wiki_lookup(query: str) -> str:
+    """Tra cuu kien thuc bach khoa tieng Viet (Wikipedia): dien tich, dan so, tieu su,
+    dinh nghia, tong thong hien tai... Dung khi sep hoi 'la ai', 'la gi', 'bao nhieu',
+    'o dau'. Khong co tin tuc/gia ca theo gio - nhung thu tuoi can cong cu khac."""
+    import urllib.parse as _up
+    import urllib.request as _url
+
+    try:
+        q0 = query.strip()
+        # Entity extraction: "diện tích Việt Nam" -> "Việt Nam" (the country summary
+        # holds area/population/capital); "tổng thống Mỹ hiện tại" -> "tổng thống Mỹ".
+        q1 = re.sub(r"\s*(hiện tại|hiện nay|bây giờ|mới nhất|gần đây|năm nay)\s*$", "", q0)
+        m = re.match(r"^(diện tích|dân số|thủ đô|tiền tệ|ngôn ngữ|quốc kỳ|múi giờ|khí hậu)\s+(của\s+)?(.+)$", q1)
+        candidates = [m.group(3).strip(), q1, q0] if m else [q1, q0]
+        seen = set()
+        queries = [c for c in candidates if c and not (c in seen or seen.add(c))]
+
+        def _get(url):
+            req = _url.Request(url, headers={"User-Agent": "HermesBot/1.0"})
+            with _url.urlopen(req, timeout=12) as r:
+                return json.loads(r.read().decode("utf-8", "ignore"))
+
+        async def _fetch(url):
+            return await asyncio.to_thread(_get, url)
+
+        async def _lookup(q):
+            qq = _up.quote(q, safe="")
+            found = await _fetch(
+                "https://vi.wikipedia.org/w/api.php?action=opensearch&search=%s"
+                "&limit=1&namespace=0&format=json" % qq)
+            titles = found[1] if len(found) > 1 else []
+            if not titles:
+                return None
+            page = await _fetch(
+                "https://vi.wikipedia.org/api/rest_v1/page/summary/%s"
+                % _up.quote(titles[0].replace(" ", "_"), safe=""))
+            extract = (page.get("extract") or "").strip()
+            if not extract:
+                return None
+            if len(extract) > 600:
+                cut = extract[:600]
+                dot = cut.rfind(". ")
+                extract = (cut[:dot + 1] if dot > 200 else cut) + " (da rut gon)"
+            return "Theo Wikipedia - %s: %s" % (titles[0], extract)
+
+        for q in queries:
+            hit = await _lookup(q)
+            if hit:
+                return hit
+        return "Khong tim thay bai viet cho: %s" % query
+    except Exception as exc:  # noqa: BLE001
+        log.warning("wiki_lookup failed: %s", exc)
+        return "Tra cuu that bai, thu lai sau."
 
 
 if __name__ == "__main__":

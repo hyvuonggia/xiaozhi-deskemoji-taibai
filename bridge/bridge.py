@@ -404,6 +404,54 @@ _SHUTDOWN_YES_RE = re.compile(
 _SHUTDOWN_WINDOW_S = 20.0
 
 
+# Weather: Open-Meteo, no key needed. Default = Ho Chi Minh City; the boss corrects
+# the city once and we change the constants. Keep the reply to 1-2 short sentences.
+WEATHER_LAT = 10.7626
+WEATHER_LON = 106.6602
+WEATHER_PLACE = "Sài Gòn"
+_WEATHER_CODE_VI = {
+    0: "trời quang", 1: "trời quang", 2: "mây rải rác", 3: "nhiều mây",
+    45: "sương mù", 48: "sương mù", 51: "mưa phùn", 53: "mưa phùn", 55: "mưa phùn",
+    61: "mưa nhỏ", 63: "mưa vừa", 65: "mưa to", 71: "tuyết nhẹ", 73: "có tuyết",
+    75: "tuyết dày", 77: "mưa đá", 80: "mưa rào", 81: "mưa rào", 82: "mưa rất to",
+    95: "dông", 96: "dông kèm mưa đá", 99: "dông kèm mưa đá",
+}
+
+
+async def read_weather():
+    """Current + today weather as short Vietnamese text. Returns str or None."""
+    import urllib.request as _url
+    try:
+        url = ("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
+               "&current=temperature_2m,weather_code&daily=temperature_2m_max,"
+               "temperature_2m_min,precipitation_probability_max&timezone=Asia%%2FHo_Chi_Minh"
+               % (WEATHER_LAT, WEATHER_LON))
+
+        def _fetch():
+            with _url.urlopen(url, timeout=12) as r:
+                return json.loads(r.read().decode("utf-8", "ignore"))
+
+        data = await asyncio.to_thread(_fetch)
+        cur = data.get("current") or {}
+        daily = data.get("daily") or {}
+        t = cur.get("temperature_2m")
+        code = cur.get("weather_code")
+        tmax = (daily.get("temperature_2m_max") or [None])[0]
+        tmin = (daily.get("temperature_2m_min") or [None])[0]
+        rain = (daily.get("precipitation_probability_max") or [None])[0]
+        if t is None:
+            return None
+        desc = _WEATHER_CODE_VI.get(code, "nhiều mây")
+        parts = ["%s giờ %s, khoảng %.0f độ," % (WEATHER_PLACE, desc, t)]
+        if tmax is not None and tmin is not None:
+            parts.append("ngày %.0f đến %.0f độ" % (tmin, tmax))
+        if rain is not None and rain >= 40:
+            parts.append("khả năng mưa %d%%, sếp mang áo mưa nhé" % rain)
+        return " ".join(parts) + "."
+    except Exception:
+        return None
+
+
 async def read_laptop_temp():
     """Ask the laptop (CachyOS) for its CPU temperature over SSH. Returns float or None."""
     try:
@@ -608,6 +656,16 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                     "Dạ em không thấy laptop trên mạng sếp ạ.")
             return await respond_text_only(request, cid, model, stream,
                 "Dạ CPU laptop đang khoảng %d độ sếp nhé." % round(temp))
+        # Weather (Open-Meteo, keyless): outside temperature/rain, NOT the laptop
+        # (laptop questions returned above). 1 HTTP call, ~1 s, no LLM round-trip.
+        _wt = user_text.lower()
+        if (re.search(r"thời tiết|mưa|nắng|bão|dông|độ ẩm|nhiệt độ|mấy độ|bao nhiêu độ", _wt) is not None
+                and re.search(r"laptop|máy tính", _wt) is None):
+            w = await read_weather()
+            if w is None:
+                return await respond_text_only(request, cid, model, stream,
+                    "Dạ em không coi được thời tiết lúc này sếp ạ.")
+            return await respond_text_only(request, cid, model, stream, "Dạ, " + w)
         gesture = detect_eye_gesture(user_text)
         if gesture:
             if _debounced("eyes." + gesture):
