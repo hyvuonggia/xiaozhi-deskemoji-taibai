@@ -14,6 +14,9 @@
 #include "emotion_response_controller.h"
 #include "robot_eyes.h"
 
+#include "driver/touch_sensor_common.h"
+#include "driver/touch_sensor_legacy.h"
+
 #include <wifi_station.h>
 #include <esp_log.h>
 #include <string>
@@ -403,6 +406,54 @@ private:
     // for seconds (DisplayLockGuard blocks up to 30 s), the main task's state changes
     // stall behind it (stuck green "speaking", deaf to the wake word) and the task
     // watchdog barks. While the panel sleeps, skip drawing altogether.
+    // Head-pat touch (GPIO8 = TOUCH_PAD_NUM8, foil plate on the head): poll the raw
+    // reading against the driver benchmark; a firm touch drops it ~25%+. Reaction is
+    // local only (love eyes + blink + pop sound, back to neutral in 5 s) - no server
+    // round-trip, so a pat answers in ~100 ms. 2.5 s cooldown against stroking.
+    // Priority 2, 4 KB stack, ~10 I2C-free polls per second: zero display impact.
+    void StartHeadPatTask() {
+        xTaskCreate([](void* arg) {
+            EmojiBoard* self = static_cast<EmojiBoard*>(arg);
+            if (touch_pad_init() != ESP_OK ||
+                touch_pad_config(TOUCH_PAD_NUM8) != ESP_OK ||
+                touch_pad_set_channel_mask(BIT8) != ESP_OK ||
+                touch_pad_fsm_start() != ESP_OK) {
+                ESP_LOGE(TAG, "pat: touch init failed, head-pat disabled");
+                vTaskDelete(nullptr);
+            }
+            vTaskDelay(pdMS_TO_TICKS(2000));   // let the readings settle
+            touch_pad_reset_benchmark(TOUCH_PAD_NUM8);
+            ESP_LOGI(TAG, "pat: head-pat touch ready on GPIO8");
+            TickType_t cooldown_until = 0;
+            TickType_t restore_at = 0;
+            while (true) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+                uint32_t raw = 0, bench = 0;
+                if (touch_pad_read_raw_data(TOUCH_PAD_NUM8, &raw) != ESP_OK ||
+                    touch_pad_read_benchmark(TOUCH_PAD_NUM8, &bench) != ESP_OK ||
+                    bench == 0) {
+                    continue;
+                }
+                TickType_t now = xTaskGetTickCount();
+                if (restore_at != 0 && (int32_t)(now - restore_at) >= 0) {
+                    if (self->eyes_ != nullptr) self->eyes_->SetMood("neutral");
+                    restore_at = 0;
+                }
+                // Touch pulls the reading DOWN (more capacitance = lower count).
+                if (raw < (bench * 3) / 4 && (int32_t)(now - cooldown_until) >= 0) {
+                    cooldown_until = now + pdMS_TO_TICKS(2500);
+                    restore_at = now + pdMS_TO_TICKS(5000);
+                    ESP_LOGI(TAG, "pat: *head pat* raw=%lu bench=%lu", (unsigned long)raw, (unsigned long)bench);
+                    if (self->eyes_ != nullptr) {
+                        self->eyes_->SetMood("love");
+                        self->eyes_->Blink();
+                    }
+                    Application::GetInstance().PlaySound(Lang::Sounds::OGG_POPUP);
+                }
+            }
+        }, "head_pat", 4096, this, 2, nullptr);
+    }
+
     void StartEyesTask() {
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
@@ -634,6 +685,7 @@ public:
         // renderer now, create and load the eye screen once the UI exists.
         StartEyesTask();
         StartDisplaySupervisorTask();
+        StartHeadPatTask();
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             vTaskDelay(pdMS_TO_TICKS(3000));   // let Application::Start()/SetupUI finish

@@ -70,6 +70,10 @@ const uint8_t servo_pins[SERVO_CHANNEL_COUNT] = {
 #define VOLUME_UP_BUTTON_PIN GPIO_NUM_40   // Volume up button connected to GPIO40
 #define VOLUME_DOWN_BUTTON_PIN GPIO_NUM_39 // Volume down button connected to GPIO39
 
+// Head-pat touch electrode: a foil/coin plate on top of the head wired to GPIO8
+// (TOUCH_PAD_NUM8, strapping-free). No extra module - the S3 senses capacitance.
+#define HEAD_PAT_TOUCH_GPIO GPIO_NUM_8
+
 // Audio configuration - INMP441 microphone + MAX98357A audio amplifier
 // INMP441 microphone pin connections:
 // - VDD: 3.3V
