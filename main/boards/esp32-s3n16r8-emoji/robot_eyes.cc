@@ -427,6 +427,11 @@ void RobotEyes::SetMoodForEmotion(const char* emotion) {
 }
 
 void RobotEyes::Blink() { blink_requested_ = true; }
+void RobotEyes::ForceRedraw() {
+    // Poison the previous-frame cache: the next Step() always sees a difference and
+    // redraws (used after panel wake/re-init, where the glass state is uncertain).
+    if (pbuf_) memset(pbuf_, 0xA5, (size_t)(WIDTH * HEIGHT) / 8);
+}
 void RobotEyes::Wink(bool right_side) {
     uint32_t now = now_ms();
     if (right_side) TriggerWinkRight(now); else TriggerWinkLeft(now);

@@ -823,8 +823,26 @@ static void StateMonitorTask(void* arg) {
             // Leaving idle (wake word, button, ...) while the panel is asleep means
             // the boss is back: power the screen up again before anything else draws.
             if (last_state == kDeviceStateIdle && board->panel_asleep_ && board->panel_ != nullptr) {
-                if (esp_lcd_panel_disp_on_off(board->panel_, true) == ESP_OK) {
+                // Wake the glass: retry, because a single failed 0xAF on the noisy bus
+                // used to leave the screen dark forever (everything else kept working,
+                // so it looked like a freeze). Escalate to a full reset+init if needed,
+                // then force one real redraw - the frame cache may match a dead screen.
+                bool woke = false;
+                for (int i = 0; i < 3 && !woke; i++) {
+                    if (i > 0) vTaskDelay(pdMS_TO_TICKS(150));
+                    woke = (esp_lcd_panel_disp_on_off(board->panel_, true) == ESP_OK);
+                }
+                if (!woke) {
+                    ESP_LOGW(TAG, "Wake: disp_on failed 3x, re-initing panel");
+                    if (esp_lcd_panel_reset(board->panel_) == ESP_OK &&
+                        esp_lcd_panel_init(board->panel_) == ESP_OK &&
+                        esp_lcd_panel_disp_on_off(board->panel_, true) == ESP_OK) {
+                        woke = true;
+                    }
+                }
+                if (woke) {
                     board->panel_asleep_ = false;
+                    if (board->eyes_ != nullptr) board->eyes_->ForceRedraw();
                     ESP_LOGI(TAG, "Woke up: panel back on");
                 } else {
                     ESP_LOGW(TAG, "Woke up but the panel would not turn back on");

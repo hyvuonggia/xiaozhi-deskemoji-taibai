@@ -29,6 +29,7 @@ public:
     // While in conversation: turn off idle behaviours (demo cycling + random looks)
     void SetIdleBehaviors(bool on) { idle_ = on; }
     void SetEaseSpeed(float s) { ease_speed_ = (s < 0.01f ? 0.01f : (s > 1.0f ? 1.0f : s)); }
+    void ForceRedraw();   // forget the previous frame so the next render always hits the bus
 
     // Call ~40 times per second. MUST be called with the LVGL lock held (DisplayLockGuard).
     void Step();
