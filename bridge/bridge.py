@@ -582,13 +582,13 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     hermes_msgs.append({"role": "system", "content": "QUAN TRỌNG: Luôn trả lời sếp bằng tiếng Việt."})
 
     # Fast greeting: session-start requests carry no real content - either empty or just
-    # the wake word the server echoes back ("Jarvis"). Answer instantly with a short blip
+    # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
     # instead of a full LLM round-trip, so the mic opens ~1 s after the wake word
     # instead of ~10 s. Anything longer (a real question right after the wake word)
     # always takes the normal path below - never drop it. (Device-tool presence is NOT
     # checked: MCP initializes fast now, so greeting requests already carry tools.)
     _ut = user_text.strip().lower()
-    _is_bare_wake = _ut == "" or re.fullmatch(r"jarvis[\s!.,?]*", _ut) is not None
+    _is_bare_wake = _ut == "" or re.fullmatch(r"alexa[\s!.,?]*", _ut) is not None
     if not tool_results and _is_bare_wake:
         log.info("fast greeting (no LLM round-trip)")
         # Instant but not robotic: rotate a few short blips (all <1 s of speech).
