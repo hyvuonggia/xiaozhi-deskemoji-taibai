@@ -96,19 +96,17 @@ void ServoController::HeadNod(int servo_delay) {
     // Record the initial position
     int initial_y = current_y_angle_;
     
-    // Set the servo angle directly instead of using HeadMove's step-by-step motion
-    for (int i = 0; i < 3; i++) {
-        // Nod down
-        SetServoAngle(1, SERVO_CENTER_Y + 20);
-        current_y_angle_ = SERVO_CENTER_Y + 20;
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
-        
-        // Nod up
-        SetServoAngle(1, SERVO_CENTER_Y - 20);
-        current_y_angle_ = SERVO_CENTER_Y - 20;
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
-    }
-    
+    // One call = one single down-up nod. (Callers - voice commands, animations - all
+    // mean "nod once"; repeating is the caller's job, and the bridge debounces repeats.)
+    SetServoAngle(1, SERVO_CENTER_Y + 20);
+    current_y_angle_ = SERVO_CENTER_Y + 20;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
+
+    // Nod up
+    SetServoAngle(1, SERVO_CENTER_Y - 20);
+    current_y_angle_ = SERVO_CENTER_Y - 20;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
+
     // Return to the center position
     SetServoAngle(1, SERVO_CENTER_Y);
     current_y_angle_ = SERVO_CENTER_Y;
@@ -124,24 +122,19 @@ void ServoController::HeadShake(int servo_delay) {
     // Record the initial position
     int initial_x = current_x_angle_;
     
-    // Set the servo angle directly instead of using HeadMove's step-by-step motion
-    for (int i = 0; i < 2; i++) {
-        // Shake left
-        SetServoAngle(0, SERVO_CENTER_X - 20);
-        current_x_angle_ = SERVO_CENTER_X - 20;
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
-        
-        // Shake right
-        SetServoAngle(0, SERVO_CENTER_X + 20);
-        current_x_angle_ = SERVO_CENTER_X + 20;
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
-        
-        // Shake left again
-        SetServoAngle(0, SERVO_CENTER_X - 20);
-        current_x_angle_ = SERVO_CENTER_X - 20;
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
-    }
-    
+    // One call = one single shake (left-right-left). Repeating is the caller's job.
+    SetServoAngle(0, SERVO_CENTER_X - 20);
+    current_x_angle_ = SERVO_CENTER_X - 20;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
+
+    SetServoAngle(0, SERVO_CENTER_X + 20);
+    current_x_angle_ = SERVO_CENTER_X + 20;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
+
+    SetServoAngle(0, SERVO_CENTER_X - 20);
+    current_x_angle_ = SERVO_CENTER_X - 20;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));  // Delay controlled by the parameter
+
     // Return to the center position
     SetServoAngle(0, SERVO_CENTER_X);
     current_x_angle_ = SERVO_CENTER_X;
