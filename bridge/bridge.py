@@ -305,7 +305,9 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
         # Fresh session every day: a long-lived session pins "today" at creation day,
         # so date answers go stale (it said the 16th on the 19th). Rotating the id
         # also bounds context growth -> stable 3-5 s answers instead of slower nights.
-        "X-Hermes-Session-Id": "%s-%s" % (HERMES_SESSION, time.strftime("%Y%m%d")),
+        # SESSION_GEN: bump when the agent gains new tools (MCP) so the robot picks up
+        # a fresh tool surface immediately instead of waiting for tomorrow.
+        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 2),
     }
     if HERMES_KEY:
         headers["Authorization"] = "Bearer " + HERMES_KEY
@@ -625,6 +627,22 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         globals()["_last_motion_time"] = _last_motion
         return False
     if not tool_results:
+        # Clock fast lane: the bridge knows the exact local time, no model needed.
+        # Matches time/date questions (exact, instant, never stale). Anything else falls
+        # through to the model.
+        _ct = user_text.strip().lower()
+        _clock_hit = re.search(
+            r"bây giờ (là )?mấy giờ|mấy giờ rồi|thời gian( hiện tại)?|đồng hồ|"
+            r"hôm nay (là )?(ngày )?(mấy|thứ mấy)|ngày mấy|thứ mấy|ngày mai (là )?(ngày )?(mấy)?|"
+            r"hôm qua (là )?(ngày )?(mấy)?", _ct)
+        if _clock_hit and re.search(r"laptop|máy tính|báo thức|hẹn giờ|đặt giờ", _ct) is None:
+            import datetime as _dt
+            now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=7)))
+            days = ["hai", "ba", "tư", "năm", "sáu", "bảy", "nhật"]
+            ans = ("Bây giờ là %d giờ %d phút, thứ %s ngày %d tháng %d sếp nhé."
+                   % (now.hour, now.minute, days[now.weekday()], now.day, now.month))
+            log.info("clock fast lane <- %r", user_text)
+            return await respond_text_only(request, cid, model, stream, "Dạ " + ans[0].lower() + ans[1:])
         # Two-step laptop shutdown (exact phrases only - see above).
         _ut_shutdown = user_text.strip().lower()
         _pending_at = globals().get("_shutdown_pending_at", 0.0)
