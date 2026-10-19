@@ -307,7 +307,7 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
         # also bounds context growth -> stable 3-5 s answers instead of slower nights.
         # SESSION_GEN: bump when the agent gains new tools (MCP) so the robot picks up
         # a fresh tool surface immediately instead of waiting for tomorrow.
-        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 2),
+        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 3),
     }
     if HERMES_KEY:
         headers["Authorization"] = "Bearer " + HERMES_KEY

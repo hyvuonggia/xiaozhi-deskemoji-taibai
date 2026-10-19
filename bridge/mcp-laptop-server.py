@@ -18,6 +18,23 @@ mcp = MCPServer("laptop-sensors")
 
 LAPTOP_SSH_USER_HOST = "hyvuonggia@192.168.1.185"
 
+# Allowlist shell: the ONE general execution tool. Read-only, LAN-scoped patterns only.
+# Anything not matching is refused. Adding a future capability = one line here, no new
+# tool, no gateway refresh (the tool surface never changes). Destructive verbs
+# (rm/shutdown/reboot/poweroff/dd/mkfs, pipes into shells, redirects) can NEVER match.
+ALLOW_SHELL = [
+    # LAN ping: "ping -c 3 192.168.1.106"
+    r"^ping\s+(?:-c\s+[1-4]\s+)?(?:192\.168\.1\.\d+|[a-zA-Z0-9_.-]+)\s*$",
+    # Laptop read-only sensors over SSH (no sudo, no writes, fixed command set)
+    r"^ssh\s+hyvuonggia@192\.168\.1\.185\s+(?:sensors|uptime|free -m|df -h /|cat /proc/loadavg|who|uname -a)\s*$",
+    # LAN health checks (http/https, RFC1918 only, no POST body tricks)
+    r"^curl\s+-s\s+-m\s+\d+\s+https?://192\.168\.1\.\d+(?::\d+)?(?:/[A-Za-z0-9_./-]*)?\s*$",
+    # LAN neighbor table (who is online)
+    r"^ip\s+neigh\s*$",
+]
+SHELL_TIMEOUT_S = 15.0
+SHELL_OUT_CAP = 3000
+
 
 async def _ssh_out(remote_cmd: str, timeout: float = 12.0) -> str | None:
     try:
@@ -155,6 +172,34 @@ async def web_search(query: str) -> str:
     except Exception as exc:  # noqa: BLE001
         log.warning("web_search failed: %s", exc)
         return "Tim kiem that bai, thu lai sau."
+
+
+@mcp.tool()
+async def run(command: str) -> str:
+    """Chay 1 lenh KIEM TRA (chi doc) tren cuc LXC hoac laptop qua SSH: ping may LAN,
+    xem nhiet/tai/RAM/disk laptop, kiem tra dich vu HTTP trong nha, xem may nao online.
+    CHI nhan lenh nam trong danh sach an toan (ping, sensors, uptime, free, df, curl
+    noi bo...). Moi thu khac (xoa/sua/tat may, ghi file, tai script...) deu bi tu choi.
+    Dung khi sep nho kiem tra su co thiet bi trong nha."""
+
+    if not any(re.fullmatch(pat, command.strip()) for pat in ALLOW_SHELL):
+        return ("Lenh bi tu choi (ngoai danh sach an toan chi-doc). "
+                "Neu sep can viec moi, bao sep them mau lenh vao ALLOW_SHELL.")
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout=SHELL_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            proc.kill()
+            return "Lenh qua gio %ds, da huy." % SHELL_TIMEOUT_S
+        text = out.decode("utf-8", "ignore").strip()
+        if len(text) > SHELL_OUT_CAP:
+            text = text[:SHELL_OUT_CAP] + "\n... (da cat bot)"
+        log.warning("run ALLOWED: %s -> rc=%s", command, proc.returncode)
+        return text or "(lenh xong, khong co ket qua)"
+    except Exception as exc:  # noqa: BLE001
+        return "Chay lenh that bai: %s" % exc
 
 
 if __name__ == "__main__":
