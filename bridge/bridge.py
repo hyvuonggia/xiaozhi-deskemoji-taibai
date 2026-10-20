@@ -200,27 +200,37 @@ def detect_device_action(text: str):
     return None
 
 
-async def respond_tool_action(request, cid, model, stream, action):
-    """Tra ve dung dinh dang OpenAI tool_calls de xiaozhi-server thuc thi tren thiet bi."""
-    call_id = "call_" + uuid.uuid4().hex[:16]
+async def respond_tool_action(request, cid, model, stream, action, repeat=1):
+    """Tra ve dung dinh dang OpenAI tool_calls de xiaozhi-server thuc thi tren thiet bi.
+    repeat: lap lai cung dong tac N lan (vd 'gat 3 cai' -> 3 tool_calls lien tiep)."""
+    repeat = max(1, min(5, int(repeat or 1)))
+    calls = []
+    for _ in range(repeat):
+        calls.append({
+            "id": "call_" + uuid.uuid4().hex[:16],
+            "type": "function",
+            "function": {"name": action["name"].replace(".", "_"),
+                         "arguments": json.dumps(action["arguments"], ensure_ascii=False)},
+        })
     if not stream:
         return web.json_response({
             "id": cid, "object": "chat.completion", "created": int(time.time()), "model": model,
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": None, "tool_calls": [
-                {"id": call_id, "type": "function",
-                 "function": {"name": action["name"].replace(".", "_"), "arguments": json.dumps(action["arguments"], ensure_ascii=False)}}]},
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": None, "tool_calls": calls},
                 "finish_reason": "tool_calls"}],
         })
     resp = web.StreamResponse(status=200, headers={
-        "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive",
+        "Content-Type": "text/event-stream", "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
     })
     await resp.prepare(request)
     await resp.write(chunk_frame(cid, model, {"role": "assistant"}))
-    await resp.write(chunk_frame(cid, model, {"tool_calls": [{
-        "index": 0, "id": call_id, "type": "function",
-        "function": {"name": action["name"].replace(".", "_"), "arguments": ""}}]}))
-    await resp.write(chunk_frame(cid, model, {"tool_calls": [{
-        "index": 0, "function": {"arguments": json.dumps(action["arguments"], ensure_ascii=False)}}]}))
+    for i, tc in enumerate(calls):
+        fn = tc["function"]
+        await resp.write(chunk_frame(cid, model, {"tool_calls": [{
+            "index": i, "id": tc["id"], "type": "function",
+            "function": {"name": fn["name"], "arguments": ""}}]}))
+        await resp.write(chunk_frame(cid, model, {"tool_calls": [{
+            "index": i, "function": {"arguments": fn["arguments"]}}]}))
     await resp.write(chunk_frame(cid, model, {}, finish="tool_calls"))
     await resp.write(b"data: [DONE]\n\n")
     await resp.write_eof()
@@ -501,6 +511,23 @@ _INTERNAL_JSON_TOOLS = {"handle_exit_intent": "Em chào sếp, cần gì gọi e
                         "direct_answer": ""}
 
 
+
+# Motion count: "gat 3 cai", "lac hai lan", "gat lia lia" -> how many times.
+# Only nod/shake repeat (positional moves ignore count). Capped at 5.
+_VN_NUM = {"mot": 1, "một": 1, "hai": 2, "ba": 3, "bon": 4, "bốn": 4, "nam": 5, "năm": 5,
+           "1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+
+
+def _motion_count(user_text):
+    t = user_text.strip().lower()
+    if re.search(r"lia lịa|lien tuc|liên tục|nhiều cái|nhieu cai", t):
+        return 3
+    m = re.search(r"(một|mot|hai|ba|bốn|bon|năm|nam|[1-5])\s*(cái|lần|nhịp|phát|hoi|hồi)", t)
+    if m:
+        return _VN_NUM.get(m.group(1), 1)
+    return 1
+
+
 async def handle_chat(request: web.Request) -> web.StreamResponse:
     try:
         body = await request.json()
@@ -709,8 +736,10 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                     "Rồi ạ, em vừa làm xong!",
                     "Em làm rồi sếp ơi!",
                 ]))
-            log.info("device command (%s) <- %r", forced["name"], user_text)
-            return await respond_tool_action(request, cid, model, stream, forced)
+            n = _motion_count(user_text) if forced["name"] in (
+                "self.head.nod", "self.head.shake") else 1
+            log.info("device command (%s x%d) <- %r", forced["name"], n, user_text)
+            return await respond_tool_action(request, cid, model, stream, forced, repeat=n)
 
     t0 = time.time()
     stream_mode = bool(stream) and not tool_results
