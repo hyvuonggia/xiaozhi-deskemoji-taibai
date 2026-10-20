@@ -369,7 +369,7 @@ private:
                 if (eyes_ == nullptr || !RobotEyes::IsValidStyle(style.c_str())) {
                     return std::string("unknown style, available: ") + RobotEyes::StyleNames();
                 }
-                DisplayLockGuard lock(display_);
+                // No lock: SetMood only writes state (see above).""
                 eyes_->SetMood(style.c_str());
                 return true;
             });
@@ -384,7 +384,7 @@ private:
                 std::string g = properties["gesture"].value<std::string>();
                 std::transform(g.begin(), g.end(), g.begin(), [](unsigned char c){ return std::tolower(c); });
                 if (eyes_ == nullptr) return false;
-                DisplayLockGuard lock(display_);
+                // No lock: gesture triggers only set state (see above).""
                 if (g == "blink") { eyes_->Blink(); return true; }
                 if (g == "wink") { eyes_->Wink(true); return true; }
                 if (g == "winkleft") { eyes_->Wink(false); return true; }
@@ -485,6 +485,14 @@ private:
                 }
                 const TickType_t silence =
                     xTaskGetTickCount() - self->display_beat_;
+                // While speaking the eyes freeze by design (speaker peaks are the prime
+                // I2C-glitch suspect), so a quiet heartbeat is EXPECTED - never mistake
+                // it for a hung bus and reset mid-reply.
+                if (Application::GetInstance().GetDeviceState() == kDeviceStateSpeaking) {
+                    reset_attempted = false;
+                    vTaskDelay(pdMS_TO_TICKS(2000));
+                    continue;
+                }
                 if (silence < pdMS_TO_TICKS(8000)) { // rendering fine
                     reset_attempted = false;
                     // A long healthy stretch forgives past restarts.
@@ -981,7 +989,8 @@ static void StateMonitorTask(void* arg) {
                     ESP_LOGI(TAG, "Conversation ended; resuming random expression animation");
                 }
                 if (board->eyes_) {
-                    DisplayLockGuard eyes_lock(board->display_);
+                    // No lock: SetIdleBehaviors/SetMood only flip state consumed by the
+                    // render task (benign) - never block the state machine on the display.
                     board->eyes_->SetIdleBehaviors(true);
                     board->eyes_->SetMood("relaxed");
                 }

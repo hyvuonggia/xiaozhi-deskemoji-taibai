@@ -297,7 +297,10 @@ int NoAudioCodec::Write(const int16_t* data, int samples) {
     }
 
     size_t bytes_written;
-    ESP_ERROR_CHECK(i2s_channel_write(tx_handle_, buffer.data(), samples * sizeof(int32_t), &bytes_written, portMAX_DELAY));
+    // Finite timeout: a wedged bus must cost one glitchy frame, not a hung task.
+    if (i2s_channel_write(tx_handle_, buffer.data(), samples * sizeof(int32_t), &bytes_written, pdMS_TO_TICKS(100)) != ESP_OK) {
+        return 0;
+    }
     return bytes_written / sizeof(int32_t);
 }
 
@@ -305,7 +308,7 @@ int NoAudioCodec::Read(int16_t* dest, int samples) {
     size_t bytes_read;
 
     std::vector<int32_t> bit32_buffer(samples);
-    if (i2s_channel_read(rx_handle_, bit32_buffer.data(), samples * sizeof(int32_t), &bytes_read, portMAX_DELAY) != ESP_OK) {
+    if (i2s_channel_read(rx_handle_, bit32_buffer.data(), samples * sizeof(int32_t), &bytes_read, pdMS_TO_TICKS(100)) != ESP_OK) {
         ESP_LOGE(TAG, "Read Failed!");
         return 0;
     }

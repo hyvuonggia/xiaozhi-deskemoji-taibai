@@ -11,8 +11,10 @@
 
 #include "board.h"
 
-#define AUDIO_CODEC_DMA_DESC_NUM 6
-#define AUDIO_CODEC_DMA_FRAME_NUM 240
+// Doubled after brownout-season wedges: deeper DMA survives WiFi-TX bursts
+// without underrun; costs ~46 KB internal RAM.
+#define AUDIO_CODEC_DMA_DESC_NUM 12
+#define AUDIO_CODEC_DMA_FRAME_NUM 480
 #define AUDIO_CODEC_DEFAULT_MIC_GAIN 30.0
 
 class AudioCodec {

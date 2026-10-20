@@ -118,6 +118,10 @@ public:
     int GetCurrentYAngle() const { return current_y_angle_; }
 
 private:
+    // Serializes concurrent moves (Animation prio 3, monitor/MCP prio 1):
+    // without this two moves interleave steps and the head jitters mid-motion.
+    // Only held around single PWM writes - never across vTaskDelay.
+    portMUX_TYPE mux_ = portMUX_INITIALIZER_UNLOCKED;
     // Servo angles
     int current_x_angle_ = SERVO_CENTER_X;
     int current_y_angle_ = SERVO_CENTER_Y;

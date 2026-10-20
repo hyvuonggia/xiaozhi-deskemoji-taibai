@@ -74,16 +74,20 @@ public:
     // watchdog panicking past 10 s, anything longer than that would reboot the board
     // over a stuck screen. Runtime paths should prefer DisplayTryLockGuard anyway.
     DisplayLockGuard(Display *display) : display_(display) {
-        if (!display_->Lock(2000)) {
+        locked_ = display_->Lock(2000);
+        if (!locked_) {
             ESP_LOGE("Display", "Failed to lock display");
         }
     }
     ~DisplayLockGuard() {
-        display_->Unlock();
+        if (locked_) {
+            display_->Unlock();
+        }
     }
 
 private:
     Display *display_;
+    bool locked_ = false;
 };
 
 // Best-effort twin of DisplayLockGuard for runtime paths (state machine, eye

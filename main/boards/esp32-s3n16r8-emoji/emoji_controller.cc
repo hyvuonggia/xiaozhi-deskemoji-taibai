@@ -40,7 +40,7 @@ void EmojiController::Initialize() {
         "AnimationTask",  // task name
         4096,            // stack size
         this,            // task parameter
-        5,               // task priority
+        3,               // task priority (below display/audio, above monitor)
         &animation_task_handle_  // task handle
     );
     
@@ -54,7 +54,7 @@ void EmojiController::Initialize() {
         "AnimationTimerTask",      // task name
         4096,                      // stack size
         this,                      // task parameter
-        5,                         // task priority
+        3,                         // task priority (below display/audio, above monitor)
         &animation_timer_task_handle_       // task handle
     );
     

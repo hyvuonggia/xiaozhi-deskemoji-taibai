@@ -45,6 +45,7 @@ void ServoController::Initialize() {
 }
 
 void ServoController::SetServoAngle(int channel, int angle) {
+    taskENTER_CRITICAL(&mux_);
     // Clamp the angle to the valid range
     if (channel == 0) { // Horizontal servo
         angle = std::max(SERVO_MIN_X, std::min(SERVO_MAX_X, angle));
@@ -61,6 +62,7 @@ void ServoController::SetServoAngle(int channel, int angle) {
     // Set the PWM duty cycle
     ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, servo_channels[channel], duty));
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, servo_channels[channel]));
+    taskEXIT_CRITICAL(&mux_);
 }
 
 void ServoController::HeadMove(int x_offset, int y_offset, int servo_delay) {
