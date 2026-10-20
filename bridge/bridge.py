@@ -528,9 +528,14 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     last = messages[-1] if messages else {}
     # Tool results come in two flavors: ROBOT results (self.* device motions, executed on
     # the ESP32) and SERVER results (get_laptop_temp..., executed by xiaozhi-server plugins).
-    # Both mark a confirmation turn (never re-fire motions, never forward tools again), but
-    # only robot results get the canned ack - server results need a natural answer that
-    # actually reads the returned data.
+    # CRITICAL: only results AFTER the last user message count. The server keeps old
+    # tool results in the history, and counting those silently disabled the motion router
+    # for every later command (the robot would then LIE "gật rồi" without moving).
+    # Confirmation turns still work: their tool result follows the user's message.
+    _last_user_idx = max(
+        (i for i, m in enumerate(messages) if m.get("role") == "user"),
+        default=-1)
+    _fresh = [m for m in messages[_last_user_idx + 1:]] if _last_user_idx >= 0 else list(messages)
     # Only count ROBOT tool results (self.*): xiaozhi-server also embeds its own
     # internal tool results (direct_answer, handle_exit_intent, ...) in the same request;
     # counting those would make a plain user sentence look like a confirmation turn.
@@ -552,8 +557,8 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
             return False
         return bool(name or m.get("content"))
 
-    tool_results = [m for m in messages if _is_tool_result(m)]
-    device_results = [m for m in messages if _is_device_tool_result(m)]
+    tool_results = [m for m in _fresh if _is_tool_result(m)]
+    device_results = [m for m in _fresh if _is_device_tool_result(m)]
     user_text = ""
     for m in reversed(messages):
         if m.get("role") == "user":
