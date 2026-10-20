@@ -103,6 +103,10 @@ private:
     // traffic, and saturating the bus is what used to stall the LVGL flush for seconds
     // (task watchdog + a frozen state machine on top).
     bool panel_asleep_ = false;
+    // False when the panel never initialized (dead bus): the robot then runs
+    // headless (speaker+mic+servo) and all eye-screen work is skipped instead of
+    // wedging LVGL on a dead display and tripping the task watchdog.
+    bool display_available_ = false;
     // Heartbeat published by the eyes render task after every completed frame. The
     // display supervisor below watches it: the panel I/O submits I2C transfers with
     // timeout -1 (wait forever), so electrical noise on the bus can hang a flush
@@ -223,6 +227,7 @@ private:
 
         ESP_LOGI(TAG, "Turning display on");
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_, true));
+        display_available_ = true;
 
         // Create the DisplayFonts object
         DisplayFonts display_fonts;
@@ -556,6 +561,14 @@ private:
     // Enter / leave the expressive-eyes mode - shared by the BOOT long press and startup
     void EnterEmojiMode(bool show_notification) {
         is_emoji_mode_ = true;
+        if (!display_available_) {
+            // Headless: no eye screen, no notifications - but the neck still works.
+            ESP_LOGW(TAG, "EnterEmojiMode: no display, staying headless");
+            if (servo_controller_) {
+                servo_controller_->HeadCenter();
+            }
+            return;
+        }
         if (!eyes_screen_ && ui_ready_) {
             CreateEyesScreen();
         }
@@ -586,6 +599,10 @@ private:
     void SwitchScreen(bool to_emoji_mode) {
         // Servo first (needs no display lock), screen load best-effort: skipping a
         // screen switch under contention is harmless, blocking 30 s is not.
+        // Headless (dead panel): nothing to switch, servo already centered above.
+        if (!display_available_) {
+            return;
+        }
         if (to_emoji_mode) {
             if (servo_controller_) {
                 servo_controller_->HeadCenter();
@@ -658,8 +675,12 @@ public:
         // makes SetupUI parent its opaque, full-size container to the eye screen, which
         // then covers the canvas and leaves the OLED looking blank. So: start the
         // renderer now, create and load the eye screen once the UI exists.
-        StartEyesTask();
-        StartDisplaySupervisorTask();
+        if (display_available_) {
+            StartEyesTask();
+            StartDisplaySupervisorTask();
+        } else {
+            ESP_LOGW(TAG, "Display unavailable: eyes + supervisor disabled (headless mode)");
+        }
         xTaskCreate([](void* arg) {
             EmojiBoard* self = static_cast<EmojiBoard*>(arg);
             vTaskDelay(pdMS_TO_TICKS(3000));   // let Application::Start()/SetupUI finish
