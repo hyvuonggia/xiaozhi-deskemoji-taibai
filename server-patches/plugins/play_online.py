@@ -33,25 +33,21 @@ PLAY_ONLINE_DESC = {
 }
 
 _MUSIC_DIR = "/opt/xiaozhi-esp32-server/data/music"
-_MAX_CACHE_MB = 500
+_MAX_KEEP_SONGS = 5
 
 
 def _enforce_cache_cap(keep=None):
-    """Keep the music cache under the cap: evict oldest downloads first."""
+    """Keep at most _MAX_KEEP_SONGS files: evict oldest downloads first, never the new one."""
     try:
         entries = []
         for f in os.listdir(_MUSIC_DIR):
             fp = os.path.join(_MUSIC_DIR, f)
-            if os.path.isfile(fp) and fp != keep:
+            if os.path.isfile(fp) and os.path.abspath(fp) != os.path.abspath(keep or ""):
                 entries.append((os.path.getmtime(fp), fp))
-        total = sum(os.path.getsize(fp) for _, fp in entries)
-        if keep and os.path.isfile(keep):
-            total += os.path.getsize(keep)
-        for _, fp in sorted(entries):
-            if total <= _MAX_CACHE_MB * 1024 * 1024:
-                break
+        entries.sort()
+        while len(entries) >= _MAX_KEEP_SONGS:
+            _, fp = entries.pop(0)
             try:
-                total -= os.path.getsize(fp)
                 os.remove(fp)
             except OSError:
                 pass
