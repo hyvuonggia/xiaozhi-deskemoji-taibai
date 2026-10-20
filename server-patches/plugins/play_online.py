@@ -33,6 +33,30 @@ PLAY_ONLINE_DESC = {
 }
 
 _MUSIC_DIR = "/opt/xiaozhi-esp32-server/data/music"
+_MAX_CACHE_MB = 500
+
+
+def _enforce_cache_cap(keep=None):
+    """Keep the music cache under the cap: evict oldest downloads first."""
+    try:
+        entries = []
+        for f in os.listdir(_MUSIC_DIR):
+            fp = os.path.join(_MUSIC_DIR, f)
+            if os.path.isfile(fp) and fp != keep:
+                entries.append((os.path.getmtime(fp), fp))
+        total = sum(os.path.getsize(fp) for _, fp in entries)
+        if keep and os.path.isfile(keep):
+            total += os.path.getsize(keep)
+        for _, fp in sorted(entries):
+            if total <= _MAX_CACHE_MB * 1024 * 1024:
+                break
+            try:
+                total -= os.path.getsize(fp)
+                os.remove(fp)
+            except OSError:
+                pass
+    except OSError:
+        pass
 
 
 def _safe_name(query):
@@ -94,5 +118,6 @@ async def play_online(conn: "ConnectionHandler", query: str = None):
         _pm.MUSIC_CACHE["music_files"] = []
         _pm.MUSIC_CACHE["scan_time"] = 0
         _pm.MUSIC_CACHE["refresh_time"] = 300
+    _enforce_cache_cap(keep=target)
     await _pm.play_local_music(conn, specific_file=os.path.basename(target))
     return ActionResponse(Action.REQLLM, "Dang phat bai %s, sep thuong thuc nhe." % query.strip(), None)
