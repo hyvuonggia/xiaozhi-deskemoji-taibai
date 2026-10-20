@@ -317,18 +317,36 @@ private:
             });
 
         mcp.AddTool("self.head.nod",
-            "Move the head up and down (nodding): agreement, greeting or saying yes.",
-            PropertyList(),
-            [emotion](const PropertyList&) -> ReturnValue {
-                emotion->TriggerEmotion("nod");
+            "Move the head up and down (nodding): agreement, greeting or saying yes. "
+            "Optional times (1-5, default 1): how many nods.",
+            PropertyList({
+                Property("times", kPropertyTypeInteger, 1, 1, 5)
+            }),
+            [emotion](const PropertyList& properties) -> ReturnValue {
+                int times = 1;
+                try { times = properties["times"].value<int>(); } catch (...) {}
+                if (times < 1) times = 1;
+                if (times > 5) times = 5;
+                for (int i = 0; i < times; i++) {
+                    emotion->TriggerEmotion("nod");
+                }
                 return true;
             });
 
         mcp.AddTool("self.head.shake",
-            "Move the head left and right (shaking): disagreement, refusal or saying no.",
-            PropertyList(),
-            [emotion](const PropertyList&) -> ReturnValue {
-                emotion->TriggerEmotion("shake");
+            "Move the head left and right (shaking): disagreement, refusal or saying no. "
+            "Optional times (1-5, default 1): how many shakes.",
+            PropertyList({
+                Property("times", kPropertyTypeInteger, 1, 1, 5)
+            }),
+            [emotion](const PropertyList& properties) -> ReturnValue {
+                int times = 1;
+                try { times = properties["times"].value<int>(); } catch (...) {}
+                if (times < 1) times = 1;
+                if (times > 5) times = 5;
+                for (int i = 0; i < times; i++) {
+                    emotion->TriggerEmotion("shake");
+                }
                 return true;
             });
 

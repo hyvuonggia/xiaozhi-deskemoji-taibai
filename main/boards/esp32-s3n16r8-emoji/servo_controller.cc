@@ -87,6 +87,7 @@ void ServoController::HeadMove(int x_offset, int y_offset, int servo_delay) {
 }
 
 void ServoController::HeadNod(int servo_delay) {
+    ESP_LOGI(TAG, "HeadNod start (delay=%d)", servo_delay);
     // Ensure a minimum delay value
     int actual_delay = std::max(10, servo_delay);
     
@@ -113,6 +114,7 @@ void ServoController::HeadNod(int servo_delay) {
 }
 
 void ServoController::HeadShake(int servo_delay) {
+    ESP_LOGI(TAG, "HeadShake start (delay=%d)", servo_delay);
     // Ensure a minimum delay value
     int actual_delay = std::max(10, servo_delay);
     
