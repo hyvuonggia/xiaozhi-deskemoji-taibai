@@ -107,6 +107,8 @@ private:
     // headless (speaker+mic+servo) and all eye-screen work is skipped instead of
     // wedging LVGL on a dead display and tripping the task watchdog.
     bool display_available_ = false;
+    bool eyes_tasks_started_ = false;
+    bool supervisor_started_ = false;
     // Heartbeat published by the eyes render task after every completed frame. The
     // display supervisor below watches it: the panel I/O submits I2C transfers with
     // timeout -1 (wait forever), so electrical noise on the bus can hang a flush
@@ -220,9 +222,12 @@ private:
             vTaskDelay(pdMS_TO_TICKS(300));
         }
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize display");
-            display_ = new NoDisplay();
-            return;
+            ESP_LOGW(TAG, "Display init failed 5x, trying software bus recovery");
+            if (!RecoverDisplay()) {
+                ESP_LOGE(TAG, "Failed to initialize display");
+                display_ = new NoDisplay();
+                return;
+            }
         }
 
         ESP_LOGI(TAG, "Turning display on");
@@ -410,6 +415,46 @@ private:
     // Switch the screen
     // Create the screen for the OliEyes engine (white background / black shapes,
     // which renders as a dark background with lit eyes on this inverted panel)
+    // Software bus recovery: a latched slave (or a brownout-dazed panel) can hold
+    // the bus dead across soft resets. A bus reset aborts any in-flight transfer,
+    // then reset+init+on re-arms the glass - all without touching a single wire.
+    bool RecoverDisplay() {
+        if (display_i2c_bus_ == nullptr || panel_ == nullptr) {
+            return false;
+        }
+        if (i2c_master_bus_reset(display_i2c_bus_) != ESP_OK) {
+            ESP_LOGW(TAG, "RecoverDisplay: bus reset failed");
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (esp_lcd_panel_reset(panel_) != ESP_OK ||
+            esp_lcd_panel_init(panel_) != ESP_OK ||
+            esp_lcd_panel_disp_on_off(panel_, true) != ESP_OK) {
+            ESP_LOGW(TAG, "RecoverDisplay: panel did not come back");
+            return false;
+        }
+        ESP_LOGI(TAG, "RecoverDisplay: panel back on");
+        return true;
+    }
+
+    // (Re)start the eye pipeline exactly once - used at boot and when a dead panel
+    // recovers mid-life (wake word while headless).
+    void BringUpEyes() {
+        if (eyes_tasks_started_) {
+            return;
+        }
+        eyes_tasks_started_ = true;
+        CreateEyesScreen();
+        StartEyesTask();
+    }
+
+    void BringUpSupervisor() {
+        if (supervisor_started_) {
+            return;
+        }
+        supervisor_started_ = true;
+        StartDisplaySupervisorTask();
+    }
+
     void CreateEyesScreen() {
         DisplayLockGuard lock(display_);
         eyes_screen_ = lv_obj_create(nullptr);
@@ -676,8 +721,8 @@ public:
         // then covers the canvas and leaves the OLED looking blank. So: start the
         // renderer now, create and load the eye screen once the UI exists.
         if (display_available_) {
-            StartEyesTask();
-            StartDisplaySupervisorTask();
+            BringUpEyes();
+            BringUpSupervisor();
         } else {
             ESP_LOGW(TAG, "Display unavailable: eyes + supervisor disabled (headless mode)");
         }
@@ -867,6 +912,21 @@ static void StateMonitorTask(void* arg) {
         // Log the device state when it changes
         if (current_state != last_state) {
             ESP_LOGI(TAG, "Device state changed: %d -> %d", last_state, current_state);
+            // Headless (dead panel at boot) + boss is back: try software recovery now -
+            // this is the moment he is watching. On success the full face comes back.
+            if (last_state == kDeviceStateIdle && !board->display_available_ &&
+                board->panel_ != nullptr) {
+                ESP_LOGI(TAG, "Wake while headless: attempting display recovery");
+                if (board->RecoverDisplay()) {
+                    board->display_available_ = true;
+                    board->BringUpEyes();
+                    board->BringUpSupervisor();
+                    if (board->eyes_ != nullptr) {
+                        board->eyes_->ForceRedraw();
+                        board->eyes_->Blink();
+                    }
+                }
+            }
             // Leaving idle (wake word, button, ...) while the panel is asleep means
             // the boss is back: power the screen up again before anything else draws.
             if (last_state == kDeviceStateIdle && board->panel_asleep_ && board->panel_ != nullptr) {
