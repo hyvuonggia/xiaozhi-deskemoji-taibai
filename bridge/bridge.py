@@ -674,9 +674,18 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         if _clock_hit and re.search(r"laptop|máy tính|báo thức|hẹn giờ|đặt giờ", _ct) is None:
             import datetime as _dt
             now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=7)))
+            _off = -1 if re.search(r"hôm qua|hôm trưoc|hôm trước", _ct) else (1 if re.search(r"ngày mai", _ct) else 0)
+            tgt = now + _dt.timedelta(days=_off)
             days = ["hai", "ba", "tư", "năm", "sáu", "bảy", "nhật"]
-            ans = ("Bây giờ là %d giờ %d phút, thứ %s ngày %d tháng %d sếp nhé."
-                   % (now.hour, now.minute, days[now.weekday()], now.day, now.month))
+            if _off == -1:
+                ans = ("Hôm qua là thứ %s ngày %d tháng %d sếp nhé."
+                       % (days[tgt.weekday()], tgt.day, tgt.month))
+            elif _off == 1:
+                ans = ("Ngày mai là thứ %s ngày %d tháng %d sếp nhé."
+                       % (days[tgt.weekday()], tgt.day, tgt.month))
+            else:
+                ans = ("Bây giờ là %d giờ %d phút, thứ %s ngày %d tháng %d sếp nhé."
+                       % (now.hour, now.minute, days[now.weekday()], now.day, now.month))
             log.info("clock fast lane <- %r", user_text)
             return await respond_text_only(request, cid, model, stream, "Dạ " + ans[0].lower() + ans[1:])
         # Two-step laptop shutdown (exact phrases only - see above).
