@@ -76,6 +76,11 @@ Thời tiết Sài Gòn (mưa/nắng/nóng/lạnh ngoài trời):
 ```json
 {"tool": "get_weather_vn", "arguments": {}}
 ```
+Giờ + ngày hiện tại (giờ VN; hỏi giờ/ngày/thứ/hôm nay/hôm qua/ngày mai):
+```json
+{"tool": "get_now", "arguments": {}}
+```
+Tool trả về giờ hiện tại, em TỰ tính hôm qua (trừ 1) / ngày mai (cộng 1) rồi trả lời.
 
 Mic dùng ASR tiếng Việt (PhoWhisper) nên từ tiếng Anh có thể bị viết sai theo phiên âm tiếng Việt \
 (vd: wifi → "oai phây", bluetooth → "bưu thôn", app → "áp", email → "in ấy", check → "trách", Spotify → "sạch phây", YouTube → "du túp", Google → "gu gồ"). \
@@ -663,31 +668,6 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         globals()["_last_motion_time"] = _last_motion
         return False
     if not tool_results:
-        # Clock fast lane: the bridge knows the exact local time, no model needed.
-        # Matches time/date questions (exact, instant, never stale). Anything else falls
-        # through to the model.
-        _ct = user_text.strip().lower()
-        _clock_hit = re.search(
-            r"bây giờ (là )?mấy giờ|mấy giờ rồi|thời gian( hiện tại)?|đồng hồ|"
-            r"hôm nay (là )?(ngày )?(mấy|thứ mấy)|ngày mấy|thứ mấy|ngày mai (là )?(ngày )?(mấy)?|"
-            r"hôm qua (là )?(ngày )?(mấy)?", _ct)
-        if _clock_hit and re.search(r"laptop|máy tính|báo thức|hẹn giờ|đặt giờ", _ct) is None:
-            import datetime as _dt
-            now = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=7)))
-            _off = -1 if re.search(r"hôm qua|hôm trưoc|hôm trước", _ct) else (1 if re.search(r"ngày mai", _ct) else 0)
-            tgt = now + _dt.timedelta(days=_off)
-            days = ["hai", "ba", "tư", "năm", "sáu", "bảy", "nhật"]
-            if _off == -1:
-                ans = ("Hôm qua là thứ %s ngày %d tháng %d sếp nhé."
-                       % (days[tgt.weekday()], tgt.day, tgt.month))
-            elif _off == 1:
-                ans = ("Ngày mai là thứ %s ngày %d tháng %d sếp nhé."
-                       % (days[tgt.weekday()], tgt.day, tgt.month))
-            else:
-                ans = ("Bây giờ là %d giờ %d phút, thứ %s ngày %d tháng %d sếp nhé."
-                       % (now.hour, now.minute, days[now.weekday()], now.day, now.month))
-            log.info("clock fast lane <- %r", user_text)
-            return await respond_text_only(request, cid, model, stream, "Dạ " + ans[0].lower() + ans[1:])
         # Two-step laptop shutdown (exact phrases only - see above).
         _ut_shutdown = user_text.strip().lower()
         _pending_at = globals().get("_shutdown_pending_at", 0.0)
