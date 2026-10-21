@@ -308,7 +308,7 @@ int NoAudioCodec::Read(int16_t* dest, int samples) {
     size_t bytes_read;
 
     std::vector<int32_t> bit32_buffer(samples);
-    if (i2s_channel_read(rx_handle_, bit32_buffer.data(), samples * sizeof(int32_t), &bytes_read, pdMS_TO_TICKS(100)) != ESP_OK) {
+    if (i2s_channel_read(rx_handle_, bit32_buffer.data(), samples * sizeof(int32_t), &bytes_read, pdMS_TO_TICKS(500)) != ESP_OK) {
         ESP_LOGE(TAG, "Read Failed!");
         return 0;
     }

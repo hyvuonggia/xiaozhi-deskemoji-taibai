@@ -207,6 +207,10 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
 }
 
 void AudioService::AudioInputTask() {
+    // A failed I2S read (cold DMA pipeline, EMI burst) must not stop the mic:
+    // skip the slice, keep listening. Only give up after ~16 s of continuous
+    // failure (persistent hardware fault).
+    int read_fail_streak_ = 0;
     while (true) {
         EventBits_t bits = xEventGroupWaitBits(event_group_, AS_EVENT_AUDIO_TESTING_RUNNING |
             AS_EVENT_WAKE_WORD_RUNNING | AS_EVENT_AUDIO_PROCESSOR_RUNNING,
@@ -240,6 +244,7 @@ void AudioService::AudioInputTask() {
                     data = std::move(mono_data);
                 }
                 PushTaskToEncodeQueue(kAudioTaskTypeEncodeToTestingQueue, std::move(data));
+                read_fail_streak_ = 0;
                 continue;
             }
         }
@@ -251,6 +256,7 @@ void AudioService::AudioInputTask() {
             if (samples > 0) {
                 if (ReadAudioData(data, 16000, samples)) {
                     wake_word_->Feed(data);
+                    read_fail_streak_ = 0;
                     continue;
                 }
             }
@@ -263,13 +269,20 @@ void AudioService::AudioInputTask() {
             if (samples > 0) {
                 if (ReadAudioData(data, 16000, samples)) {
                     audio_processor_->Feed(std::move(data));
+                    read_fail_streak_ = 0;
                     continue;
                 }
             }
         }
 
-        ESP_LOGE(TAG, "Should not be here, bits: %lx", bits);
-        break;
+        if (++read_fail_streak_ >= 500) {
+            ESP_LOGE(TAG, "Audio input dead after 500 failed reads, bits: %lx", bits);
+            break;
+        }
+        if (read_fail_streak_ == 1 || read_fail_streak_ % 100 == 0) {
+            ESP_LOGW(TAG, "Audio read failed x%d, bits: %lx (skipping slice)", read_fail_streak_, bits);
+        }
+        continue;
     }
 
     ESP_LOGW(TAG, "Audio input task stopped");
