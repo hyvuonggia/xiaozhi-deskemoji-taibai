@@ -68,9 +68,13 @@ LUẬT SỐ 1 (quan trọng nhất, mọi mô tả khác về thiết bị đề
 - Nội dung TỐI ĐA 2 câu ngắn (khoảng 25 từ), đi thẳng vào ý, không liệt kê dài dòng — vì mỗi chữ phải chờ robot đọc xong.
 - TUYỆT ĐỐI KHÔNG tự ý dùng công cụ riêng của bạn trong lượt nói: không chạy lệnh hệ thống, không đọc/ghi file, không tìm web, không gọi HTTP/curl, không viết script. Lượt nói chỉ có vài giây — tự ý dùng công cụ riêng là robot đứng im rồi báo lỗi. NGOẠI LỆ DUY NHẤT: được gọi các công cụ đã được cấp sẵn trong danh sách tools (ví dụ get_laptop_temp để đo nhiệt độ laptop) — đó là tay chân chính thức của robot, gọi thoải mái.
 - Muốn điều khiển robot thì CHỈ trả về đúng khối JSON theo quy ước ở dưới (hoặc gọi công cụ thiết bị đã được cấp sẵn). Câu chuyện trò bình thường thì trả lời bằng lời, không gọi gì cả.
-- Riêng các công cụ TRA CỨU thông tin (không phải động tác, ví dụ get_laptop_temp để đo nhiệt độ laptop): khi sếp hỏi tới thì trả về DUY NHẤT một khối JSON như sau, không thêm chữ nào khác (hệ thống sẽ chạy tool thật rồi đưa kết quả cho em nói lại ở lượt sau):
+- Riêng các công cụ TRA CỨU thông tin (không phải động tác): khi sếp hỏi tới thì trả về DUY NHẤT một khối JSON như sau, không thêm chữ nào khác (hệ thống sẽ chạy tool thật rồi đưa kết quả cho em nói lại ở lượt sau). Nhiệt độ laptop:
 ```json
 {"tool": "get_laptop_temp", "arguments": {}}
+```
+Thời tiết Sài Gòn (mưa/nắng/nóng/lạnh ngoài trời):
+```json
+{"tool": "get_weather_vn", "arguments": {}}
 ```
 
 Mic dùng ASR tiếng Việt (PhoWhisper) nên từ tiếng Anh có thể bị viết sai theo phiên âm tiếng Việt \
@@ -317,7 +321,7 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
         # also bounds context growth -> stable 3-5 s answers instead of slower nights.
         # SESSION_GEN: bump when the agent gains new tools (MCP) so the robot picks up
         # a fresh tool surface immediately instead of waiting for tomorrow.
-        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 3),
+        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 5),
     }
     if HERMES_KEY:
         headers["Authorization"] = "Bearer " + HERMES_KEY
@@ -694,28 +698,6 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                     "Dạ em không tắt được laptop sếp ạ, sếp kiểm tra lại giúp em.")
             # Anything else cancels the pending shutdown: the boss moved on.
             globals()["_shutdown_pending_at"] = 0.0
-        # TEMPORARY first-aid: instant laptop-temp answer while the gateway hasn't
-        # picked up the MCP tool yet (gateway restart must come from outside this
-        # session). Remove once the agent calls get_laptop_temp natively.
-        _lt = user_text.lower()
-        if (re.search(r"nhiệt độ|mấy độ|bao nhiêu độ|nóng", _lt) is not None and
-                re.search(r"laptop|máy tính", _lt) is not None):
-            temp = await read_laptop_temp()
-            if temp is None:
-                return await respond_text_only(request, cid, model, stream,
-                    "Dạ em không thấy laptop trên mạng sếp ạ.")
-            return await respond_text_only(request, cid, model, stream,
-                "Dạ CPU laptop đang khoảng %d độ sếp nhé." % round(temp))
-        # Weather (Open-Meteo, keyless): outside temperature/rain, NOT the laptop
-        # (laptop questions returned above). 1 HTTP call, ~1 s, no LLM round-trip.
-        _wt = user_text.lower()
-        if (re.search(r"thời tiết|mưa|nắng|bão|dông|độ ẩm|nhiệt độ|mấy độ|bao nhiêu độ", _wt) is not None
-                and re.search(r"laptop|máy tính", _wt) is None):
-            w = await read_weather()
-            if w is None:
-                return await respond_text_only(request, cid, model, stream,
-                    "Dạ em không coi được thời tiết lúc này sếp ạ.")
-            return await respond_text_only(request, cid, model, stream, "Dạ, " + w)
         gesture = detect_eye_gesture(user_text)
         if gesture:
             if _debounced("eyes." + gesture):
@@ -736,10 +718,14 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                     "Rồi ạ, em vừa làm xong!",
                     "Em làm rồi sếp ơi!",
                 ]))
+            # Count travels INSIDE one call (arguments.times): the server was observed
+            # dropping multi-call responses, and one call always executes. Firmware loops.
             n = _motion_count(user_text) if forced["name"] in (
                 "self.head.nod", "self.head.shake") else 1
+            if n > 1:
+                forced = {"name": forced["name"], "arguments": {"times": n}}
             log.info("device command (%s x%d) <- %r", forced["name"], n, user_text)
-            return await respond_tool_action(request, cid, model, stream, forced, repeat=n)
+            return await respond_tool_action(request, cid, model, stream, forced)
 
     t0 = time.time()
     stream_mode = bool(stream) and not tool_results

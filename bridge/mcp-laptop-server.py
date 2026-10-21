@@ -125,6 +125,57 @@ async def wiki_lookup(query: str) -> str:
 # web_search MCP tool uses it; otherwise the tool reports itself unavailable.
 SEARXNG_URL = "http://192.168.1.106:8888"
 
+# Weather: Open-Meteo, no key. Default = Saigon; change once the boss confirms city.
+WEATHER_LAT = 10.7626
+WEATHER_LON = 106.6602
+WEATHER_PLACE = "Sai Gon"
+_WEATHER_CODE_VI = {
+    0: "troi quang", 1: "troi quang", 2: "may rai rac", 3: "nhieu may",
+    45: "suong mu", 48: "suong mu", 51: "mua phun", 53: "mua phun", 55: "mua phun",
+    61: "mua nho", 63: "mua vua", 65: "mua to", 80: "mua rao", 81: "mua rao",
+    82: "mua rat to", 95: "dong", 96: "dong kem mua da", 99: "dong kem mua da",
+}
+
+
+@mcp.tool()
+async def get_weather() -> str:
+    """Xem thoi tiet NGOAI TROI hien tai + hom nay (nhiet do, mua/nang, kha nang mua).
+    Mac dinh Sai Gon; dung khi sep hoi thoi tiet, mua, nang, nhiet do ngoai troi.
+    Khong lien quan nhiet do laptop (viec do cua get_laptop_temp)."""
+    import urllib.parse as _up3
+    import urllib.request as _url3
+
+    try:
+        url = ("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
+               "&current=temperature_2m,weather_code&daily=temperature_2m_max,"
+               "temperature_2m_min,precipitation_probability_max&timezone=Asia%%2FHo_Chi_Minh"
+               % (WEATHER_LAT, WEATHER_LON))
+
+        def _get():
+            req = _url3.Request(url, headers={"User-Agent": "HermesBot/1.0"})
+            with _url3.urlopen(req, timeout=12) as r:
+                return json.loads(r.read().decode("utf-8", "ignore"))
+
+        data = await asyncio.to_thread(_get)
+        cur = data.get("current") or {}
+        daily = data.get("daily") or {}
+        t = cur.get("temperature_2m")
+        if t is None:
+            return "Khong coi duoc thoi tiet luc nay."
+        desc = _WEATHER_CODE_VI.get(cur.get("weather_code"), "nhieu may")
+        tmax = (daily.get("temperature_2m_max") or [None])[0]
+        tmin = (daily.get("temperature_2m_min") or [None])[0]
+        rain = (daily.get("precipitation_probability_max") or [None])[0]
+        parts = ["%s hien %s, khoang %.0f do" % (WEATHER_PLACE, desc, t)]
+        if tmax is not None and tmin is not None:
+            parts.append("ngay %.0f den %.0f do" % (tmin, tmax))
+        if rain is not None and rain >= 40:
+            parts.append("kha nang mua %d%%" % rain)
+        return "Thoi tiet: " + ", ".join(parts) + "."
+    except Exception as exc:  # noqa: BLE001
+        log.warning("get_weather failed: %s", exc)
+        return "Khong coi duoc thoi tiet luc nay."
+
 
 @mcp.tool()
 async def web_search(query: str) -> str:
