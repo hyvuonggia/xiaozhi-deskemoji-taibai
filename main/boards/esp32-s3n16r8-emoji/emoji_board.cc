@@ -456,8 +456,8 @@ private:
         StartDisplaySupervisorTask();
     }
 
-    // Best-effort state readout ( Vietnamese, 1 line). Skips when the display is
-    // busy - a stale word beats a stalled state machine.
+    // Best-effort state icon (Font Awesome, 1 glyph). Skips when the display is
+    // busy - a stale icon beats a stalled state machine.
     void SetStatusText(const char* text) {
         if (status_label_ == nullptr || display_ == nullptr) {
             return;
@@ -482,9 +482,9 @@ private:
         status_label_ = lv_label_create(eyes_screen_);
         lv_obj_set_width(status_label_, DISPLAY_WIDTH);
         lv_obj_set_style_text_align(status_label_, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_text_font(status_label_, &font_puhui_14_1, 0);
+        lv_obj_set_style_text_font(status_label_, &font_awesome_14_1, 0);
         lv_obj_align(status_label_, LV_ALIGN_BOTTOM_MID, 0, -1);
-        lv_label_set_text(status_label_, "Chờ");
+        lv_label_set_text(status_label_, "\xEF\x80\x8C");  // check = ready
     }
 
     // Eye rendering task at ~10 fps: plenty smooth for a 128x64 OLED, and 3x less I2C
@@ -1001,10 +1001,10 @@ static void StateMonitorTask(void* arg) {
                     board->servo_controller_->HeadUp(10);   // tilt the head slightly up: "I am listening to the boss"
                 }
                 ESP_LOGI(TAG, "Listening: eyes=curious, head slightly up");
-                board->SetStatusText("Đang nghe");
+                board->SetStatusText("\xEF\x84\xB0");  // microphone = listening
             } else if (current_state == kDeviceStateSpeaking) {
                 ESP_LOGI(TAG, "Speaking: eyes/head follow the assistant emotion");
-                board->SetStatusText("Đang nói");
+                board->SetStatusText("\xEF\x80\xA8");  // speaker = talking
             }
         }
         // Speaking/listening without coming from idle means the conversation is continuing
@@ -1087,7 +1087,7 @@ static void StateMonitorTask(void* arg) {
             if (in_conversation && 
                 ((current_time - last_speak_end_time) > pdMS_TO_TICKS(3000))) {
                 in_conversation = false;
-                board->SetStatusText("Chờ");
+                board->SetStatusText("\xEF\x80\x8C");  // check = ready
 
                 // Resume the random expression animation
                 if (board->emoji_controller_) {
