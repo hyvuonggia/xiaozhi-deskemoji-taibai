@@ -481,15 +481,22 @@ private:
         gpio_set_level(DISPLAY_I2C_SDA_PIN, 1);
         gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
         esp_rom_delay_us(10);
-        for (int i = 0; i < 18; i++) {
+        // Count only REAL rising edges: a slave stuck in clock-stretch holds SCL
+        // low, and blind pulses would do nothing while claiming success.
+        int edges = 0;
+        for (int i = 0; i < 60 && edges < 18; i++) {
             gpio_set_level(DISPLAY_I2C_SCL_PIN, 0);
             esp_rom_delay_us(10);
             gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
             esp_rom_delay_us(10);
-            if (gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1) {
-                break;
+            if (gpio_get_level(DISPLAY_I2C_SCL_PIN) == 1) {
+                edges++;
+                if (gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1) {
+                    break;
+                }
             }
         }
+        ESP_LOGI(TAG, "ClockOut: %d real SCL edges", edges);
         // STOP: SDA rises while SCL is high.
         gpio_set_level(DISPLAY_I2C_SDA_PIN, 0);
         esp_rom_delay_us(10);
