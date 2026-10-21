@@ -731,6 +731,13 @@ public:
         // iot::SetGlobalEmotionController(emotion_controller_);
         
         InitializeButtons();
+        // Speaker bursts are the prime bus-glitch suspect and the amp sits on the
+        // 3V3 rail: cap the boot volume at 50 (the boss can still crank it up with
+        // the button - his choice, his crash).
+        if (GetAudioCodec() != nullptr && GetAudioCodec()->output_volume() > 50) {
+            GetAudioCodec()->SetOutputVolume(50);
+            ESP_LOGI(TAG, "Boot volume clamped to 50 for rail stability");
+        }
         InitializeIot();
         
         // Boot straight into the expressive-eyes mode and stay there.
@@ -1297,7 +1304,10 @@ void EmojiDisplay::SetEmotion(const char* emotion) {
 
         // Switch the OliEyes mood from the emotion (the animation/servo pipeline is untouched)
         // No lock: SetMoodForEmotion only writes state consumed by the render task.
-        if (board_ && board_->eyes_) {
+        // While speaking the eyes hold their face: a redraw per sentence lands exactly
+        // on the speaker current bursts. Servo acting below continues (PWM, no bus).
+        if (board_ && board_->eyes_ &&
+            Application::GetInstance().GetDeviceState() != kDeviceStateSpeaking) {
             board_->eyes_->SetMoodForEmotion(mapped_emotion.c_str());
         }
         
