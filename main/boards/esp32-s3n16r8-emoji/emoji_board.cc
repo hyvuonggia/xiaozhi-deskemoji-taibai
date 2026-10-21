@@ -473,6 +473,40 @@ private:
         ESP_LOGI(TAG, "I2C scan done");
     }
 
+    // Hand-driven I2C probe: START + addr+W + sample ACK + STOP, all GPIO.
+    bool BitBangProbe(int addr) {
+        auto scl = DISPLAY_I2C_SCL_PIN, sda = DISPLAY_I2C_SDA_PIN;
+        gpio_set_level(sda, 1);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(10);
+        gpio_set_level(sda, 0);  // START
+        esp_rom_delay_us(10);
+        gpio_set_level(scl, 0);
+        int byte = (addr << 1) & 0xFE;  // write
+        for (int i = 7; i >= 0; i--) {
+            gpio_set_level(sda, (byte >> i) & 1);
+            esp_rom_delay_us(5);
+            gpio_set_level(scl, 1);
+            esp_rom_delay_us(10);
+            gpio_set_level(scl, 0);
+            esp_rom_delay_us(5);
+        }
+        gpio_set_level(sda, 1);  // release for ACK
+        esp_rom_delay_us(5);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(10);
+        bool ack = (gpio_get_level(sda) == 0);
+        gpio_set_level(scl, 0);
+        esp_rom_delay_us(5);
+        gpio_set_level(sda, 0);  // STOP
+        esp_rom_delay_us(5);
+        gpio_set_level(scl, 1);
+        esp_rom_delay_us(5);
+        gpio_set_level(sda, 1);
+        esp_rom_delay_us(5);
+        return ack;
+    }
+
     // Free a slave-wedged I2C bus without touching wires: up to 18 SCL pulses
     // let the stuck chip finish its byte and release SDA, then a STOP re-arms it.
     // The I2C driver is torn down and rebuilt, so panel_io_/panel_ are recreated.
@@ -528,6 +562,13 @@ private:
         esp_rom_delay_us(10);
         bool released = (gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1);
         ESP_LOGI(TAG, "ClockOut: SDA %s", released ? "released" : "STILL HELD");
+        // Decisive test: ask 0x3C by hand (pure GPIO, no driver involved). ACK =
+        // the glass is alive and our own I2C peripheral is the corpse; NACK =
+        // the glass is truly silent.
+        if (released) {
+            bool ack = BitBangProbe(0x3C);
+            ESP_LOGI(TAG, "BitBang probe 0x3C: %s", ack ? "ACK (glass alive!)" : "NACK");
+        }
         gpio_reset_pin(DISPLAY_I2C_SDA_PIN);
         gpio_reset_pin(DISPLAY_I2C_SCL_PIN);
         if (!released) {
