@@ -1039,6 +1039,22 @@ static void StateMonitorTask(void* arg) {
                 board->SetStatusText("\xEF\x80\xA8");  // speaker = talking
             }
         }
+        // Mid-conversation turns (speaking <-> listening without touching idle):
+        // the blocks above only fire on conversation ENTRY, so follow-up turns
+        // would freeze the icon mid-flow. Follow every transition instead.
+        else if (last_state != current_state &&
+                 (current_state == kDeviceStateSpeaking || current_state == kDeviceStateListening)) {
+            if (current_state == kDeviceStateListening) {
+                board->SetStatusText("\xEF\x84\xB0");  // microphone = listening
+                set_eyes_idle(false);
+                set_eyes_mood("curious");
+                if (board->servo_controller_ != nullptr) {
+                    board->servo_controller_->HeadUp(10);
+                }
+            } else {
+                board->SetStatusText("\xEF\x80\xA8");  // speaker = talking
+            }
+        }
         
         // A transition from speaking to idle means the AI has just finished replying
         if (last_state == kDeviceStateSpeaking && current_state == kDeviceStateIdle) {
