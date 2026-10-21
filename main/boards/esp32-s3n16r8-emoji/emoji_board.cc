@@ -530,6 +530,10 @@ private:
         panel_ = nullptr;
         gpio_set_direction(DISPLAY_I2C_SDA_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
         gpio_set_direction(DISPLAY_I2C_SCL_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
+        // The driver's internal pull-ups died with it: re-enable, or the floating
+        // lines make every sample meaningless.
+        gpio_set_pull_mode(DISPLAY_I2C_SDA_PIN, GPIO_PULLUP_ONLY);
+        gpio_set_pull_mode(DISPLAY_I2C_SCL_PIN, GPIO_PULLUP_ONLY);
         gpio_set_level(DISPLAY_I2C_SDA_PIN, 1);
         gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
         esp_rom_delay_us(10);
