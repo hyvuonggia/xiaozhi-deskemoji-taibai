@@ -223,6 +223,7 @@ private:
             vTaskDelay(pdMS_TO_TICKS(300));
         }
         if (err != ESP_OK) {
+            ScanDisplayBus();
             ESP_LOGW(TAG, "Display init failed 5x, trying software bus recovery");
             if (!RecoverDisplay()) {
                 ESP_LOGE(TAG, "Failed to initialize display");
@@ -453,6 +454,22 @@ private:
         }
         ESP_LOGW(TAG, "RecoverDisplay: panel did not come back");
         return false;
+    }
+
+    // Who answers on the bus right now? Definitive triage: 0x3C ACK + init fail
+    // = controller alive but deaf (sequence issue); nothing ACKs = bus held low
+    // (power-cycle the glass); a stranger ACKs = ghost device on shared pins.
+    void ScanDisplayBus() {
+        if (display_i2c_bus_ == nullptr) {
+            return;
+        }
+        ESP_LOGI(TAG, "I2C scan (expect only 0x3C):");
+        for (int addr = 0x08; addr < 0x78; addr++) {
+            if (i2c_master_probe(display_i2c_bus_, addr, 20) == ESP_OK) {
+                ESP_LOGI(TAG, "I2C scan: ACK at 0x%02X", addr);
+            }
+        }
+        ESP_LOGI(TAG, "I2C scan done");
     }
 
     // Free a slave-wedged I2C bus without touching wires: up to 18 SCL pulses
