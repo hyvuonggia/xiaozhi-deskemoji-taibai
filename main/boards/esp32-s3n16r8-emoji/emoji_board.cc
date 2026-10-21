@@ -427,13 +427,90 @@ private:
             ESP_LOGW(TAG, "RecoverDisplay: bus reset failed");
         }
         vTaskDelay(pdMS_TO_TICKS(100));
-        if (esp_lcd_panel_reset(panel_) != ESP_OK ||
-            esp_lcd_panel_init(panel_) != ESP_OK ||
-            esp_lcd_panel_disp_on_off(panel_, true) != ESP_OK) {
-            ESP_LOGW(TAG, "RecoverDisplay: panel did not come back");
+        if (esp_lcd_panel_reset(panel_) == ESP_OK &&
+            esp_lcd_panel_init(panel_) == ESP_OK &&
+            esp_lcd_panel_disp_on_off(panel_, true) == ESP_OK) {
+            ESP_LOGI(TAG, "RecoverDisplay: panel back on");
+            return true;
+        }
+        // The slave itself is wedged (holding SDA across soft resets - the OLED
+        // controller has its own power). Clock it out: tear down the driver,
+        // pulse SCL as plain GPIO until SDA releases, then rebuild everything.
+        ESP_LOGW(TAG, "RecoverDisplay: slave wedged, clocking out the bus");
+        if (ClockOutDisplayBus() &&
+            esp_lcd_panel_reset(panel_) == ESP_OK &&
+            esp_lcd_panel_init(panel_) == ESP_OK &&
+            esp_lcd_panel_disp_on_off(panel_, true) == ESP_OK) {
+            ESP_LOGI(TAG, "RecoverDisplay: panel back on after clock-out");
+            return true;
+        }
+        ESP_LOGW(TAG, "RecoverDisplay: panel did not come back");
+        return false;
+    }
+
+    // Free a slave-wedged I2C bus without touching wires: up to 18 SCL pulses
+    // let the stuck chip finish its byte and release SDA, then a STOP re-arms it.
+    // The I2C driver is torn down and rebuilt, so panel_io_/panel_ are recreated.
+    bool ClockOutDisplayBus() {
+        if (i2c_del_master_bus(display_i2c_bus_) != ESP_OK) {
+            ESP_LOGW(TAG, "ClockOut: cannot detach bus driver");
             return false;
         }
-        ESP_LOGI(TAG, "RecoverDisplay: panel back on");
+        display_i2c_bus_ = nullptr;
+        panel_io_ = nullptr;
+        panel_ = nullptr;
+        gpio_set_direction(DISPLAY_I2C_SDA_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
+        gpio_set_direction(DISPLAY_I2C_SCL_PIN, GPIO_MODE_INPUT_OUTPUT_OD);
+        gpio_set_level(DISPLAY_I2C_SDA_PIN, 1);
+        gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
+        esp_rom_delay_us(10);
+        for (int i = 0; i < 18; i++) {
+            gpio_set_level(DISPLAY_I2C_SCL_PIN, 0);
+            esp_rom_delay_us(10);
+            gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
+            esp_rom_delay_us(10);
+            if (gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1) {
+                break;
+            }
+        }
+        // STOP: SDA rises while SCL is high.
+        gpio_set_level(DISPLAY_I2C_SDA_PIN, 0);
+        esp_rom_delay_us(10);
+        gpio_set_level(DISPLAY_I2C_SCL_PIN, 1);
+        esp_rom_delay_us(10);
+        gpio_set_level(DISPLAY_I2C_SDA_PIN, 1);
+        esp_rom_delay_us(10);
+        bool released = (gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1);
+        ESP_LOGI(TAG, "ClockOut: SDA %s", released ? "released" : "STILL HELD");
+        gpio_reset_pin(DISPLAY_I2C_SDA_PIN);
+        gpio_reset_pin(DISPLAY_I2C_SCL_PIN);
+        if (!released) {
+            return false;
+        }
+        // Rebuild the driver stack.
+        i2c_master_bus_config_t bus_config = {};
+        bus_config.i2c_port = I2C_NUM_0;
+        bus_config.sda_io_num = DISPLAY_I2C_SDA_PIN;
+        bus_config.scl_io_num = DISPLAY_I2C_SCL_PIN;
+        bus_config.clk_source = I2C_CLK_SRC_DEFAULT;
+        bus_config.glitch_ignore_cnt = 7;
+        bus_config.flags.enable_internal_pullup = true;
+        if (i2c_new_master_bus(&bus_config, &display_i2c_bus_) != ESP_OK) {
+            return false;
+        }
+        esp_lcd_panel_io_i2c_config_t io_config = {};
+        io_config.dev_addr = DISPLAY_I2C_ADDR;
+        io_config.control_phase_bytes = 1;
+        io_config.dc_bit_offset = 6;
+        io_config.lcd_cmd_bits = 8;
+        io_config.lcd_param_bits = 8;
+        io_config.scl_speed_hz = 100 * 1000;
+        if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
+            return false;
+        }
+        if (esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_) != ESP_OK) {
+            return false;
+        }
         return true;
     }
 
@@ -944,7 +1021,8 @@ static void StateMonitorTask(void* arg) {
             // Headless (dead panel at boot) + boss is back: try software recovery now -
             // this is the moment he is watching. On success the full face comes back.
             if (last_state == kDeviceStateIdle && !board->display_available_ &&
-                board->panel_ != nullptr) {
+                board->panel_ != nullptr &&
+                xTaskGetTickCount() > pdMS_TO_TICKS(10000)) {
                 ESP_LOGI(TAG, "Wake while headless: attempting display recovery");
                 if (board->RecoverDisplay()) {
                     board->display_available_ = true;
