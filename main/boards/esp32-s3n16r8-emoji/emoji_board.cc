@@ -442,6 +442,7 @@ private:
         for (int round = 1; round <= 3; round++) {
             ESP_LOGW(TAG, "RecoverDisplay: slave wedged, clocking out the bus (round %d)", round);
             if (ClockOutDisplayBus()) {
+                ScanDisplayBus();  // 0x3C ACK here + init fail = sequence issue (fixable)
                 vTaskDelay(pdMS_TO_TICKS(150));
                 if (esp_lcd_panel_reset(panel_) == ESP_OK &&
                     esp_lcd_panel_init(panel_) == ESP_OK &&
