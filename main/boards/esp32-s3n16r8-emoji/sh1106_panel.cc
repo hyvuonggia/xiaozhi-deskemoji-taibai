@@ -5,6 +5,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
+#include "board_config.h"
 #include "lvgl.h"
 
 static const char *TAG = "sh1106_panel";
@@ -55,10 +57,31 @@ static esp_err_t panel_del(esp_lcd_panel_t *panel) {
     return ESP_OK;
 }
 
+// ESP-IDF's I2C panel-I/O waits FOREVER (timeout -1) on a held bus, so a single
+// wedged transaction freezes the whole screen while everything else keeps running.
+// Our bus has one master (us): idle lines are always high. A low line means the
+// bus is wedged - drop the frame right here instead of hanging inside ESP's call.
+static bool bus_lines_idle() {
+    return gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1 &&
+           gpio_get_level(DISPLAY_I2C_SCL_PIN) == 1;
+}
+
 static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int xe, int ye, const void *data) {
     auto *p = reinterpret_cast<sh1106_panel_t *>(panel);
     if (!data || xs < 0 || ys < 0 || xe > PANEL_WIDTH || ye > PANEL_HEIGHT || xs >= xe || ys >= ye) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (!bus_lines_idle()) {
+        // Wedged bus: skip the frame, finish the flush, stay alive. Throttled log.
+        static int held_drops = 0;
+        if (++held_drops % 50 == 1) {
+            ESP_LOGW(TAG, "bus held, dropping frame (x%d)", held_drops);
+        }
+        lv_display_t *disp = lv_display_get_default();
+        if (disp != nullptr) {
+            lv_disp_flush_ready(disp);
+        }
+        return ESP_OK;
     }
     xs += p->x_gap;
     xe += p->x_gap;

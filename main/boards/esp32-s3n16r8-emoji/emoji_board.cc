@@ -212,7 +212,15 @@ private:
         // showing a frozen stale frame. Retry the reset+init sequence instead.
         static constexpr int kPanelInitRetries = 5;
         esp_err_t err = ESP_FAIL;
-        for (int attempt = 1; attempt <= kPanelInitRetries; ++attempt) {
+        // ESP's panel-I/O waits forever on a held bus: never attempt init while a
+        // line is low, go straight to recovery (bus reset + clock-out).
+        bool bus_held_at_boot =
+            gpio_get_level(DISPLAY_I2C_SDA_PIN) == 0 ||
+            gpio_get_level(DISPLAY_I2C_SCL_PIN) == 0;
+        if (bus_held_at_boot) {
+            ESP_LOGW(TAG, "Bus held at boot, skipping init attempts");
+        }
+        for (int attempt = 1; attempt <= kPanelInitRetries && !bus_held_at_boot; ++attempt) {
             ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
             err = esp_lcd_panel_init(panel_);
             if (err == ESP_OK) {
