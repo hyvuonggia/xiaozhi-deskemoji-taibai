@@ -452,6 +452,16 @@ private:
     // let the stuck chip finish its byte and release SDA, then a STOP re-arms it.
     // The I2C driver is torn down and rebuilt, so panel_io_/panel_ are recreated.
     bool ClockOutDisplayBus() {
+        // Tear down in dependency order: panel -> IO (holds the I2C device
+        // handle) -> bus. Skipping a step leaves the bus undeletable.
+        if (panel_ != nullptr) {
+            esp_lcd_panel_del(panel_);
+            panel_ = nullptr;
+        }
+        if (panel_io_ != nullptr) {
+            esp_lcd_panel_io_del(panel_io_);
+            panel_io_ = nullptr;
+        }
         if (i2c_del_master_bus(display_i2c_bus_) != ESP_OK) {
             ESP_LOGW(TAG, "ClockOut: cannot detach bus driver");
             return false;
