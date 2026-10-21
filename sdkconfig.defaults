@@ -76,5 +76,6 @@ CONFIG_LV_USE_WIN=n
 
 CONFIG_LV_BUILD_EXAMPLES=n
 
-# WiFi TX bursts share the weak rail with speaker+I2C: 20 -> 14 dBm.
-CONFIG_ESP_PHY_MAX_TX_POWER=56
+# WiFi TX bursts share the weak rail with speaker+I2C: 20 -> 10 dBm
+# (small room, AP nearby - link budget is plenty).
+CONFIG_ESP_PHY_MAX_TX_POWER=40
