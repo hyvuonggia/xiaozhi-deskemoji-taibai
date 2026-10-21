@@ -436,13 +436,20 @@ private:
         // The slave itself is wedged (holding SDA across soft resets - the OLED
         // controller has its own power). Clock it out: tear down the driver,
         // pulse SCL as plain GPIO until SDA releases, then rebuild everything.
-        ESP_LOGW(TAG, "RecoverDisplay: slave wedged, clocking out the bus");
-        if (ClockOutDisplayBus() &&
-            esp_lcd_panel_reset(panel_) == ESP_OK &&
-            esp_lcd_panel_init(panel_) == ESP_OK &&
-            esp_lcd_panel_disp_on_off(panel_, true) == ESP_OK) {
-            ESP_LOGI(TAG, "RecoverDisplay: panel back on after clock-out");
-            return true;
+        // A freshly released slave can still be deaf for a few ms (oscillator +
+        // charge pump re-settling): up to 3 clock-out + settle + init rounds.
+        for (int round = 1; round <= 3; round++) {
+            ESP_LOGW(TAG, "RecoverDisplay: slave wedged, clocking out the bus (round %d)", round);
+            if (ClockOutDisplayBus()) {
+                vTaskDelay(pdMS_TO_TICKS(150));
+                if (esp_lcd_panel_reset(panel_) == ESP_OK &&
+                    esp_lcd_panel_init(panel_) == ESP_OK &&
+                    esp_lcd_panel_disp_on_off(panel_, true) == ESP_OK) {
+                    ESP_LOGI(TAG, "RecoverDisplay: panel back on after clock-out");
+                    return true;
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(200));
         }
         ESP_LOGW(TAG, "RecoverDisplay: panel did not come back");
         return false;
