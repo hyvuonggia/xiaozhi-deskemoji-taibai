@@ -294,7 +294,7 @@ void RobotEyes::UpdateLook(uint32_t now) {
         return;
     }
 
-    if (idle_ && now - last_look_change_ > next_look_interval_) {
+    if (idle_ && glances_ && now - last_look_change_ > next_look_interval_) {
         last_look_change_ = now;
         next_look_interval_ = 3000 + rand_int(0, 4000);
         if (mood_ == M_SHY) {

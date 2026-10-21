@@ -28,6 +28,7 @@ public:
     void SetDemo(bool on) { demo_ = on; }
     // While in conversation: turn off idle behaviours (demo cycling + random looks)
     void SetIdleBehaviors(bool on) { idle_ = on; }
+    void SetIdleGlances(bool on) { glances_ = on; }  // random look-arounds (cosmetic)
     void SetEaseSpeed(float s) { ease_speed_ = (s < 0.01f ? 0.01f : (s > 1.0f ? 1.0f : s)); }
     void ForceRedraw();   // forget the previous frame so the next render always hits the bus
 
@@ -102,6 +103,7 @@ private:
 
     bool demo_ = false;   // off by default: the board drives moods by context; enable by voice ("change your face by itself")
     bool idle_ = true;
+    bool glances_ = false;  // look-arounds OFF: status-first face, blink only
     uint32_t last_mood_switch_ = 0;
     uint32_t mood_switch_base_ = 3500;
     uint32_t last_step_ms_ = 0;
