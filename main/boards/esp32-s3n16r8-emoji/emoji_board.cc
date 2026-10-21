@@ -1027,11 +1027,16 @@ static void StateMonitorTask(void* arg) {
                 ESP_LOGI(TAG, "Conversation continued; stopping random expression animation");
             }
             set_eyes_idle(false);
+            // Same status icon as a fresh turn: without this the readout freezes
+            // on the boot glyph for the whole conversation.
             if (current_state == kDeviceStateListening) {
+                board->SetStatusText("\xEF\x84\xB0");  // microphone = listening
                 set_eyes_mood("curious");
                 if (board->servo_controller_ != nullptr) {
                     board->servo_controller_->HeadUp(10);
                 }
+            } else if (current_state == kDeviceStateSpeaking) {
+                board->SetStatusText("\xEF\x80\xA8");  // speaker = talking
             }
         }
         
