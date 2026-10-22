@@ -220,7 +220,7 @@ private:
         ESP_LOGI(TAG, "LCD panel I/O initialized successfully");
 
         ESP_LOGI(TAG, "Installing SH1106-compatible page-addressing driver");
-        if (esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_) != ESP_OK) {
+        if (esp_lcd_new_panel_sh1106(panel_io_, display_i2c_bus_, -1, &panel_) != ESP_OK) {
             ESP_LOGE(TAG, "SH1106 driver init failed: running headless");
             panel_ = nullptr;
             display_ = new NoDisplay();
@@ -551,6 +551,9 @@ private:
     // let the stuck chip finish its byte and release SDA, then a STOP re-arms it.
     // The I2C driver is torn down and rebuilt, so panel_io_/panel_ are recreated.
     bool ClockOutDisplayBus() {
+        // Stop the renderer touching the handles we are about to free
+        // (use-after-free there is a crash, not a glitch).
+        sh1106_set_recovering(true);
         // Tear down in dependency order: panel -> IO (holds the I2C device
         // handle) -> bus. Skipping a step leaves the bus undeletable.
         if (panel_ != nullptr) {
@@ -639,10 +642,9 @@ private:
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
         }
-        if (esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_) != ESP_OK) {
-            return false;
-        }
-        return true;
+        bool ok = esp_lcd_new_panel_sh1106(panel_io_, display_i2c_bus_, -1, &panel_) == ESP_OK;
+        sh1106_set_recovering(false);
+        return ok;
     }
 
     // (Re)start the eye pipeline exactly once - used at boot and when a dead panel
