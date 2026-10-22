@@ -537,16 +537,22 @@ void Application::Schedule(std::function<void()> callback) {
 // The Main Event Loop controls the chat state and websocket connection
 // If other tasks need to access the websocket or chat state,
 // they should use Schedule to call this function
+// Seconds counter bumped by the main event loop. A watchdog in the board layer
+// watches it: if the loop stops servicing events (wedged mutex, blocked callback)
+// this stops advancing and the board reboots itself instead of sitting dead.
+volatile uint32_t g_main_loop_beat = 0;
+
 void Application::MainEventLoop() {
     // Raise the priority of the main event loop to avoid being interrupted by background tasks (which has priority 2)
     vTaskPrioritySet(NULL, 3);
 
     while (true) {
+        g_main_loop_beat = (uint32_t)(xTaskGetTickCount() / pdMS_TO_TICKS(1000));
         auto bits = xEventGroupWaitBits(event_group_, MAIN_EVENT_SCHEDULE |
             MAIN_EVENT_SEND_AUDIO |
             MAIN_EVENT_WAKE_WORD_DETECTED |
             MAIN_EVENT_VAD_CHANGE |
-            MAIN_EVENT_ERROR, pdTRUE, pdFALSE, portMAX_DELAY);
+            MAIN_EVENT_ERROR, pdTRUE, pdFALSE, pdMS_TO_TICKS(1000));
         if (bits & MAIN_EVENT_ERROR) {
             SetDeviceState(kDeviceStateIdle);
             Alert(Lang::Strings::ERROR, last_error_message_.c_str(), "circle_xmark", Lang::Sounds::OGG_EXCLAMATION);

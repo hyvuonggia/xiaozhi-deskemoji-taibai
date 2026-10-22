@@ -40,6 +40,7 @@
 #include <freertos/queue.h>
 #include <freertos/timers.h>
 #include <lvgl.h>
+#include <atomic>
 #include <time.h>
 #include <sys/time.h>
 
@@ -65,6 +66,7 @@ static RTC_NOINIT_ATTR uint32_t supervisor_restarts_;
 
 // Task function declaration
 static void StateMonitorTask(void* arg);
+static void LivenessProbeTask(void* arg);
 
 // Task parameter struct used to pass arguments to the static task functions
 struct TaskParams {
@@ -992,6 +994,7 @@ public:
         state_params->emotion_controller = emotion_controller_;
         state_params->board = this;
         xTaskCreate(StateMonitorTask, "StateMonitor", 8192, state_params, 1, NULL);
+        xTaskCreate(LivenessProbeTask, "alive_probe", 3072, nullptr, 1, NULL);
         
         // Store this instance in the global variable
         g_board_instance = this;
@@ -1099,6 +1102,36 @@ void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
 }
 
 // Static task function that monitors device state
+// Whole-system liveness probe (see g_main_loop_beat in application.cc).
+//
+// Every freeze reported so far was "screen frozen, mic dead, nothing answers" while
+// the idle tasks kept running - so the task watchdog never fired and the board sat
+// dead until a manual power cycle. The main loop bumps a counter once per second;
+// if it stops for 30 s the loop is wedged and only a reboot can recover.
+extern volatile uint32_t g_main_loop_beat;
+
+static void LivenessProbeTask(void* arg) {
+    (void)arg;
+    vTaskDelay(pdMS_TO_TICKS(45000));  // let the system settle after boot
+    uint32_t last_beat = g_main_loop_beat;
+    int misses = 0;
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        uint32_t beat = g_main_loop_beat;
+        if (beat != last_beat) {
+            last_beat = beat;
+            misses = 0;
+            continue;
+        }
+        if (++misses >= 3) {  // ~30 s without a single loop iteration
+            ESP_LOGE(TAG, "Main loop wedged for ~30 s - rebooting to recover");
+            vTaskDelay(pdMS_TO_TICKS(300));
+            esp_restart();
+        }
+        ESP_LOGW(TAG, "Main loop heartbeat stalled (%d/3)", misses);
+    }
+}
+
 static void StateMonitorTask(void* arg) {
     TaskParams* params = static_cast<TaskParams*>(arg);
     EmojiBoard* board = params->board;
