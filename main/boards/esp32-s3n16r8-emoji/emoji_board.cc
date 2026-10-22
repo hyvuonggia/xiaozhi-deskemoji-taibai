@@ -34,6 +34,7 @@
 #include <driver/i2c_master.h>  // Include the new I2C driver API header
 #include <driver/gpio.h>
 #include <esp_attr.h>           // RTC_NOINIT_ATTR for the restart counter below
+#include <esp_heap_caps.h>      // free/min heap in the health line
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -181,11 +182,20 @@ private:
         bus_config.glitch_ignore_cnt = 7;
         bus_config.flags.enable_internal_pullup = true;
         
-        ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &display_i2c_bus_));
+        if (i2c_new_master_bus(&bus_config, &display_i2c_bus_) != ESP_OK) {
+            ESP_LOGE(TAG, "I2C bus init failed: running headless");
+            display_i2c_bus_ = nullptr;
+            return;
+        }
         ESP_LOGI(TAG, "I2C bus initialized successfully");
     }
 
     void InitializeSsd1306Display() {
+        if (display_i2c_bus_ == nullptr) {
+            ESP_LOGE(TAG, "No I2C bus: display stays off (headless)");
+            display_ = new NoDisplay();
+            return;
+        }
         esp_lcd_panel_io_i2c_config_t io_config = {};
         io_config.dev_addr = DISPLAY_I2C_ADDR;
         io_config.on_color_trans_done = nullptr;
@@ -199,11 +209,21 @@ private:
         io_config.scl_speed_hz = 100 * 1000;
 
         // Use the new I2C panel IO API
-        ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_));
+        if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
+            ESP_LOGE(TAG, "Panel I/O init failed: running headless");
+            panel_io_ = nullptr;
+            display_ = new NoDisplay();
+            return;
+        }
         ESP_LOGI(TAG, "LCD panel I/O initialized successfully");
 
         ESP_LOGI(TAG, "Installing SH1106-compatible page-addressing driver");
-        ESP_ERROR_CHECK(esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_));
+        if (esp_lcd_new_panel_sh1106(panel_io_, -1, &panel_) != ESP_OK) {
+            ESP_LOGE(TAG, "SH1106 driver init failed: running headless");
+            panel_ = nullptr;
+            display_ = new NoDisplay();
+            return;
+        }
         ESP_LOGI(TAG, "SH1106-compatible driver installed successfully");
 
         // The very first I2C transaction after power-up sometimes fails (bus noise
@@ -221,8 +241,12 @@ private:
             ESP_LOGW(TAG, "Bus held at boot, skipping init attempts");
         }
         for (int attempt = 1; attempt <= kPanelInitRetries && !bus_held_at_boot; ++attempt) {
-            ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
-            err = esp_lcd_panel_init(panel_);
+            // Never ESP_ERROR_CHECK here: a failing reset aborts -> panic -> reboot
+            // loop, which is exactly the "robot dead, nothing responds" report.
+            err = esp_lcd_panel_reset(panel_);
+            if (err == ESP_OK) {
+                err = esp_lcd_panel_init(panel_);
+            }
             if (err == ESP_OK) {
                 break;
             }
@@ -241,7 +265,13 @@ private:
         }
 
         ESP_LOGI(TAG, "Turning display on");
-        ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_, true));
+        if (esp_lcd_panel_disp_on_off(panel_, true) != ESP_OK) {
+            // Panel answered init but refuses display-on: run headless instead of
+            // aborting into a reboot loop.
+            ESP_LOGE(TAG, "Display-on failed, running headless");
+            display_ = new NoDisplay();
+            return;
+        }
         display_available_ = true;
 
         // Create the DisplayFonts object
@@ -722,8 +752,18 @@ private:
                 supervisor_restarts_ = 0;
             }
             bool reset_attempted = false;
+            uint32_t tick_log = 0;
             while (true) {
                 vTaskDelay(pdMS_TO_TICKS(3000));
+                // One line every ~30 s: free heap + worst-case heap ever seen.
+                // When a crash is intermittent, this is the only evidence left
+                // on a board with no debugger attached.
+                if (++tick_log % 10 == 0) {
+                    ESP_LOGI(TAG, "health: free %u B, min-ever %u B, disp %s",
+                             (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT),
+                             self->display_available_ ? "on" : "off");
+                }
                 if (self->panel_asleep_) {          // nothing is being drawn: no stall
                     reset_attempted = false;
                     continue;
@@ -786,17 +826,21 @@ private:
                     vTaskDelay(pdMS_TO_TICKS(6000));
                     continue;
                 }
-                // Still silent after a bus reset: restart, but rate-limited (see above).
-                if (xTaskGetTickCount() > pdMS_TO_TICKS(240000) &&
-                    supervisor_restarts_ < 2) {
-                    ESP_LOGE(TAG, "Display still stalled after a bus reset - restarting");
+                // Still silent after a bus reset: restart. NEVER withhold forever -
+                // the old "restart withheld" branch left the robot permanently dead
+                // (screen frozen, nothing responding, no self-heal). Back off instead
+                // so a truly broken panel cannot turn into a reboot loop.
+                static constexpr uint32_t kBackoffMin[] = {4, 10, 20, 30};  // minutes
+                uint32_t idx = supervisor_restarts_ < 4 ? supervisor_restarts_ : 3;
+                TickType_t backoff = pdMS_TO_TICKS(kBackoffMin[idx] * 60UL * 1000UL);
+                if (xTaskGetTickCount() > pdMS_TO_TICKS(240000)) {
+                    ESP_LOGE(TAG, "Display still stalled - restarting (restart #%u, next backoff %u min)",
+                             (unsigned)(supervisor_restarts_ + 1), (unsigned)kBackoffMin[idx]);
                     supervisor_restarts_++;
                     vTaskDelay(pdMS_TO_TICKS(500));  // let the log reach the port
                     esp_restart();
                 }
-                ESP_LOGE(TAG, "Display wedged; restart withheld (loop protection) - "
-                              "power-cycle the board and check the 3V3 rail / USB supply");
-                vTaskDelay(pdMS_TO_TICKS(30000));
+                vTaskDelay(backoff);
             }
         }, "disp_super", 4096, this, 1, nullptr);
     }
