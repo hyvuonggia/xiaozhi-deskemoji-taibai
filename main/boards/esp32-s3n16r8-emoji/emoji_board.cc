@@ -766,6 +766,15 @@ private:
                              (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT),
                              self->display_available_ ? "on" : "off");
                 }
+                // Self-heal the face: if the eye objects are gone (screen switch,
+                // failed create, recovery race) nothing is ever drawn again and the
+                // robot looks crashed while every other feature keeps working.
+                if (self->display_available_ && self->ui_ready_ && self->eyes_ == nullptr) {
+                    ESP_LOGW(TAG, "Eyes missing - recreating the face");
+                    self->eyes_screen_ = nullptr;  // force a clean rebuild
+                    self->CreateEyesScreen();
+                    self->SwitchScreen(true);
+                }
                 if (self->panel_asleep_) {          // nothing is being drawn: no stall
                     reset_attempted = false;
                     continue;
