@@ -111,7 +111,7 @@ void AudioService::Start() {
         AudioService* audio_service = (AudioService*)arg;
         audio_service->AudioOutputTask();
         vTaskDelete(NULL);
-    }, "audio_output", 2048 * 2, this, 3, &audio_output_task_handle_);
+    }, "audio_output", 2048 * 2, this, 5, &audio_output_task_handle_);  // above the display: never let a redraw starve the speaker
 #else
     /* Start the audio input task */
     xTaskCreate([](void* arg) {
