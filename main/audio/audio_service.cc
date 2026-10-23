@@ -305,6 +305,10 @@ void AudioService::AudioOutputTask() {
             esp_timer_stop(audio_power_timer_);
             esp_timer_start_periodic(audio_power_timer_, AUDIO_POWER_CHECK_INTERVAL_MS * 1000);
             codec_->EnableOutput(true);
+            // First audio after idle: amp + DMA are cold, so the opening syllables
+            // came out chopped ("mot hai ba" -> "ho ha"). Prime with 120 ms silence.
+            std::vector<int16_t> prime(codec_->output_sample_rate() * 120 / 1000, 0);
+            codec_->OutputData(prime);
         }
         codec_->OutputData(task->pcm);
 
