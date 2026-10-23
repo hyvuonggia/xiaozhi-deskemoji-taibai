@@ -618,6 +618,7 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         # model answers as a system assistant ("I have no servo / I am just a screen").
         hermes_msgs.append({"role": "user", "content": "Em la ai va em lam duoc nhung gi?"})
         hermes_msgs.append({"role": "assistant", "content": "Em la chu robot de ban cua sep: em co loa, mic, man hinh mat bieu cam va 2 servo o co nen em quay dau, gat dau, lac dau duoc. Khi sep bao em lam gi thi em gui lenh xuong la robot chay that."})
+        log.info("heard <- %r", user_text)  # what ASR actually gave us
         hermes_msgs.append({"role": "user", "content": str(user_text)})
     # Language guard (last word counts): server-side tool results come back in Chinese
     # ("退出意图已处理") and fresh sessions echo that language. This trailing reminder
