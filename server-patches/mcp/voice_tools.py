@@ -10,7 +10,7 @@ import logging
 import re
 import sys
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.fastmcp import FastMCP as MCPServer
 
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 log = logging.getLogger("mcp-voice")
@@ -156,4 +156,4 @@ async def get_weather() -> str:
 
 
 if __name__ == "__main__":
-    asyncio.run(mcp.run_stdio_async())
+    mcp.run()

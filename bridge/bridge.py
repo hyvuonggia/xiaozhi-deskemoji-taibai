@@ -628,6 +628,10 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         "Chỉ gọi handle_exit_intent khi sếp nói RÕ là muốn kết thúc (tạm biệt, thôi nhé, "
         "ngủ ngon, không nói nữa). Câu khác - kể cả ngắn, kể cả sau khi đếm/liệt kê - "
         "thì trả lời bình thường, TUYỆT ĐỐI không chào tạm biệt."})
+    hermes_msgs.append({"role": "system", "content":
+        "Khi đếm số hoặc liệt kê danh sách, viết MỖI mục thành một câu riêng, kết thúc bằng "
+        "dấu chấm: 'Một. Hai. Ba.' - giọng đọc sẽ ngắt nghỉ rõ. KHÔNG viết liền một dãy "
+        "'một, hai, ba, bốn...' vì loa nhỏ đọc nhanh sẽ dính chữ, nghe không ra."})
 
     # Fast greeting: session-start requests carry no real content - either empty or just
     # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
