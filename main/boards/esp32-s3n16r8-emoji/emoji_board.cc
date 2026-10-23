@@ -208,7 +208,9 @@ private:
         io_config.lcd_param_bits = 8;
         io_config.flags.dc_low_on_data = 0;
         io_config.flags.disable_control_phase = 0;
-        io_config.scl_speed_hz = 100 * 1000;
+        // 50 kHz: this board has no external I2C pull-ups (internal ~45k only), and
+        // 100 kHz throws burst of tx errors. Half the clock doubles the margin.
+        io_config.scl_speed_hz = 50 * 1000;
 
         // Use the new I2C panel IO API
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
@@ -636,7 +638,9 @@ private:
         io_config.dc_bit_offset = 6;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
-        io_config.scl_speed_hz = 100 * 1000;
+        // 50 kHz: this board has no external I2C pull-ups (internal ~45k only), and
+        // 100 kHz throws burst of tx errors. Half the clock doubles the margin.
+        io_config.scl_speed_hz = 50 * 1000;
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
         }
