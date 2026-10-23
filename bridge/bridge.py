@@ -772,7 +772,9 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
             while True:
                 sent, rest = split_sentence(state["pending"])
                 if sent.strip():
-                    await resp.write(chunk_frame(cid, model, {"content": sent}))
+                    # Number lists arrive as ONE sentence ("Một, hai, ba, ..."): add the
+                    # sentence stops here so the server speaks each item separately.
+                    await resp.write(chunk_frame(cid, model, {"content": _pause_list(sent)}))
                     state["sent"] = True
                     state["pending"] = rest
                     continue
@@ -858,7 +860,7 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
             await resp.write(chunk_frame(cid, model, {}, finish="tool_calls"))
         else:
             if state["pending"]:
-                await resp.write(chunk_frame(cid, model, {"content": state["pending"]}))
+                await resp.write(chunk_frame(cid, model, {"content": _pause_list(state["pending"])}))
                 state["sent"] = True
             if not state["sent"]:
                 await resp.write(chunk_frame(cid, model, {"content": FALLBACK_TEXT}))
