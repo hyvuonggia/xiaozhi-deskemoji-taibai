@@ -102,7 +102,9 @@ const uint8_t servo_pins[SERVO_CHANNEL_COUNT] = {
 
 // Audio sample rate configuration
 #define AUDIO_INPUT_SAMPLE_RATE 24000
-#define AUDIO_OUTPUT_SAMPLE_RATE 24000
+// 16000 = the server's stream rate: no resampling on playback (24k here made
+// every reply pass through the resampler -> "may cause distortion").
+#define AUDIO_OUTPUT_SAMPLE_RATE 16000
 
 // LED configuration
 #define LED_PIN GPIO_NUM_48                // Onboard LED connected to GPIO48
