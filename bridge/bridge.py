@@ -492,6 +492,16 @@ async def read_laptop_temp():
         return None
 
 
+def _pause_list(text):
+    """'Một, hai, ba, ...' is ONE TTS sentence and gets read as a 2-second blur that
+    nobody can follow. Break the commas into sentence stops so the server splits it
+    into separately-spoken chunks with real pauses."""
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) >= 4 and all(0 < len(p.split()) <= 3 for p in parts):
+        return ". ".join(parts)
+    return text
+
+
 async def respond_text_only(request, cid, model, stream, text):
     """Plain text answer with no tool call (greetings, debounced repeats)."""
     if not stream:
@@ -880,6 +890,7 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         native_calls = []
     log.info("hermes answered in %.1fs (native_calls=%d): %s", time.time() - t0,
              len(native_calls), answer[:160].replace("\n", " "))
+    answer = _pause_list(answer)
 
     if native_calls and not tool_results:
         # Model called server tools itself: forward untouched, skip text-JSON path.
