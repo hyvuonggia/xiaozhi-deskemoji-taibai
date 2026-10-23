@@ -5,7 +5,6 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_check.h"
 #include <atomic>
-#include <cstring>
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "board_config.h"
@@ -19,7 +18,6 @@ static constexpr int COLUMN_OFFSET = 2;
 struct sh1106_panel_t {
     esp_lcd_panel_t base;
     esp_lcd_panel_io_handle_t io;
-    i2c_master_dev_handle_t dev;  // own handle: lets us set a real timeout
     int reset_gpio_num;
     int x_gap;
     int y_gap;
@@ -27,22 +25,13 @@ struct sh1106_panel_t {
 
 static esp_err_t panel_reset(esp_lcd_panel_t *) { return ESP_OK; }
 
-// ESP-IDF's panel-I/O waits forever (-1) on a held bus: one glitch froze the
-// screen for good. Own device handle + explicit timeout turns that into an error.
-static constexpr int kI2cTimeoutMs = 50;
-
 static esp_err_t send_cmd(sh1106_panel_t *p, int cmd) {
-    uint8_t buf[2] = {0x00, (uint8_t)cmd};
-    return i2c_master_transmit(p->dev, buf, sizeof(buf), kI2cTimeoutMs);
+    return esp_lcd_panel_io_tx_param(p->io, cmd, nullptr, 0);
 }
 
 static esp_err_t send_cmd_data(sh1106_panel_t *p, int cmd, uint8_t data) {
-    uint8_t buf[3] = {0x00, (uint8_t)cmd, data};
-    return i2c_master_transmit(p->dev, buf, sizeof(buf), kI2cTimeoutMs);
+    return esp_lcd_panel_io_tx_param(p->io, cmd, &data, 1);
 }
-
-static std::atomic<bool> recovering{false};
-void sh1106_set_recovering(bool on) { recovering.store(on); }
 
 static esp_err_t panel_init(esp_lcd_panel_t *panel) {
     auto *p = reinterpret_cast<sh1106_panel_t *>(panel);
@@ -65,11 +54,7 @@ static esp_err_t panel_init(esp_lcd_panel_t *panel) {
 }
 
 static esp_err_t panel_del(esp_lcd_panel_t *panel) {
-    auto *p = reinterpret_cast<sh1106_panel_t *>(panel);
-    if (p->dev != nullptr) {
-        i2c_master_bus_rm_device(p->dev);
-    }
-    free(p);
+    free(reinterpret_cast<sh1106_panel_t *>(panel));
     return ESP_OK;
 }
 
@@ -81,6 +66,9 @@ static bool bus_lines_idle() {
     return gpio_get_level(DISPLAY_I2C_SDA_PIN) == 1 &&
            gpio_get_level(DISPLAY_I2C_SCL_PIN) == 1;
 }
+
+static std::atomic<bool> recovering{false};
+void sh1106_set_recovering(bool on) { recovering.store(on); }
 
 static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int xe, int ye, const void *data) {
     auto *p = reinterpret_cast<sh1106_panel_t *>(panel);
@@ -115,10 +103,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
             if (send_cmd(p, column & 0x0F) != ESP_OK) continue;
             if (send_cmd(p, 0x10 | ((column >> 4) & 0x0F)) != ESP_OK) continue;
             const uint8_t *page_data = frame + page * PANEL_WIDTH + xs;
-            uint8_t buf[1 + PANEL_WIDTH];
-            buf[0] = 0x40;  // data stream
-            memcpy(buf + 1, page_data, xe - xs);
-            if (i2c_master_transmit(p->dev, buf, 1 + (xe - xs), kI2cTimeoutMs) != ESP_OK) continue;
+            if (esp_lcd_panel_io_tx_color(p->io, -1, page_data, xe - xs) != ESP_OK) continue;
             ok = true;
         }
         if (!ok) {
@@ -165,21 +150,12 @@ static esp_err_t panel_on_off(esp_lcd_panel_t *panel, bool on) {
 }
 
 extern "C" esp_err_t esp_lcd_new_panel_sh1106(esp_lcd_panel_io_handle_t io,
-                                               i2c_master_bus_handle_t bus,
                                                int reset_gpio_num,
                                                esp_lcd_panel_handle_t *ret_panel) {
-    if (!io || !bus || !ret_panel) return ESP_ERR_INVALID_ARG;
+    if (!io || !ret_panel) return ESP_ERR_INVALID_ARG;
     auto *p = static_cast<sh1106_panel_t *>(calloc(1, sizeof(sh1106_panel_t)));
     if (!p) return ESP_ERR_NO_MEM;
     p->io = io;
-    i2c_device_config_t dev_cfg = {};
-    dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
-    dev_cfg.device_address = DISPLAY_I2C_ADDR;
-    dev_cfg.scl_speed_hz = 100 * 1000;
-    if (i2c_master_bus_add_device(bus, &dev_cfg, &p->dev) != ESP_OK) {
-        free(p);
-        return ESP_ERR_NO_MEM;
-    }
     p->reset_gpio_num = reset_gpio_num;
     p->base.reset = panel_reset;
     p->base.init = panel_init;
