@@ -81,6 +81,11 @@ Giờ + ngày hiện tại (giờ VN; hỏi giờ/ngày/thứ/hôm nay/hôm qua/
 {"tool": "get_now", "arguments": {}}
 ```
 Tool trả về giờ hiện tại, em TỰ tính hôm qua (trừ 1) / ngày mai (cộng 1) rồi trả lời.
+Thông tin phụ thuộc THỜI ĐIỂM (ai đang giữ chức vụ, giá vàng, tin mới, luật mới, sự kiện vừa xảy ra):
+```json
+{"tool": "web_search_vn", "arguments": {"query": "chủ tịch nước Việt Nam hiện nay"}}
+```
+BẮT BUỘC dùng tool này cho các câu đó - TUYỆT ĐỐI không trả lời từ trí nhớ (trí nhớ đã cũ).
 
 Mic dùng ASR tiếng Việt (PhoWhisper) nên từ tiếng Anh có thể bị viết sai theo phiên âm tiếng Việt \
 (vd: wifi → "oai phây", bluetooth → "bưu thôn", app → "áp", email → "in ấy", check → "trách", Spotify → "sạch phây", YouTube → "du túp", Google → "gu gồ"). \
@@ -303,6 +308,9 @@ def extract_action(text):
 
 
 async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta=None, tools=None):
+    # The robot must think before it answers: the server does not send an effort
+    # level, so without this default every reply is a reflex answer.
+    reasoning_effort = reasoning_effort or "medium"
     """Goi Hermes agent. Neu co on_delta: goi ham do voi tung manh text ngay khi sinh ra.
     Neu co tools: chuyen tiep cho model (native function calling) va tra ve (text, tool_calls)."""
     url = HERMES_BASE.rstrip("/") + "/chat/completions"
@@ -492,6 +500,36 @@ async def read_laptop_temp():
         return None
 
 
+# Facts that rot: officeholders, prices, fresh news. The model answers these from
+# memory and gets them wrong (it called a FORMER state president the current one).
+# The bridge looks them up itself and hands the model fresh text to narrate.
+_CURRENT_FACT_RE = re.compile(
+    r"(hi\u1ec7n nay|hi\u1ec7n t\u1ea1i|b\u00e2y gi\u1edd|m\u1edbi nh\u1ea5t).{0,40}"
+    r"(l\u00e0 ai|ai l\u00e0|bao nhi\u00eau|th\u1ebf n\u00e0o)|"
+    r"ai (\u0111ang )?(l\u00e0|l\u00e0m) .{0,30}(hi\u1ec7n nay|hi\u1ec7n t\u1ea1i)|"
+    r"gi\u00e1 v\u00e0ng|gi\u00e1 x\u0103ng|t\u1ef7 gi\u00e1|tin t\u1ee9c|th\u1eddi s\u1ef1",
+    re.I)
+
+
+def _web_lookup(query, limit=5, timeout=12):
+    """Top web results as plain text (self-hosted SearXNG, no key)."""
+    import urllib.parse as _up
+    import urllib.request as _url
+    # Current year biases the engine towards THIS year's news instead of old pages.
+    query = "%s %d" % (query, time.localtime().tm_year)
+    url = "http://192.168.1.106:8888/search?q=%s&format=json&language=vi-VN" % _up.quote(query)
+    req = _url.Request(url, headers={"User-Agent": "Mozilla/5.0 HermesBot"})
+    with _url.urlopen(req, timeout=timeout) as r:
+        data = json.loads(r.read().decode("utf-8", "ignore"))
+    out = []
+    for item in (data.get("results") or [])[:limit]:
+        title = (item.get("title") or "").strip()
+        body = (item.get("content") or "").strip().replace("\n", " ")
+        if title:
+            out.append("- %s%s" % (title, (": " + body[:220]) if body else ""))
+    return "\n".join(out)
+
+
 def _pause_list(text):
     """'Một, hai, ba, ...' is ONE TTS sentence and gets read as a 2-second blur that
     nobody can follow. Break the commas into sentence stops so the server splits it
@@ -642,6 +680,21 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         "Khi đếm số hoặc liệt kê danh sách, viết MỖI mục thành một câu riêng, kết thúc bằng "
         "dấu chấm: 'Một. Hai. Ba.' - giọng đọc sẽ ngắt nghỉ rõ. KHÔNG viết liền một dãy "
         "'một, hai, ba, bốn...' vì loa nhỏ đọc nhanh sẽ dính chữ, nghe không ra."})
+
+    if not tool_results and _CURRENT_FACT_RE.search(user_text):
+        try:
+            fresh = _web_lookup(user_text)
+            if fresh:
+                # Attach to the USER turn: a trailing system note gets ignored when the
+                # session history already contains a (wrong) answer from earlier turns.
+                for _m in reversed(hermes_msgs):
+                    if _m.get("role") == "user":
+                        _m["content"] = ("[DỮ LIỆU TRA CỨU MỚI NHẤT - đúng hơn trí nhớ của em]\n"
+                                         + fresh + "\n\n[CÂU HỎI] " + str(_m.get("content")))
+                        break
+                log.info("web context injected for %r", user_text[:60])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("web lookup failed: %s", exc)
 
     # Fast greeting: session-start requests carry no real content - either empty or just
     # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
