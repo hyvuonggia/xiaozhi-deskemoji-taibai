@@ -624,6 +624,10 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     # ("退出意图已处理") and fresh sessions echo that language. This trailing reminder
     # keeps every reply Vietnamese without slowing anything down.
     hermes_msgs.append({"role": "system", "content": "QUAN TRỌNG: Luôn trả lời sếp bằng tiếng Việt."})
+    hermes_msgs.append({"role": "system", "content":
+        "Chỉ gọi handle_exit_intent khi sếp nói RÕ là muốn kết thúc (tạm biệt, thôi nhé, "
+        "ngủ ngon, không nói nữa). Câu khác - kể cả ngắn, kể cả sau khi đếm/liệt kê - "
+        "thì trả lời bình thường, TUYỆT ĐỐI không chào tạm biệt."})
 
     # Fast greeting: session-start requests carry no real content - either empty or just
     # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
