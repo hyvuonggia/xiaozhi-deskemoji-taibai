@@ -208,8 +208,9 @@ private:
         io_config.lcd_param_bits = 8;
         io_config.flags.dc_low_on_data = 0;
         io_config.flags.disable_control_phase = 0;
-        // 50 kHz: this board has no external I2C pull-ups (internal ~45k only), and
-        // 100 kHz throws burst of tx errors. Half the clock doubles the margin.
+        // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
+        // so this is not a rise-time problem - the errors are noise bursts, and the
+        // longer a transfer stays on the wire the more of them it eats.
         io_config.scl_speed_hz = 50 * 1000;
 
         // Use the new I2C panel IO API
@@ -638,8 +639,9 @@ private:
         io_config.dc_bit_offset = 6;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
-        // 50 kHz: this board has no external I2C pull-ups (internal ~45k only), and
-        // 100 kHz throws burst of tx errors. Half the clock doubles the margin.
+        // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
+        // so this is not a rise-time problem - the errors are noise bursts, and the
+        // longer a transfer stays on the wire the more of them it eats.
         io_config.scl_speed_hz = 50 * 1000;
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
@@ -832,6 +834,11 @@ private:
                             ESP_LOGE(TAG, "Re-init worker: panel did not come back");
                         } else {
                             ESP_LOGW(TAG, "Re-init worker: panel back on");
+                            // The glass was re-initialised: its RAM no longer matches the
+                            // frame cache, so force one real paint or the face stays blank.
+                            if (self->eyes_ != nullptr) {
+                                self->eyes_->ForceRedraw();
+                            }
                         }
                         vTaskDelete(nullptr);
                     }, "panel_reinit", 4096, self, 1, nullptr);

@@ -100,7 +100,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
     for (int page = ys / 8; page <= (ye - 1) / 8; ++page) {
         // One immediate retry: transient bus noise usually passes on the second try.
         bool ok = false;
-        for (int attempt = 0; attempt < 2 && !ok; ++attempt) {
+        for (int attempt = 0; attempt < 3 && !ok; ++attempt) {
             if (send_cmd(p, 0xB0 | page) != ESP_OK) continue;
             int column = xs + COLUMN_OFFSET;
             if (send_cmd(p, column & 0x0F) != ESP_OK) continue;
