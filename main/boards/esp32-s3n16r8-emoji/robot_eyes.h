@@ -91,6 +91,9 @@ private:
     int blink_phase_ = 0;
     uint32_t last_blink_ = 0;
     uint32_t next_blink_interval_ = 3000;
+    // Burn-in guard (see Render): slow pixel shift of the whole canvas.
+    uint32_t last_shift_ = 0;
+    uint8_t shift_idx_ = 0;
     uint32_t blink_phase_start_ = 0;
     bool blink_requested_ = false;
     bool double_blink_armed_ = false;

@@ -347,6 +347,15 @@ void RobotEyes::UpdateBlink(uint32_t now) {
         blink_phase_ = 1;
         blink_phase_start_ = now;
     }
+    // Burn-in guard: OLED pixels dim where they stay lit. Walk the canvas through a
+    // 3x2 px pattern every ~3 min so no pixel is always black in the same place.
+    if (canvas_ != nullptr && now - last_shift_ > 180000) {
+        last_shift_ = now;
+        static const int8_t kShift[6][2] = {{0, 0}, {1, 0}, {2, 0}, {2, 1}, {1, 1}, {0, 1}};
+        shift_idx_ = (shift_idx_ + 1) % 6;
+        lv_obj_align(canvas_, LV_ALIGN_CENTER, kShift[shift_idx_][0], kShift[shift_idx_][1]);
+        lv_obj_invalidate(canvas_);
+    }
     if (blink_phase_ == 0 && idle_ && now - last_blink_ > next_blink_interval_) {
         if (rand_int(0, 99) < 18) {              // 18%: nhay 1 mat thay vi chop ca 2
             if (rand_int(0, 1)) TriggerWinkRight(now); else TriggerWinkLeft(now);
