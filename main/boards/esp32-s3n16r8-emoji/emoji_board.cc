@@ -1430,6 +1430,21 @@ static void StateMonitorTask(void* arg) {
                 set_eyes_mood("sleepy");
                 ESP_LOGI(TAG, "Idle 120s -> eyes=sleepy (drowsy)");
             }
+            // Burn-in saver, the only thing that really works on OLED: stop driving
+            // pixels. After 10 min idle the panel goes dark for 45 s every 10 min;
+            // any wake word / button brings it straight back (see the wake path).
+            if (idle_ms > 600000 && board->panel_ != nullptr) {
+                bool want_dark = ((idle_ms - 600000) % 600000) < 45000;
+                if (want_dark != board->panel_asleep_) {
+                    if (esp_lcd_panel_disp_on_off(board->panel_, !want_dark) == ESP_OK) {
+                        board->panel_asleep_ = want_dark;
+                        if (!want_dark && board->eyes_ != nullptr) {
+                            board->eyes_->ForceRedraw();
+                        }
+                        ESP_LOGI(TAG, "Burn-in saver: panel %s", want_dark ? "off" : "on");
+                    }
+                }
+            }
         }
         
         // Update the previous device state
