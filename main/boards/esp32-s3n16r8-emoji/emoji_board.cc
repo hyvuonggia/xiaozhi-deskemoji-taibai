@@ -1485,6 +1485,26 @@ static void StateMonitorTask(void* arg) {
             }
         }
         
+        // Deafness watchdog: while idle the wake word engine reads the mic non-stop,
+        // so a frozen read counter means the audio pipeline died (screen and servo
+        // keep working, which is exactly the "says nothing" report). Reboot to
+        // recover - the boss would rather wait 10 s than talk to a deaf robot.
+        {
+            extern std::atomic<uint32_t> g_audio_read_ok;
+            static uint32_t last_reads = 0;
+            static TickType_t last_read_change = xTaskGetTickCount();
+            uint32_t reads = g_audio_read_ok.load();
+            if (reads != last_reads) {
+                last_reads = reads;
+                last_read_change = xTaskGetTickCount();
+            } else if (xTaskGetTickCount() > pdMS_TO_TICKS(40000) &&
+                       (xTaskGetTickCount() - last_read_change) > pdMS_TO_TICKS(25000)) {
+                ESP_LOGE(TAG, "Microphone pipeline dead for 25 s - restarting");
+                vTaskDelay(pdMS_TO_TICKS(300));
+                esp_restart();
+            }
+        }
+
         // Update the previous device state
         last_state = current_state;
         

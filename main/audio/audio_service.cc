@@ -1,4 +1,5 @@
 #include "audio_service.h"
+#include <atomic>
 #include <esp_log.h>
 #include <cstring>
 
@@ -151,6 +152,10 @@ void AudioService::Stop() {
     audio_queue_cv_.notify_all();
 }
 
+// Counts successful mic reads: a frozen counter while the wake word is armed means
+// the microphone pipeline died (the robot is deaf even though everything else runs).
+std::atomic<uint32_t> g_audio_read_ok{0};
+
 bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, int samples) {
     if (!codec_->input_enabled()) {
         esp_timer_stop(audio_power_timer_);
@@ -163,6 +168,7 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
         if (!codec_->InputData(data)) {
             return false;
         }
+        g_audio_read_ok.fetch_add(1);
         if (codec_->input_channels() == 2) {
             auto mic_channel = std::vector<int16_t>(data.size() / 2);
             auto reference_channel = std::vector<int16_t>(data.size() / 2);
@@ -189,6 +195,7 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
         if (!codec_->InputData(data)) {
             return false;
         }
+        g_audio_read_ok.fetch_add(1);
     }
 
     /* Update the last input time */
