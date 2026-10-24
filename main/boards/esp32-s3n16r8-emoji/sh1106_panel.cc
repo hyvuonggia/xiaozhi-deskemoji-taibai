@@ -44,7 +44,10 @@ static esp_err_t panel_init(esp_lcd_panel_t *panel) {
     ESP_RETURN_ON_ERROR(send_cmd(p, 0xA1), TAG, "segment remap failed");
     ESP_RETURN_ON_ERROR(send_cmd(p, 0xC8), TAG, "COM scan config failed");
     ESP_RETURN_ON_ERROR(send_cmd_data(p, 0xDA, 0x12), TAG, "COM pin config failed");
-    ESP_RETURN_ON_ERROR(send_cmd_data(p, 0x81, 0x7F), TAG, "contrast config failed");
+    // Panel brightness = the driver's contrast register (there is no backlight).
+    // Lower value = less pixel current = slower OLED ageing. Tune this one number:
+    // 0x7F full, 0x4F comfortable, below 0x35 gets washed out in daylight.
+    ESP_RETURN_ON_ERROR(send_cmd_data(p, 0x81, 0x4F), TAG, "contrast config failed");
     ESP_RETURN_ON_ERROR(send_cmd_data(p, 0xD9, 0xF1), TAG, "pre-charge config failed");
     ESP_RETURN_ON_ERROR(send_cmd_data(p, 0xDB, 0x40), TAG, "VCOMH config failed");
     ESP_RETURN_ON_ERROR(send_cmd(p, 0xA4), TAG, "RAM display mode config failed");
