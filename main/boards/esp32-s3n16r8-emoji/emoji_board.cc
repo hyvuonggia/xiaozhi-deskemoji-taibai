@@ -761,6 +761,12 @@ private:
             }
             bool reset_attempted = false;
             uint32_t tick_log = 0;
+            // First restart allowed 60 s after boot, doubling per previous restart
+            // (loop protection), but never blocking the watch loop itself.
+            uint32_t last_req = 0, last_ok = 0;
+            TickType_t stuck_since = 0;
+            TickType_t restart_allow_at =
+                pdMS_TO_TICKS(60000UL * (1UL << (supervisor_restarts_ > 3 ? 3 : supervisor_restarts_)));
             while (true) {
                 vTaskDelay(pdMS_TO_TICKS(3000));
                 // One line every ~30 s: free heap + worst-case heap ever seen.
@@ -794,8 +800,24 @@ private:
                 if (self->display_beat_ == 0) {     // renderer never ran yet: booting
                     continue;
                 }
-                const TickType_t silence =
-                    xTaskGetTickCount() - self->display_beat_;
+                // "Silence" must mean "a frame was asked for and never came out".
+                // The render task ticks every 100 ms even when the glass is dead, so
+                // the old beat kept the watchdog happy while the face stayed frozen.
+                uint32_t req_now = 0;
+                uint32_t ok_now = sh1106_draw_counters(&req_now);
+                if (req_now != last_req) {
+                    last_req = req_now;
+                    if (ok_now == last_ok) {
+                        stuck_since = stuck_since ? stuck_since : xTaskGetTickCount();
+                    } else {
+                        stuck_since = 0;
+                    }
+                }
+                if (ok_now != last_ok) {
+                    last_ok = ok_now;
+                    stuck_since = 0;
+                }
+                const TickType_t silence = stuck_since ? (xTaskGetTickCount() - stuck_since) : 0;
                 // While speaking the eyes freeze by design (speaker peaks are the prime
                 // I2C-glitch suspect), so a quiet heartbeat is EXPECTED - never mistake
                 // it for a hung bus and reset mid-reply.
@@ -857,21 +879,18 @@ private:
                     vTaskDelay(pdMS_TO_TICKS(6000));
                     continue;
                 }
-                // Still silent after a bus reset: restart. NEVER withhold forever -
-                // the old "restart withheld" branch left the robot permanently dead
-                // (screen frozen, nothing responding, no self-heal). Back off instead
-                // so a truly broken panel cannot turn into a reboot loop.
-                static constexpr uint32_t kBackoffMin[] = {4, 10, 20, 30};  // minutes
-                uint32_t idx = supervisor_restarts_ < 4 ? supervisor_restarts_ : 3;
-                TickType_t backoff = pdMS_TO_TICKS(kBackoffMin[idx] * 60UL * 1000UL);
-                if (xTaskGetTickCount() > pdMS_TO_TICKS(240000)) {
-                    ESP_LOGE(TAG, "Display still stalled - restarting (restart #%u, next backoff %u min)",
-                             (unsigned)(supervisor_restarts_ + 1), (unsigned)kBackoffMin[idx]);
+                // Still silent after a bus reset. NEVER sit on a frozen face: the old
+                // code slept a 4-30 minute backoff RIGHT HERE, so the screen stayed
+                // dead for minutes while everything else worked. Watch the clock
+                // instead and restart as soon as the backoff window has passed.
+                if (silence > pdMS_TO_TICKS(90000) && xTaskGetTickCount() >= restart_allow_at) {
+                    ESP_LOGE(TAG, "Display dead for %u ms - restarting (restart #%u)",
+                             (unsigned)silence, (unsigned)(supervisor_restarts_ + 1));
                     supervisor_restarts_++;
-                    vTaskDelay(pdMS_TO_TICKS(500));  // let the log reach the port
+                    vTaskDelay(pdMS_TO_TICKS(300));  // let the log reach the port
                     esp_restart();
                 }
-                vTaskDelay(backoff);
+                vTaskDelay(pdMS_TO_TICKS(3000));
             }
         }, "disp_super", 4096, this, 1, nullptr);
     }

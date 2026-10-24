@@ -22,3 +22,6 @@ void sh1106_set_recovering(bool recovering);
 
 // True once if a frame was abandoned: the caller must repaint.
 bool sh1106_take_dirty();
+
+// Attempted / completed frame counts: a rising gap means flushes are stuck.
+uint32_t sh1106_draw_counters(uint32_t* req);

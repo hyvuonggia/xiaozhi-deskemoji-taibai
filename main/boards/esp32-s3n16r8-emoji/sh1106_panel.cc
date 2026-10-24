@@ -72,6 +72,11 @@ static bool bus_lines_idle() {
 
 static std::atomic<bool> recovering{false};
 static std::atomic<bool> frame_dirty{false};
+static std::atomic<uint32_t> draw_req{0}, draw_ok{0};
+uint32_t sh1106_draw_counters(uint32_t* req) {
+    *req = draw_req.load();
+    return draw_ok.load();
+}
 bool sh1106_take_dirty() { return frame_dirty.exchange(false); }
 void sh1106_set_recovering(bool on) { recovering.store(on); }
 
@@ -80,6 +85,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
     if (!data || xs < 0 || ys < 0 || xe > PANEL_WIDTH || ye > PANEL_HEIGHT || xs >= xe || ys >= ye) {
         return ESP_ERR_INVALID_ARG;
     }
+    draw_req.fetch_add(1);
     if (recovering.load() || !bus_lines_idle()) {
         // Wedged bus: skip the frame, finish the flush, stay alive. Throttled log.
         static int held_drops = 0;
@@ -128,6 +134,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
             return ESP_OK;  // deliberate: the error is already logged, the frame is skipped
         }
     }
+    draw_ok.fetch_add(1);
     return ESP_OK;
 }
 
