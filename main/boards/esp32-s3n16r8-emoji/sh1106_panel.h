@@ -19,3 +19,6 @@ esp_err_t esp_lcd_new_panel_sh1106(esp_lcd_panel_io_handle_t io,
 // Set while the board rebuilds the bus: the renderer must not touch handles that
 // are being freed (use-after-free there is a crash, not a glitch).
 void sh1106_set_recovering(bool recovering);
+
+// True once if a frame was abandoned: the caller must repaint.
+bool sh1106_take_dirty();

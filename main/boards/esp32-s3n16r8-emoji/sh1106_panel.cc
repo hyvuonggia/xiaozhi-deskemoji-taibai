@@ -71,6 +71,8 @@ static bool bus_lines_idle() {
 }
 
 static std::atomic<bool> recovering{false};
+static std::atomic<bool> frame_dirty{false};
+bool sh1106_take_dirty() { return frame_dirty.exchange(false); }
 void sh1106_set_recovering(bool on) { recovering.store(on); }
 
 static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int xe, int ye, const void *data) {
@@ -84,6 +86,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
         if (++held_drops % 50 == 1) {
             ESP_LOGW(TAG, "bus held, dropping frame (x%d)", held_drops);
         }
+        frame_dirty.store(true);
         lv_display_t *disp = lv_display_get_default();
         if (disp != nullptr) {
             lv_disp_flush_ready(disp);
@@ -116,7 +119,8 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
             // (dropping this one frame) instead of leaving disp->flushing == 1 forever -
             // that used to freeze taskLVGL holding the LVGL mutex and kill mic, servo
             // and the state machine along with the screen.
-            ESP_LOGW(TAG, "page %d failed twice, dropping frame", page);
+            ESP_LOGW(TAG, "page %d failed, dropping frame", page);
+            frame_dirty.store(true);  // the glass now shows a half frame: repaint soon
             lv_display_t *disp = lv_display_get_default();
             if (disp != nullptr) {
                 lv_disp_flush_ready(disp);

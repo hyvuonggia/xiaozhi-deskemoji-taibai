@@ -781,6 +781,12 @@ private:
                     self->CreateEyesScreen();
                     self->SwitchScreen(true);
                 }
+                // Repair loop: a noisy bus drops a page here and there, which leaves the
+                // glass showing half a frame. Repaint as soon as that happens (at most
+                // once per tick) instead of waiting for the next blink.
+                if (self->eyes_ != nullptr && !self->panel_asleep_ && sh1106_take_dirty()) {
+                    self->eyes_->ForceRedraw();
+                }
                 if (self->panel_asleep_) {          // nothing is being drawn: no stall
                     reset_attempted = false;
                     continue;
@@ -798,7 +804,10 @@ private:
                     vTaskDelay(pdMS_TO_TICKS(2000));
                     continue;
                 }
-                if (silence < pdMS_TO_TICKS(8000)) { // rendering fine
+                // 20 s, not 8: the face only redraws when something changes (render-on-
+                // change) and blinks are 2-6 s apart, so 8 s produced false "stalled"
+                // alarms and needless bus resets.
+                if (silence < pdMS_TO_TICKS(20000)) { // rendering fine
                     reset_attempted = false;
                     // A long healthy stretch forgives past restarts.
                     if (silence < pdMS_TO_TICKS(1000) &&
