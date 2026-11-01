@@ -1183,7 +1183,7 @@ void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
                 } else {
                     // Handle the AI reply in a background task, to keep complex work out of the main loop
                     // Increase the stack size to avoid a stack overflow
-                    xTaskCreate(ProcessAIResponseTask, "ai_response", 8192, strdup(content), 1, NULL);
+                    xTaskCreate(ProcessAIResponseTask, "ai_response", 5120, strdup(content), 1, NULL);
                 }
             }
         }
@@ -1216,12 +1216,14 @@ static void StatusReportTask(void* arg) {
         uint32_t ok = sh1106_draw_counters(&req);
         int free_int = (int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         int min_int = (int)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        int largest = (int)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        int tasks = (int)uxTaskGetNumberOfTasks();
         snprintf(body, sizeof(body),
-                 "{\"up\":%u,\"state\":%d,\"heap\":%d,\"min\":%d,\"reads\":%u,"
-                 "\"peak\":%u,\"frames\":%u,\"req\":%u,\"i2c_err\":%u}",
+                 "{\"up\":%u,\"state\":%d,\"heap\":%d,\"min\":%d,\"largest\":%d,\"tasks\":%d,"
+                 "\"reads\":%u,\"peak\":%u,\"frames\":%u,\"req\":%u,\"i2c_err\":%u}",
                  (unsigned)(esp_timer_get_time() / 1000000),
                  (int)Application::GetInstance().GetDeviceState(),
-                 free_int, min_int,
+                 free_int, min_int, largest, tasks,
                  (unsigned)g_audio_read_ok.load(), (unsigned)g_audio_peak.load(),
                  (unsigned)ok, (unsigned)req, (unsigned)sh1106_error_count());
         g_audio_peak.store(0);
@@ -1320,6 +1322,31 @@ static void StateMonitorTask(void* arg) {
     while (true) {
         // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
+
+        // THINKING state: the device stays "listening" while the server thinks,
+        // so the boss saw the microphone icon for the whole wait. Detect the
+        // silence AFTER his sentence and show an explicit thinking face.
+        {
+            extern std::atomic<uint32_t> g_audio_last_voice_ms;
+            static bool thinking = false;
+            uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+            uint32_t last_voice = g_audio_last_voice_ms.load();
+            bool quiet_after_speech = last_voice != 0 && (now_ms - last_voice) > 1200 &&
+                                      (now_ms - last_voice) < 25000;
+            bool want_thinking = (current_state == kDeviceStateListening) && quiet_after_speech;
+            if (want_thinking != thinking) {
+                thinking = want_thinking;
+                if (want_thinking) {
+                    if (board->eyes_ != nullptr) {
+                        board->eyes_->SetMood("curious");
+                        board->eyes_->ForceRedraw();
+                    }
+                    board->SetStatusText("\xEF\x80\x97");  // clock = thinking
+                    ESP_LOGI(TAG, "State: thinking");
+                }
+            }
+        }
+
         
         // Log the device state when it changes
         if (current_state != last_state) {
