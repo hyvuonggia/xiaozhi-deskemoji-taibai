@@ -310,7 +310,14 @@ def extract_action(text):
 async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta=None, tools=None):
     # The robot must think before it answers: the server does not send an effort
     # level, so without this default every reply is a reflex answer.
-    reasoning_effort = reasoning_effort or "medium"
+    if not reasoning_effort:
+        # Only pay for thinking when the turn looks like it needs it.
+        q = (messages[-1].get("content") if messages else "") or ""
+        long_or_hard = len(q) > 90 or any(k in q.lower() for k in (
+            "tại sao", "so sánh", "giải thích", "phân tích", "nếu ", "kế hoạch", "tính "))
+        # Simple turns: no thinking budget at all (the provider default was 10 s
+        # slower than a bare call once tools were attached).
+        reasoning_effort = "medium" if long_or_hard else None
     """Goi Hermes agent. Neu co on_delta: goi ham do voi tung manh text ngay khi sinh ra.
     Neu co tools: chuyen tiep cho model (native function calling) va tra ve (text, tool_calls)."""
     url = HERMES_BASE.rstrip("/") + "/chat/completions"
@@ -334,7 +341,7 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
         # also bounds context growth -> stable 3-5 s answers instead of slower nights.
         # SESSION_GEN: bump when the agent gains new tools (MCP) so the robot picks up
         # a fresh tool surface immediately instead of waiting for tomorrow.
-        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 5),
+        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 6),
     }
     if HERMES_KEY:
         headers["Authorization"] = "Bearer " + HERMES_KEY
@@ -507,7 +514,10 @@ _CURRENT_FACT_RE = re.compile(
     r"(hi\u1ec7n nay|hi\u1ec7n t\u1ea1i|b\u00e2y gi\u1edd|m\u1edbi nh\u1ea5t).{0,40}"
     r"(l\u00e0 ai|ai l\u00e0|bao nhi\u00eau|th\u1ebf n\u00e0o)|"
     r"ai (\u0111ang )?(l\u00e0|l\u00e0m) .{0,30}(hi\u1ec7n nay|hi\u1ec7n t\u1ea1i)|"
-    r"gi\u00e1 v\u00e0ng|gi\u00e1 x\u0103ng|t\u1ef7 gi\u00e1|tin t\u1ee9c|th\u1eddi s\u1ef1",
+    r"gi\u00e1 v\u00e0ng|gi\u00e1 x\u0103ng|t\u1ef7 gi\u00e1|tin t\u1ee9c|th\u1eddi s\u1ef1|"
+    r"m\u1ed9t l\u01b0\u1ee3ng|ch\u1ec9 v\u00e0ng|bao nhi\u00eau m\u1ed9t l\u01b0\u1ee3ng|"
+    r"gi\u00e1 \u0111i\u1ec7n|gi\u00e1 c\u00e0 ph\u00ea|gi\u00e1 v\u1eadt|"
+    r"th\u1eddi ti\u1ebft|m\u01b0a kh\u00f4ng|n\u1eafng kh\u00f4ng",
     re.I)
 
 
@@ -705,6 +715,14 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         log.info("wake-word misfire <- %r", user_text)
         return await respond_text_only(request, cid, model, stream, random.choice([
             "Dạ em nghe đây ạ.", "Dạ em đây, sếp nói đi ạ.", "Dạ!"]))
+    # Gibberish guard: ASR sometimes returns a stub ("alle", "a", "ừ ừ") for noise.
+    # Answering "sếp cần gì ạ?" to noise teaches the boss nothing; ask again instead.
+    _t = user_text.strip().lower()
+    if not tool_results and 0 < len(_t) <= 6 and not re.search(r"[ăâêôơưđáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]", _t) and _t not in ("ok", "oke", "ừ", "uh", "hello", "hi"):
+        log.info("gibberish <- %r", _t)
+        return await respond_text_only(request, cid, model, stream,
+                                       "Dạ em chưa nghe rõ, sếp nói lại giúp em ạ.")
+
     # Fast greeting: session-start requests carry no real content - either empty or just
     # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
     # instead of a full LLM round-trip, so the mic opens ~1 s after the wake word
