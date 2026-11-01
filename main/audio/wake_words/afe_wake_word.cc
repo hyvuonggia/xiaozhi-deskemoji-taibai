@@ -78,6 +78,13 @@ bool AfeWakeWord::Initialize(AudioCodec* codec) {
     afe_iface_ = esp_afe_handle_from_config(afe_config);
     afe_data_ = afe_iface_->create_from_config(afe_config);
 
+    // The shipped model fires at 0.64/0.65, which missed ordinary speech from a
+    // metre away. 0.55 trades a few false wakes for a much better hit rate.
+    if (afe_data_ != nullptr && afe_iface_->set_wakenet_threshold != nullptr) {
+        int r = afe_iface_->set_wakenet_threshold(afe_data_, 0, 0.55f);
+        ESP_LOGI(TAG, "WakeNet threshold 0.55 -> %d", r);
+    }
+
     xTaskCreate([](void* arg) {
         auto this_ = (AfeWakeWord*)arg;
         this_->AudioDetectionTask();
