@@ -696,6 +696,15 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         except Exception as exc:  # noqa: BLE001
             log.warning("web lookup failed: %s", exc)
 
+    # Misheard wake word: ASR turns "Alexa" into "alexan / alex sao / alex rằng / a".
+    # Answering those with a full LLM turn makes the robot babble nonsense at its own
+    # name, so treat them as "you called me" and stop there.
+    if not tool_results and re.fullmatch(
+            r"\s*(a|à|ạ|alex|alexa|alexan|alexa\s*ơi|alex\s*(sao|rằng|nhé|ơi)?|"
+            r"ơi\s*alexa|hey\s*alexa)\s*[.!?]*\s*", user_text.strip(), re.I):
+        log.info("wake-word misfire <- %r", user_text)
+        return await respond_text_only(request, cid, model, stream, random.choice([
+            "Dạ em nghe đây ạ.", "Dạ em đây, sếp nói đi ạ.", "Dạ!"]))
     # Fast greeting: session-start requests carry no real content - either empty or just
     # the wake word the server echoes back ("Alexa"). Answer instantly with a short blip
     # instead of a full LLM round-trip, so the mic opens ~1 s after the wake word
@@ -1038,6 +1047,17 @@ async def handle_health(request: web.Request) -> web.Response:
                               "key": bool(HERMES_KEY), "session": HERMES_SESSION})
 
 
+async def handle_robot_status(request: web.Request) -> web.Response:
+    """Telemetry from the robot itself: the only way to see a frozen robot's vitals
+    without opening the USB port (which resets the chip)."""
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {"raw": (await request.text())[:400]}
+    log.info("ROBOT %s", json.dumps(body, ensure_ascii=False)[:400])
+    return web.json_response({"ok": True})
+
+
 async def handle_laptop_temp(request: web.Request) -> web.Response:
     # LAN-only sensor endpoint for the xiaozhi-server plugin (NOT for chat).
     # Guarded by a token so a LAN neighbor can't fingerprint the laptop.
@@ -1061,6 +1081,7 @@ def main():
     app.router.add_get("/v1/models", handle_models)
     app.router.add_get("/healthz", handle_health)
     app.router.add_get("/internal/laptop-temp", handle_laptop_temp)
+    app.router.add_post("/internal/robot-status", handle_robot_status)
     log.info("bridge listening on 0.0.0.0:%s -> %s (model %s, key=%s)", PORT, HERMES_BASE, HERMES_MODEL, bool(HERMES_KEY))
     web.run_app(app, host="0.0.0.0", port=PORT, access_log=None)
 
