@@ -157,6 +157,8 @@ void AudioService::Stop() {
 std::atomic<uint32_t> g_audio_read_ok{0};
 std::atomic<uint32_t> g_audio_peak{0};  // loudest sample seen since last reset
 std::atomic<uint32_t> g_audio_last_voice_ms{0};  // ms tick of the last loud input
+std::atomic<uint32_t> g_audio_peak_now{0};   // current read peak
+std::atomic<uint32_t> g_audio_ema{0};        // slow average of the peak (x100)
 
 bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, int samples) {
     if (!codec_->input_enabled()) {
@@ -178,6 +180,9 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
             if (peak > 4000) {
                 g_audio_last_voice_ms.store((uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS));
             }
+            g_audio_peak_now.store((uint32_t)peak);
+            uint32_t ema = g_audio_ema.load();
+            g_audio_ema.store(ema == 0 ? (uint32_t)peak : (uint32_t)((ema * 95 + (uint32_t)peak * 500) / 100));
         }
         if (codec_->input_channels() == 2) {
             auto mic_channel = std::vector<int16_t>(data.size() / 2);
@@ -213,6 +218,9 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
             if (peak > 4000) {
                 g_audio_last_voice_ms.store((uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS));
             }
+            g_audio_peak_now.store((uint32_t)peak);
+            uint32_t ema = g_audio_ema.load();
+            g_audio_ema.store(ema == 0 ? (uint32_t)peak : (uint32_t)((ema * 95 + (uint32_t)peak * 500) / 100));
         }
     }
 

@@ -1331,8 +1331,23 @@ static void StateMonitorTask(void* arg) {
             static bool thinking = false;
             uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
             uint32_t last_voice = g_audio_last_voice_ms.load();
-            bool quiet_after_speech = last_voice != 0 && (now_ms - last_voice) > 1200 &&
-                                      (now_ms - last_voice) < 25000;
+            // Absolute thresholds do not work: this room always reads >4000. Compare
+            // the live level with the running average instead - after the boss stops
+            // talking the level collapses relative to the average.
+            extern std::atomic<uint32_t> g_audio_peak_now;
+            extern std::atomic<uint32_t> g_audio_ema;
+            uint32_t now_peak = g_audio_peak_now.load();
+            uint32_t ema = g_audio_ema.load();          // x100
+            bool quiet_now = ema > 300000 && (uint32_t)now_peak * 100 < ema * 35;
+            static TickType_t quiet_since = 0;
+            if (quiet_now) {
+                if (quiet_since == 0) quiet_since = xTaskGetTickCount();
+            } else {
+                quiet_since = 0;
+            }
+            bool quiet_after_speech = quiet_since != 0 &&
+                                      (xTaskGetTickCount() - quiet_since) > pdMS_TO_TICKS(1200) &&
+                                      (xTaskGetTickCount() - quiet_since) < pdMS_TO_TICKS(25000);
             bool want_thinking = (current_state == kDeviceStateListening) && quiet_after_speech;
             if (want_thinking != thinking) {
                 thinking = want_thinking;
