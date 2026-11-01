@@ -74,12 +74,6 @@ bool AfeWakeWord::Initialize(AudioCodec* codec) {
     // still below audio_input (8).
     afe_config->afe_perferred_priority = 4;
     afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
-    // Wake word missed quiet/normal speech ~2/3 of the time from across a room.
-    // AGC lifts weak input towards -3 dBFS before WakeNet sees it; 12 dB of
-    // compression is enough for speech at 1-3 m without amplifying room noise much.
-    afe_config->agc_init = true;
-    afe_config->agc_compression_gain_db = 12;
-    afe_config->agc_target_level_dbfs = 3;
     
     afe_iface_ = esp_afe_handle_from_config(afe_config);
     afe_data_ = afe_iface_->create_from_config(afe_config);

@@ -81,7 +81,7 @@ struct TaskParams {
 // COSMETIC SWITCH. The animated eyes are the single biggest load on the display
 // bus (and the reason frames get dropped). Survival first: eyes off, plain status
 // text on the built-in chat screen, zero idle redraws.
-static constexpr bool kEyesUi = false;
+static constexpr bool kEyesUi = true;   // static face: one paint per state change
 
 class EmojiDisplay : public OledDisplay {
 private:
@@ -716,6 +716,11 @@ private:
         lv_obj_set_style_border_width(eyes_screen_, 0, 0);
         eyes_ = new RobotEyes();
         eyes_->Initialize(eyes_screen_);
+        // Static face: no blink loop, no random glances, no mood cycling. The eyes
+        // change ONLY when the state changes (one paint each), which is all the
+        // boss asked for and keeps the fragile I2C bus idle.
+        eyes_->SetIdleBehaviors(false);
+        eyes_->SetIdleGlances(false);
         // Status readout along the bottom: the LED is physically covered, so the
         // screen carries state (static text, redrawn only on state change).
         status_label_ = lv_label_create(eyes_screen_);
