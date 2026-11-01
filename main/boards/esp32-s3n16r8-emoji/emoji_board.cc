@@ -34,7 +34,9 @@
 #include <driver/i2c_master.h>  // Include the new I2C driver API header
 #include <driver/gpio.h>
 #include <esp_attr.h>           // RTC_NOINIT_ATTR for the restart counter below
-#include <esp_heap_caps.h>      // free/min heap in the health line
+#include <esp_heap_caps.h>
+#include <esp_wifi.h>
+#include <esp_http_client.h>      // free/min heap in the health line
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -67,6 +69,7 @@ static RTC_NOINIT_ATTR uint32_t supervisor_restarts_;
 // Task function declaration
 static void StateMonitorTask(void* arg);
 static void LivenessProbeTask(void* arg);
+static void StatusReportTask(void* arg);
 
 // Task parameter struct used to pass arguments to the static task functions
 struct TaskParams {
@@ -75,6 +78,11 @@ struct TaskParams {
 };
 
 // Custom OledDisplay subclass that captures the AI reply and triggers expressions and motions
+// COSMETIC SWITCH. The animated eyes are the single biggest load on the display
+// bus (and the reason frames get dropped). Survival first: eyes off, plain status
+// text on the built-in chat screen, zero idle redraws.
+static constexpr bool kEyesUi = false;
+
 class EmojiDisplay : public OledDisplay {
 private:
     EmojiBoard* board_ = nullptr;
@@ -133,6 +141,7 @@ private:
     RobotEyes* eyes_ = nullptr;
     lv_obj_t* eyes_screen_ = nullptr;
     lv_obj_t* status_label_ = nullptr;  // one-line state readout (LED is covered)
+    std::string status_line_;  // last text pushed to the plain chat screen
     
     // Expression-mode flag
     bool is_emoji_mode_ = true;  // boot straight into expressive mode (two big eyes)
@@ -673,6 +682,22 @@ private:
     // Best-effort state icon (Font Awesome, 1 glyph). Skips when the display is
     // busy - a stale icon beats a stalled state machine.
     void SetStatusText(const char* text) {
+        if (!kEyesUi) {
+            // Cosmetic off: push a short Vietnamese line to the plain chat screen,
+            // only when it changes (a handful of frames per conversation).
+            const char* line = "San sang";
+            if (strstr(text, "\xEF\x84\xB0") != nullptr) {
+                line = "Dang nghe";
+            } else if (strstr(text, "\xEF\x80\xA8") != nullptr) {
+                line = "Dang noi";
+            }
+            if (display_ != nullptr && status_line_ != line) {
+                status_line_ = line;
+                GetDisplay()->SetChatMessage("assistant", line);
+                ESP_LOGI(TAG, "STATUS %s", line);
+            }
+            return;
+        }
         if (status_label_ == nullptr || display_ == nullptr) {
             return;
         }
@@ -765,6 +790,7 @@ private:
             // (loop protection), but never blocking the watch loop itself.
             uint32_t last_req = 0, last_ok = 0;
             TickType_t stuck_since = 0;
+            TickType_t dead_since = 0;
             TickType_t restart_allow_at =
                 pdMS_TO_TICKS(60000UL * (1UL << (supervisor_restarts_ > 3 ? 3 : supervisor_restarts_)));
             while (true) {
@@ -805,17 +831,17 @@ private:
                 // the old beat kept the watchdog happy while the face stayed frozen.
                 uint32_t req_now = 0;
                 uint32_t ok_now = sh1106_draw_counters(&req_now);
-                if (req_now != last_req) {
-                    last_req = req_now;
-                    if (ok_now == last_ok) {
-                        stuck_since = stuck_since ? stuck_since : xTaskGetTickCount();
-                    } else {
-                        stuck_since = 0;
+                // A hung transfer never finishes, so NO new requests arrive either -
+                // the old "did req advance?" test went blind exactly when it mattered.
+                // Watch the gap between requested and completed frames instead.
+                if (req_now > ok_now) {
+                    if (stuck_since == 0) {
+                        stuck_since = xTaskGetTickCount();
                     }
-                }
-                if (ok_now != last_ok) {
-                    last_ok = ok_now;
+                } else {
                     stuck_since = 0;
+                    last_req = req_now;
+                    last_ok = ok_now;
                 }
                 const TickType_t silence = stuck_since ? (xTaskGetTickCount() - stuck_since) : 0;
                 // While speaking the eyes freeze by design (speaker peaks are the prime
@@ -843,6 +869,16 @@ private:
                 if (self->display_i2c_bus_ == nullptr) {
                     vTaskDelay(pdMS_TO_TICKS(5000));
                     continue;
+                }
+                if (dead_since == 0) {
+                    dead_since = xTaskGetTickCount();
+                } else if (xTaskGetTickCount() - dead_since > pdMS_TO_TICKS(300000) &&
+                           Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
+                    // 5 minutes of a dead glass and nobody is talking: one clean restart
+                    // is cheaper than carrying a broken display for the rest of the day.
+                    ESP_LOGE(TAG, "Display dead for 5 min - restarting");
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    esp_restart();
                 }
                 if (!reset_attempted) {
                     ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
@@ -1019,9 +1055,11 @@ public:
         // makes SetupUI parent its opaque, full-size container to the eye screen, which
         // then covers the canvas and leaves the OLED looking blank. So: start the
         // renderer now, create and load the eye screen once the UI exists.
-        if (display_available_) {
+        if (display_available_ && kEyesUi) {
             BringUpEyes();
             BringUpSupervisor();
+        } else if (display_available_) {
+            ESP_LOGW(TAG, "Cosmetic UI disabled: status text only");
         } else {
             ESP_LOGW(TAG, "Display unavailable: eyes + supervisor disabled (headless mode)");
         }
@@ -1043,6 +1081,7 @@ public:
         state_params->board = this;
         xTaskCreate(StateMonitorTask, "StateMonitor", 8192, state_params, 1, NULL);
         xTaskCreate(LivenessProbeTask, "alive_probe", 3072, nullptr, 1, NULL);
+        xTaskCreate(StatusReportTask, "status_rep", 4096, nullptr, 1, NULL);
         
         // Store this instance in the global variable
         g_board_instance = this;
@@ -1157,6 +1196,44 @@ void EmojiDisplay::SetChatMessage(const char* role, const char* content) {
 // dead until a manual power cycle. The main loop bumps a counter once per second;
 // if it stops for 30 s the loop is wedged and only a reboot can recover.
 extern volatile uint32_t g_main_loop_beat;
+
+// Telemetry to the LAN bridge every 10 s. A frozen robot cannot tell you anything
+// over USB (opening the port resets it), so it reports its own vitals instead.
+extern std::atomic<uint32_t> g_audio_read_ok;
+extern std::atomic<uint32_t> g_audio_peak;
+
+static void StatusReportTask(void* arg) {
+    (void)arg;
+    vTaskDelay(pdMS_TO_TICKS(20000));
+    while (true) {
+        char body[320];
+        uint32_t req = 0;
+        uint32_t ok = sh1106_draw_counters(&req);
+        int free_int = (int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        int min_int = (int)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        snprintf(body, sizeof(body),
+                 "{\"up\":%u,\"state\":%d,\"heap\":%d,\"min\":%d,\"reads\":%u,"
+                 "\"peak\":%u,\"frames\":%u,\"req\":%u,\"i2c_err\":%u}",
+                 (unsigned)(esp_timer_get_time() / 1000000),
+                 (int)Application::GetInstance().GetDeviceState(),
+                 free_int, min_int,
+                 (unsigned)g_audio_read_ok.load(), (unsigned)g_audio_peak.load(),
+                 (unsigned)ok, (unsigned)req, (unsigned)sh1106_error_count());
+        g_audio_peak.store(0);
+        esp_http_client_config_t cfg = {};
+        cfg.url = "http://192.168.1.40:8643/internal/robot-status";
+        cfg.timeout_ms = 4000;
+        cfg.method = HTTP_METHOD_POST;
+        esp_http_client_handle_t cli = esp_http_client_init(&cfg);
+        if (cli != nullptr) {
+            esp_http_client_set_header(cli, "Content-Type", "application/json");
+            esp_http_client_set_post_field(cli, body, (int)strlen(body));
+            esp_http_client_perform(cli);
+            esp_http_client_cleanup(cli);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
 
 static void LivenessProbeTask(void* arg) {
     (void)arg;
@@ -1328,7 +1405,7 @@ static void StateMonitorTask(void* arg) {
                 board->emoji_controller_->ClearAnimationQueue();
                 ESP_LOGI(TAG, "Conversation continued; stopping random expression animation");
             }
-            set_eyes_idle(false);
+            if (kEyesUi) set_eyes_idle(false);
             // Same status icon as a fresh turn: without this the readout freezes
             // on the boot glyph for the whole conversation.
             if (current_state == kDeviceStateListening) {
@@ -1489,6 +1566,46 @@ static void StateMonitorTask(void* arg) {
         // so a frozen read counter means the audio pipeline died (screen and servo
         // keep working, which is exactly the "says nothing" report). Reboot to
         // recover - the boss would rather wait 10 s than talk to a deaf robot.
+        // Network watchdog: a dead WiFi stack leaves the robot silent and unreachable
+        // while every task still runs, so nothing else notices. 60 s without an IP
+        // (after boot) -> restart.
+        {
+            static TickType_t no_ip_since = 0;
+            wifi_ap_record_t ap_info{};
+            bool online = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
+            if (!online) {
+                if (no_ip_since == 0) no_ip_since = xTaskGetTickCount();
+                else if (xTaskGetTickCount() - no_ip_since > pdMS_TO_TICKS(60000) &&
+                         xTaskGetTickCount() > pdMS_TO_TICKS(90000)) {
+                    ESP_LOGE(TAG, "WiFi down for 60 s - restarting");
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    esp_restart();
+                }
+            } else {
+                no_ip_since = 0;
+            }
+        }
+
+        // Dead-mic watchdog: reads can keep succeeding while the I2S line delivers
+        // pure zeros (mic unpowered / stuck) - the wake word then never fires.
+        {
+            extern std::atomic<uint32_t> g_audio_read_ok;
+            extern std::atomic<uint32_t> g_audio_peak;
+            static uint32_t peak_window = 0;
+            static TickType_t window_start = xTaskGetTickCount();
+            uint32_t peak = g_audio_peak.exchange(0);
+            if (peak > peak_window) peak_window = peak;
+            if (xTaskGetTickCount() - window_start > pdMS_TO_TICKS(30000)) {
+                if (peak_window == 0 && xTaskGetTickCount() > pdMS_TO_TICKS(60000)) {
+                    ESP_LOGE(TAG, "Microphone delivers pure silence for 30 s - restarting");
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    esp_restart();
+                }
+                peak_window = 0;
+                window_start = xTaskGetTickCount();
+            }
+        }
+
         {
             extern std::atomic<uint32_t> g_audio_read_ok;
             static uint32_t last_reads = 0;

@@ -25,3 +25,6 @@ bool sh1106_take_dirty();
 
 // Attempted / completed frame counts: a rising gap means flushes are stuck.
 uint32_t sh1106_draw_counters(uint32_t* req);
+
+// Total dropped pages since boot (bus error counter).
+uint32_t sh1106_error_count();

@@ -72,11 +72,12 @@ static bool bus_lines_idle() {
 
 static std::atomic<bool> recovering{false};
 static std::atomic<bool> frame_dirty{false};
-static std::atomic<uint32_t> draw_req{0}, draw_ok{0};
+static std::atomic<uint32_t> draw_req{0}, draw_ok{0}, draw_err{0};
 uint32_t sh1106_draw_counters(uint32_t* req) {
     *req = draw_req.load();
     return draw_ok.load();
 }
+uint32_t sh1106_error_count() { return draw_err.load(); }
 bool sh1106_take_dirty() { return frame_dirty.exchange(false); }
 void sh1106_set_recovering(bool on) { recovering.store(on); }
 
@@ -127,6 +128,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
             // and the state machine along with the screen.
             ESP_LOGW(TAG, "page %d failed, dropping frame", page);
             frame_dirty.store(true);  // the glass now shows a half frame: repaint soon
+            draw_err.fetch_add(1);
             lv_display_t *disp = lv_display_get_default();
             if (disp != nullptr) {
                 lv_disp_flush_ready(disp);

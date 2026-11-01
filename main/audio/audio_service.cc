@@ -155,6 +155,7 @@ void AudioService::Stop() {
 // Counts successful mic reads: a frozen counter while the wake word is armed means
 // the microphone pipeline died (the robot is deaf even though everything else runs).
 std::atomic<uint32_t> g_audio_read_ok{0};
+std::atomic<uint32_t> g_audio_peak{0};  // loudest sample seen since last reset
 
 bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, int samples) {
     if (!codec_->input_enabled()) {
@@ -169,6 +170,11 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
             return false;
         }
         g_audio_read_ok.fetch_add(1);
+        {
+            int32_t peak = 0;
+            for (int16_t v : data) { int32_t a = v < 0 ? -v : v; if (a > peak) peak = a; }
+            if (peak > (int32_t)g_audio_peak.load()) g_audio_peak.store((uint32_t)peak);
+        }
         if (codec_->input_channels() == 2) {
             auto mic_channel = std::vector<int16_t>(data.size() / 2);
             auto reference_channel = std::vector<int16_t>(data.size() / 2);
@@ -196,6 +202,11 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
             return false;
         }
         g_audio_read_ok.fetch_add(1);
+        {
+            int32_t peak = 0;
+            for (int16_t v : data) { int32_t a = v < 0 ? -v : v; if (a > peak) peak = a; }
+            if (peak > (int32_t)g_audio_peak.load()) g_audio_peak.store((uint32_t)peak);
+        }
     }
 
     /* Update the last input time */
