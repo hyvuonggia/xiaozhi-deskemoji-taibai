@@ -1255,12 +1255,13 @@ static void LivenessProbeTask(void* arg) {
             misses = 0;
             continue;
         }
-        if (++misses >= 3) {  // ~30 s without a single loop iteration
-            ESP_LOGE(TAG, "Main loop wedged for ~30 s - rebooting to recover");
-            vTaskDelay(pdMS_TO_TICKS(300));
-            esp_restart();
+        // NEVER reboot on this. Measured: the main loop legitimately blocks for
+        // tens of seconds while the websocket connects / OTA runs, so this probe
+        // rebooted a healthy robot every 40-70 s. Log only.
+        if (++misses >= 3) {
+            ESP_LOGW(TAG, "Main loop heartbeat quiet for ~30 s (not rebooting)");
+            misses = 0;
         }
-        ESP_LOGW(TAG, "Main loop heartbeat stalled (%d/3)", misses);
     }
 }
 
@@ -1622,9 +1623,9 @@ static void StateMonitorTask(void* arg) {
             bool online = (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
             if (!online) {
                 if (no_ip_since == 0) no_ip_since = xTaskGetTickCount();
-                else if (xTaskGetTickCount() - no_ip_since > pdMS_TO_TICKS(60000) &&
+                else if (xTaskGetTickCount() - no_ip_since > pdMS_TO_TICKS(180000) &&
                          xTaskGetTickCount() > pdMS_TO_TICKS(90000)) {
-                    ESP_LOGE(TAG, "WiFi down for 60 s - restarting");
+                    ESP_LOGE(TAG, "WiFi down for 3 min - restarting");
                     vTaskDelay(pdMS_TO_TICKS(300));
                     esp_restart();
                 }
@@ -1642,9 +1643,9 @@ static void StateMonitorTask(void* arg) {
             static TickType_t window_start = xTaskGetTickCount();
             uint32_t peak = g_audio_peak.exchange(0);
             if (peak > peak_window) peak_window = peak;
-            if (xTaskGetTickCount() - window_start > pdMS_TO_TICKS(30000)) {
+            if (xTaskGetTickCount() - window_start > pdMS_TO_TICKS(120000)) {
                 if (peak_window == 0 && xTaskGetTickCount() > pdMS_TO_TICKS(60000)) {
-                    ESP_LOGE(TAG, "Microphone delivers pure silence for 30 s - restarting");
+                    ESP_LOGE(TAG, "Microphone delivers pure silence for 2 min - restarting");
                     vTaskDelay(pdMS_TO_TICKS(300));
                     esp_restart();
                 }
