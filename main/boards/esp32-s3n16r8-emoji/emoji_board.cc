@@ -1664,9 +1664,17 @@ static void StateMonitorTask(void* arg) {
                 last_read_change = xTaskGetTickCount();
             } else if (xTaskGetTickCount() > pdMS_TO_TICKS(40000) &&
                        (xTaskGetTickCount() - last_read_change) > pdMS_TO_TICKS(25000)) {
+                // A dropped WiFi link stalls the audio feed (the socket blocks), which
+                // looked exactly like a dead microphone and rebooted a healthy robot.
+                wifi_ap_record_t ap{};
+                if (esp_wifi_sta_get_ap_info(&ap) != ESP_OK) {
+                    ESP_LOGW(TAG, "Audio feed stalled while WiFi is down - not a dead mic");
+                    last_read_change = xTaskGetTickCount();
+                } else {
                 ESP_LOGE(TAG, "Microphone pipeline dead for 25 s - restarting");
                 vTaskDelay(pdMS_TO_TICKS(300));
                 esp_restart();
+            }
             }
         }
 
