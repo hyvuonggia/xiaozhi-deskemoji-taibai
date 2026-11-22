@@ -249,7 +249,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 50 * 1000;
+        io_config.scl_speed_hz = 20 * 1000;  // internal pull-ups are weak; 20 kHz survives them
 
         // Use the new I2C panel IO API
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
@@ -538,6 +538,28 @@ private:
         return false;
     }
 
+    // Last resort when the boot init never got the panel: the handles we hold may
+    // themselves be stale, so drop the whole stack and build it again from zero.
+    bool RebuildDisplayFromScratch() {
+        if (display_available_) return true;
+        ESP_LOGW(TAG, "Headless rebuild: tearing the panel stack down");
+        if (panel_ != nullptr) { esp_lcd_panel_del(panel_); panel_ = nullptr; }
+        if (panel_io_ != nullptr) { esp_lcd_panel_io_del(panel_io_); panel_io_ = nullptr; }
+        if (display_i2c_bus_ != nullptr) { i2c_del_master_bus(display_i2c_bus_); display_i2c_bus_ = nullptr; }
+        ClockOutDisplayBus();
+        vTaskDelay(pdMS_TO_TICKS(300));
+        InitializeDisplayI2c();
+        InitializeSsd1306Display();
+        if (!display_available_) {
+            ESP_LOGW(TAG, "Headless rebuild: still no panel");
+            return false;
+        }
+        ESP_LOGI(TAG, "Headless rebuild: panel came back");
+        if (eyes_screen_ == nullptr && ui_ready_) CreateEyesScreen();
+        SwitchScreen(true);
+        return true;
+    }
+
     // Who answers on the bus right now? Definitive triage: 0x3C ACK + init fail
     // = controller alive but deaf (sequence issue); nothing ACKs = bus held low
     // (power-cycle the glass); a stranger ACKs = ghost device on shared pins.
@@ -680,7 +702,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 50 * 1000;
+        io_config.scl_speed_hz = 20 * 1000;  // internal pull-ups are weak; 20 kHz survives them
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
         }
@@ -1357,9 +1379,10 @@ static void StateMonitorTask(void* arg) {
             if (xTaskGetTickCount() - last_retry > pdMS_TO_TICKS(20000)) {
                 last_retry = xTaskGetTickCount();
                 ESP_LOGW(TAG, "Headless: retrying the display");
-                board->RecoverDisplay();
-                board->BringUpEyes();
-                board->BringUpSupervisor();
+                if (board->RebuildDisplayFromScratch()) {
+                    board->BringUpEyes();
+                    board->BringUpSupervisor();
+                }
             }
         }
 
