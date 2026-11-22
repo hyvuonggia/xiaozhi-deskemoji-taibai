@@ -1353,6 +1353,20 @@ static void StateMonitorTask(void* arg) {
         // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
 
+        // Headless with a flaky panel: one init attempt at boot is not enough when
+        // the module answers only sometimes.
+        if (board != nullptr && !board->display_available_) {
+            static TickType_t last_retry = 0;
+            if (last_retry == 0) last_retry = xTaskGetTickCount();
+            if (xTaskGetTickCount() - last_retry > pdMS_TO_TICKS(20000)) {
+                last_retry = xTaskGetTickCount();
+                ESP_LOGW(TAG, "Headless: retrying the display");
+                board->RecoverDisplay();
+                board->BringUpEyes();
+                board->BringUpSupervisor();
+            }
+        }
+
         // THINKING state: the device stays "listening" while the server thinks,
         // so the boss saw the microphone icon for the whole wait. Detect the
         // silence AFTER his sentence and show an explicit thinking face.
