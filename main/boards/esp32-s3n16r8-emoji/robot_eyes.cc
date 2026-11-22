@@ -26,6 +26,10 @@ const char* kMoodNames[] = {
 };
 constexpr int MOOD_COUNT = sizeof(kMoodNames) / sizeof(kMoodNames[0]);
 
+// MAX-STABILITY MODE: every animated frame is another I2C write that can wedge
+// the panel. Static eyes still repaint on mood/state changes.
+static constexpr bool kMaxStability = true;
+
 enum MoodIdx {
     M_NEUTRAL = 0, M_HAPPY, M_SAD, M_ANGRY, M_SURPRISED, M_SLEEPY, M_LOVE, M_SUSPICIOUS,
     M_CONFUSED, M_SCARED, M_LAUGH, M_BORED, M_EXCITED, M_SHY, M_ANNOYED, M_DIZZY,
@@ -264,6 +268,7 @@ void RobotEyes::Step() {
 }
 
 void RobotEyes::UpdateLook(uint32_t now) {
+    if (kMaxStability) return;
     if (double_take_) {
         uint32_t elapsed = now - double_take_start_;
         if (elapsed < 120) {
@@ -337,6 +342,7 @@ void RobotEyes::UpdateWinks(uint32_t now) {
 }
 
 void RobotEyes::UpdateBlink(uint32_t now) {
+    if (kMaxStability) return;
     int min_int = 15000, max_int = 30000;  // every frame is one I2C write; keep it rare
     if (mood_ == M_SLEEPY || mood_ == M_BORED) { min_int = 1500; max_int = 3200; }
     if (mood_ == M_SURPRISED || mood_ == M_SCARED) { min_int = 4200; max_int = 8500; }
