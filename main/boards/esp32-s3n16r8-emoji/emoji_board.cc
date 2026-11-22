@@ -183,7 +183,36 @@ private:
         }
     }
 
+    // A soft reset leaves the panel mid-transaction holding SDA low, so every
+    // later transaction fails and the robot boots "headless". Clock the bus free
+    // BEFORE the driver takes the pins: 9 clocks + STOP releases the slave.
+    static void PreInitBusClear() {
+        gpio_config_t io = {};
+        io.pin_bit_mask = (1ULL << DISPLAY_I2C_SDA_PIN) | (1ULL << DISPLAY_I2C_SCL_PIN);
+        io.mode = GPIO_MODE_INPUT_OUTPUT_OD;
+        io.pull_up_en = GPIO_PULLUP_ENABLE;
+        gpio_config(&io);
+        gpio_set_level((gpio_num_t)DISPLAY_I2C_SDA_PIN, 1);
+        gpio_set_level((gpio_num_t)DISPLAY_I2C_SCL_PIN, 1);
+        esp_rom_delay_us(10);
+        for (int i = 0; i < 9; i++) {
+            gpio_set_level((gpio_num_t)DISPLAY_I2C_SCL_PIN, 0);
+            esp_rom_delay_us(5);
+            gpio_set_level((gpio_num_t)DISPLAY_I2C_SCL_PIN, 1);
+            esp_rom_delay_us(5);
+        }
+        gpio_set_level((gpio_num_t)DISPLAY_I2C_SDA_PIN, 0);
+        esp_rom_delay_us(5);
+        gpio_set_level((gpio_num_t)DISPLAY_I2C_SCL_PIN, 1);
+        esp_rom_delay_us(5);
+        gpio_set_level((gpio_num_t)DISPLAY_I2C_SDA_PIN, 1);
+        esp_rom_delay_us(10);
+        ESP_LOGW(TAG, "PreInitBusClear: SDA now %d (1 = released)",
+                 gpio_get_level((gpio_num_t)DISPLAY_I2C_SDA_PIN));
+    }
+
     void InitializeDisplayI2c() {
+        PreInitBusClear();
         // Use the new I2C driver API from ESP-IDF v5.3.2
         i2c_master_bus_config_t bus_config = {};
         bus_config.i2c_port = I2C_NUM_0;
