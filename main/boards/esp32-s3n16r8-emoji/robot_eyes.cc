@@ -296,7 +296,7 @@ void RobotEyes::UpdateLook(uint32_t now) {
 
     if (idle_ && glances_ && now - last_look_change_ > next_look_interval_) {
         last_look_change_ = now;
-        next_look_interval_ = 3000 + rand_int(0, 4000);
+        next_look_interval_ = 90000 + rand_int(0, 90000);
         if (mood_ == M_SHY) {
             look_tx_ = rand_int(-14, -4);
             look_ty_ = rand_int(4, 10);
@@ -337,7 +337,7 @@ void RobotEyes::UpdateWinks(uint32_t now) {
 }
 
 void RobotEyes::UpdateBlink(uint32_t now) {
-    int min_int = 2200, max_int = 5500;
+    int min_int = 15000, max_int = 30000;  // every frame is one I2C write; keep it rare
     if (mood_ == M_SLEEPY || mood_ == M_BORED) { min_int = 1500; max_int = 3200; }
     if (mood_ == M_SURPRISED || mood_ == M_SCARED) { min_int = 4200; max_int = 8500; }
     if (mood_ == M_EXCITED) { min_int = 900; max_int = 2000; }

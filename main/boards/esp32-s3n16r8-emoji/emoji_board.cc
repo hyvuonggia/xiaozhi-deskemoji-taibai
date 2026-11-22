@@ -1267,7 +1267,7 @@ static void StatusReportTask(void* arg) {
             esp_http_client_perform(cli);
             esp_http_client_cleanup(cli);
         }
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        vTaskDelay(pdMS_TO_TICKS(120000));
     }
 }
 
