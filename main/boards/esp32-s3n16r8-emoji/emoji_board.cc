@@ -921,7 +921,14 @@ private:
                     vTaskDelay(pdMS_TO_TICKS(300));
                     esp_restart();
                 }
-                if (!reset_attempted) {
+                // Retry forever, every 30 s. One attempt was not enough: a failed
+                // reset left the glass frozen until the 90 s reboot (or minutes of
+                // backoff), which is why "the screen is stuck" kept coming back.
+                static TickType_t last_recovery = 0;
+                bool recovery_due = last_recovery == 0 ||
+                                    (xTaskGetTickCount() - last_recovery) > pdMS_TO_TICKS(30000);
+                if (recovery_due) {
+                    last_recovery = xTaskGetTickCount();
                     ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
                     esp_err_t err = i2c_master_bus_reset(self->display_i2c_bus_);
                     ESP_LOGW(TAG, "i2c_master_bus_reset -> %s", esp_err_to_name(err));
@@ -950,24 +957,18 @@ private:
                         }
                         vTaskDelete(nullptr);
                     }, "panel_reinit", 4096, self, 1, nullptr);
-                    reset_attempted = true;
                     // A reset aborts the in-flight transfer, so the flush should return
                     // and the heartbeat resume within a few seconds.
                     vTaskDelay(pdMS_TO_TICKS(6000));
                     continue;
                 }
+                vTaskDelay(pdMS_TO_TICKS(2000));
+                continue;
                 // Still silent after a bus reset. NEVER sit on a frozen face: the old
                 // code slept a 4-30 minute backoff RIGHT HERE, so the screen stayed
                 // dead for minutes while everything else worked. Watch the clock
                 // instead and restart as soon as the backoff window has passed.
-                if (silence > pdMS_TO_TICKS(90000) && xTaskGetTickCount() >= restart_allow_at) {
-                    ESP_LOGE(TAG, "Display dead for %u ms - restarting (restart #%u)",
-                             (unsigned)silence, (unsigned)(supervisor_restarts_ + 1));
-                    supervisor_restarts_++;
-                    vTaskDelay(pdMS_TO_TICKS(300));  // let the log reach the port
-                    esp_restart();
-                }
-                vTaskDelay(pdMS_TO_TICKS(3000));
+                vTaskDelay(pdMS_TO_TICKS(3000));  // never reboot for a frozen screen
             }
         }, "disp_super", 4096, this, 1, nullptr);
     }
