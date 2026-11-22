@@ -1352,7 +1352,7 @@ static void StateMonitorTask(void* arg) {
     
     // Make sure random animation is enabled in the initial state
     if (board->emoji_controller_) {
-        board->emoji_controller_->SetRandomAnimationEnabled(true);
+        board->emoji_controller_->SetRandomAnimationEnabled(false);  // static faces only
         ESP_LOGI(TAG, "Initialization: random expression animation enabled");
     }
     
@@ -1360,6 +1360,28 @@ static void StateMonitorTask(void* arg) {
     while (true) {
         // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
+
+        // THREE STATIC FACES: idle = sleepy, listening/thinking = curious,
+        // speaking = neutral. Switched in one paint, no interpolation, because every
+        // extra frame costs ~0.9 s of bus time at 10 kHz.
+        if (board != nullptr && board->eyes_ != nullptr) {
+            static int last_face_state = -1;
+            const int st = (int)current_state;
+            bool wanted = current_state == kDeviceStateIdle ||
+                          current_state == kDeviceStateListening ||
+                          current_state == kDeviceStateConnecting ||
+                          current_state == kDeviceStateSpeaking;
+            if (wanted && st != last_face_state) {
+                last_face_state = st;
+                const char* face = "sleepy";
+                if (current_state == kDeviceStateSpeaking) face = "neutral";
+                else if (current_state == kDeviceStateListening ||
+                         current_state == kDeviceStateConnecting) face = "curious";
+                board->eyes_->SetStaticFace(face);
+                board->eyes_->ForceRedraw();
+                ESP_LOGI(TAG, "Face: %s", face);
+            }
+        }
 
         // Headless with a flaky panel: one init attempt at boot is not enough when
         // the module answers only sometimes.
@@ -1597,7 +1619,7 @@ static void StateMonitorTask(void* arg) {
 
                 // Resume the random expression animation
                 if (board->emoji_controller_) {
-                    board->emoji_controller_->SetRandomAnimationEnabled(true);
+                    board->emoji_controller_->SetRandomAnimationEnabled(false);  // static faces only
                     ESP_LOGI(TAG, "Conversation ended; resuming random expression animation");
                 }
                 if (board->eyes_) {

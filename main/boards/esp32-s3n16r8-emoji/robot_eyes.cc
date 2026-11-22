@@ -410,7 +410,16 @@ void RobotEyes::TriggerWinkLeft(uint32_t now) {
 }
 
 // ------------------------- external control -------------------------
+static bool g_static_face = false;
+
+void RobotEyes::SetStaticFace(const char* name) {
+    g_static_face = false;   // allow this one through
+    SetMood(name);
+    g_static_face = true;    // and freeze everything else
+}
+
 void RobotEyes::SetMood(const char* name) {
+    if (g_static_face) return;
     if (!name) return;
     for (int i = 0; i < MOOD_COUNT; i++) {
         if (strcasecmp(name, kMoodNames[i]) == 0) {

@@ -21,6 +21,9 @@ public:
 
     // --- control API ---
     void SetMood(const char* name);                 // ten trong 20 mood
+    // Three static faces only (idle / listening / speaking). Once used, every
+    // other mood request is ignored so nothing else can trigger a repaint.
+    void SetStaticFace(const char* name);
     void SetMoodForEmotion(const char* emotion);    // emotion cua server -> mood
     void Blink();
     void Wink(bool right_side = true);
