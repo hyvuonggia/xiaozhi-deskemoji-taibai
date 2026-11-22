@@ -711,6 +711,7 @@ private:
     // Best-effort state icon (Font Awesome, 1 glyph). Skips when the display is
     // busy - a stale icon beats a stalled state machine.
     void SetStatusText(const char* text) {
+        if (kEyesUi) return;  // eyes-only face: no state icons on screen
         if (!kEyesUi) {
             // Cosmetic off: push a short Vietnamese line to the plain chat screen,
             // only when it changes (a handful of frames per conversation).
@@ -750,14 +751,9 @@ private:
         // boss asked for and keeps the fragile I2C bus idle.
         eyes_->SetIdleBehaviors(false);
         eyes_->SetIdleGlances(false);
-        // Status readout along the bottom: the LED is physically covered, so the
-        // screen carries state (static text, redrawn only on state change).
-        status_label_ = lv_label_create(eyes_screen_);
-        lv_obj_set_width(status_label_, DISPLAY_WIDTH);
-        lv_obj_set_style_text_align(status_label_, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_text_font(status_label_, &font_awesome_14_1, 0);
-        lv_obj_align(status_label_, LV_ALIGN_BOTTOM_MID, 0, -1);
-        lv_label_set_text(status_label_, "\xEF\x80\x8C");  // check = ready
+        // No status icons: the boss wants the eyes only, which also means one less
+        // label to repaint over the fragile bus.
+        status_label_ = nullptr;
     }
 
     // Eye rendering task at ~10 fps: plenty smooth for a 128x64 OLED, and 3x less I2C
