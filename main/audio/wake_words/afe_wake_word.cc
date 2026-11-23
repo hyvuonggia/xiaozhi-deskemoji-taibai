@@ -1,4 +1,6 @@
 #include "afe_wake_word.h"
+#include "application.h"
+#include <cmath>
 #include "audio_service.h"
 
 #include <esp_log.h>
@@ -74,16 +76,16 @@ bool AfeWakeWord::Initialize(AudioCodec* codec) {
     // still below audio_input (8).
     afe_config->afe_perferred_priority = 4;
     afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
+    // The INMP441 in this room hits full scale constantly, which starves WakeNet.
+    // AGC keeps the level in range instead of hard clipping.
+    afe_config->agc_init = true;
+    afe_config->agc_mode = AFE_AGC_MODE_WEBRTC;
+    afe_config->agc_compression_gain_db = 9;
+    afe_config->agc_target_level_dbfs = 3;
     
     afe_iface_ = esp_afe_handle_from_config(afe_config);
     afe_data_ = afe_iface_->create_from_config(afe_config);
 
-    // The shipped model fires at 0.64/0.65, which missed ordinary speech from a
-    // metre away. 0.55 trades a few false wakes for a much better hit rate.
-    if (afe_data_ != nullptr && afe_iface_->set_wakenet_threshold != nullptr) {
-        int r = afe_iface_->set_wakenet_threshold(afe_data_, 0, 0.55f);
-        ESP_LOGI(TAG, "WakeNet threshold 0.55 -> %d", r);
-    }
 
     xTaskCreate([](void* arg) {
         auto this_ = (AfeWakeWord*)arg;
@@ -129,12 +131,55 @@ void AfeWakeWord::AudioDetectionTask() {
     ESP_LOGI(TAG, "Audio detection task started, feed size: %d fetch size: %d",
         feed_size, fetch_size);
 
+    int rearm_log = 0;
     while (true) {
-        xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT, pdFALSE, pdTRUE, portMAX_DELAY);
+        // Never wait forever: a turn that dies before the session restarts the
+        // detector used to leave the robot deaf until a reboot (exactly what
+        // happened overnight). Re-arm ourselves when the device is idle.
+        EventBits_t bits = xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT,
+                                               pdFALSE, pdTRUE, pdMS_TO_TICKS(10000));
+        if (!(bits & DETECTION_RUNNING_EVENT)) {
+            if (Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
+                xEventGroupSetBits(event_group_, DETECTION_RUNNING_EVENT);
+                if (++rearm_log % 6 == 1) {
+                    ESP_LOGW(TAG, "Detection was stopped while idle - re-armed");
+                }
+            }
+            continue;
+        }
 
         auto res = afe_iface_->fetch_with_delay(afe_data_, portMAX_DELAY);
         if (res == nullptr || res->ret_value == ESP_FAIL) {
             continue;;
+        }
+
+        // Every 2 s: the level of the chunk that actually reaches the detector.
+        // Without this there is no way to tell "mic dead" from "mic clipping".
+        static uint32_t last_diag = 0;
+        uint32_t now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+        if (now_ms - last_diag > 2000) {
+            last_diag = now_ms;
+            int32_t peak = 0;
+            int64_t acc = 0;
+            const int16_t* pcm = (const int16_t*)res->data;
+            for (int i = 0; i < res->data_size / 2; i++) {
+                int32_t v = pcm[i];
+                acc += (int64_t)v * v;
+                if (v < 0) v = -v;
+                if (v > peak) peak = v;
+            }
+            int n = res->data_size / 2;
+            int rms = n > 0 ? (int)sqrt((double)acc / n) : 0;
+            ESP_LOGI(TAG, "afe in: rms=%d peak=%d", rms, (int)peak);
+        }
+
+        // Threshold can only be set once the pipeline is running; doing it in
+        // Initialize() always failed with -1 and left the default 0.64.
+        static bool threshold_set = false;
+        if (!threshold_set && afe_iface_->set_wakenet_threshold != nullptr) {
+            threshold_set = true;
+            int r = afe_iface_->set_wakenet_threshold(afe_data_, 0, 0.55f);
+            ESP_LOGI(TAG, "WakeNet threshold 0.55 -> %d", r);
         }
 
         // Store the wake word data for voice recognition, like who is speaking
