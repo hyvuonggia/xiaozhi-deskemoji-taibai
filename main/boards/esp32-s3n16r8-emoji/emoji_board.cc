@@ -1373,6 +1373,32 @@ static void StateMonitorTask(void* arg) {
             }
         }
 
+        // Idle "alive" motion: the servo is on its own LEDC channels, so a small
+        // head movement costs the display and the I2C bus nothing. Every 25-45 s
+        // the neck glances somewhere and drifts back.
+        if (board != nullptr && board->servo_controller_ != nullptr &&
+            current_state == kDeviceStateIdle && !board->panel_asleep_) {
+            static TickType_t next_move = 0;
+            static int step = 0;
+            TickType_t nowt = xTaskGetTickCount();
+            if (next_move == 0) next_move = nowt + pdMS_TO_TICKS(20000);
+            static TickType_t recenter_at = 0;
+            if (recenter_at != 0 && nowt > recenter_at) {
+                recenter_at = 0;
+                board->servo_controller_->HeadCenter();
+            }
+            if (nowt > next_move) {
+                next_move = nowt + pdMS_TO_TICKS(25000 + (esp_random() % 20000));
+                switch (step++ % 3) {
+                    case 0: board->servo_controller_->HeadLeft(8); break;
+                    case 1: board->servo_controller_->HeadRight(8); break;
+                    default: board->servo_controller_->HeadDown(6); break;
+                }
+                // Drift back to centre 2 s later so the head never parks off-axis.
+                recenter_at = nowt + pdMS_TO_TICKS(2000);
+            }
+        }
+
         // Audible cue: the session needs ~2 s after the wake word before the mic is
         // live, and the boss kept speaking inside that dead window. A short local
         // pop at the moment listening actually starts tells him when to talk.
