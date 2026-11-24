@@ -1373,29 +1373,27 @@ static void StateMonitorTask(void* arg) {
             }
         }
 
-        // Idle "alive" motion: the servo is on its own LEDC channels, so a small
-        // head movement costs the display and the I2C bus nothing. Every 25-45 s
-        // the neck glances somewhere and drifts back.
+        // Idle "alive" motion: fully random direction, fully random angle, slow
+        // sweep (28 ms per degree instead of the default 10), and a random pause
+        // so the pattern never looks mechanical. Servo has its own PWM channels,
+        // so none of this touches the display bus.
         if (board != nullptr && board->servo_controller_ != nullptr &&
             current_state == kDeviceStateIdle && !board->panel_asleep_) {
             static TickType_t next_move = 0;
-            static int step = 0;
-            TickType_t nowt = xTaskGetTickCount();
-            if (next_move == 0) next_move = nowt + pdMS_TO_TICKS(20000);
             static TickType_t recenter_at = 0;
+            TickType_t nowt = xTaskGetTickCount();
+            if (next_move == 0) next_move = nowt + pdMS_TO_TICKS(15000);
             if (recenter_at != 0 && nowt > recenter_at) {
                 recenter_at = 0;
-                board->servo_controller_->HeadCenter();
+                board->servo_controller_->HeadCenter(28);   // same slow speed coming back
             }
             if (nowt > next_move) {
-                next_move = nowt + pdMS_TO_TICKS(25000 + (esp_random() % 20000));
-                switch (step++ % 3) {
-                    case 0: board->servo_controller_->HeadLeft(8); break;
-                    case 1: board->servo_controller_->HeadRight(8); break;
-                    default: board->servo_controller_->HeadDown(6); break;
-                }
-                // Drift back to centre 2 s later so the head never parks off-axis.
-                recenter_at = nowt + pdMS_TO_TICKS(2000);
+                next_move = nowt + pdMS_TO_TICKS(20000 + (esp_random() % 40000));  // 20-60 s
+                int dir = (esp_random() % 2) ? 1 : -1;
+                int x_deg = 18 + (esp_random() % 20);                 // 18-37 deg sideways
+                int y_deg = (int)(esp_random() % 13) - 6;             // -6..+6 deg vertical
+                board->servo_controller_->HeadMove(dir * x_deg, y_deg, 28);
+                recenter_at = nowt + pdMS_TO_TICKS(4000);             // hold 4 s, then drift back
             }
         }
 
