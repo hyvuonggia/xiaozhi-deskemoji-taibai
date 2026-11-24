@@ -251,7 +251,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 25 * 1000;  // 10 kHz = 0.9 s per frame, 25 kHz = 0.36 s
+        io_config.scl_speed_hz = 25 * 1000;  // 50 kHz throws bus errors in a session; 25 kHz stayed clean
 
         // Use the new I2C panel IO API
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
@@ -691,7 +691,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 25 * 1000;  // 10 kHz = 0.9 s per frame, 25 kHz = 0.36 s
+        io_config.scl_speed_hz = 25 * 1000;  // 50 kHz throws bus errors in a session; 25 kHz stayed clean
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
         }
