@@ -181,6 +181,14 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
                 g_audio_last_voice_ms.store((uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS));
             }
             g_audio_peak_now.store((uint32_t)peak);
+            {   // diagnostic: is the mic actually picking up speech during a session?
+                static uint32_t last_log = 0;
+                uint32_t t = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+                if (t - last_log > 3000) {
+                    last_log = t;
+                    ESP_LOGI("AudioIn", "mic peak=%d", (int)peak);
+                }
+            }
             uint32_t ema = g_audio_ema.load();
             g_audio_ema.store(ema == 0 ? (uint32_t)peak : (uint32_t)((ema * 95 + (uint32_t)peak * 500) / 100));
         }
@@ -219,6 +227,14 @@ bool AudioService::ReadAudioData(std::vector<int16_t>& data, int sample_rate, in
                 g_audio_last_voice_ms.store((uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS));
             }
             g_audio_peak_now.store((uint32_t)peak);
+            {   // diagnostic: is the mic actually picking up speech during a session?
+                static uint32_t last_log = 0;
+                uint32_t t = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
+                if (t - last_log > 3000) {
+                    last_log = t;
+                    ESP_LOGI("AudioIn", "mic peak=%d", (int)peak);
+                }
+            }
             uint32_t ema = g_audio_ema.load();
             g_audio_ema.store(ema == 0 ? (uint32_t)peak : (uint32_t)((ema * 95 + (uint32_t)peak * 500) / 100));
         }
