@@ -318,7 +318,7 @@ int NoAudioCodec::Read(int16_t* dest, int samples) {
         // INMP441 puts 24 valid bits MSB-aligned in a 32-bit slot, so the 16-bit
         // view is >>16. The old >>12 made everything 16x too loud: peak pinned at
         // 32767 all day, which is what deafened WakeNet and garbled the ASR.
-        int32_t value = bit32_buffer[i] >> 16;
+        int32_t value = bit32_buffer[i] >> 15;
         dest[i] = (value > INT16_MAX) ? INT16_MAX : (value < -INT16_MAX) ? -INT16_MAX : (int16_t)value;
     }
     return samples;

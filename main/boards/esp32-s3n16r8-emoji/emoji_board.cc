@@ -1361,47 +1361,15 @@ static void StateMonitorTask(void* arg) {
         // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
 
-        // THREE STATIC FACES: idle = sleepy, listening/thinking = curious,
-        // speaking = neutral. Switched in one paint, no interpolation, because every
-        // extra frame costs ~0.9 s of bus time at 10 kHz.
+        // ONE FACE, PERMANENTLY: drawn once at startup and never repainted, so the
+        // fragile I2C bus carries no traffic at all after boot.
         if (board != nullptr && board->eyes_ != nullptr) {
-            static int last_face_state = -1;
-            const int st = (int)current_state;
-            bool wanted = current_state == kDeviceStateIdle ||
-                          current_state == kDeviceStateListening ||
-                          current_state == kDeviceStateConnecting ||
-                          current_state == kDeviceStateSpeaking;
-            if (wanted && st != last_face_state) {
-                last_face_state = st;
-                const char* face = "sleepy";
-                if (current_state == kDeviceStateSpeaking) face = "neutral";
-                else if (current_state == kDeviceStateListening ||
-                         current_state == kDeviceStateConnecting) face = "curious";
-                board->eyes_->SetStaticFace(face);
+            static bool face_drawn = false;
+            if (!face_drawn) {
+                face_drawn = true;
+                board->eyes_->SetStaticFace("neutral");
                 board->eyes_->ForceRedraw();
-                ESP_LOGI(TAG, "Face: %s", face);
-            }
-        }
-
-        // THREE STATIC FACES: idle = sleepy, listening/thinking = curious,
-        // speaking = neutral. Switched in one paint, no interpolation, because every
-        // extra frame costs ~0.9 s of bus time at 10 kHz.
-        if (board != nullptr && board->eyes_ != nullptr) {
-            static int last_face_state = -1;
-            const int st = (int)current_state;
-            bool wanted = current_state == kDeviceStateIdle ||
-                          current_state == kDeviceStateListening ||
-                          current_state == kDeviceStateConnecting ||
-                          current_state == kDeviceStateSpeaking;
-            if (wanted && st != last_face_state) {
-                last_face_state = st;
-                const char* face = "sleepy";
-                if (current_state == kDeviceStateSpeaking) face = "neutral";
-                else if (current_state == kDeviceStateListening ||
-                         current_state == kDeviceStateConnecting) face = "curious";
-                board->eyes_->SetStaticFace(face);
-                board->eyes_->ForceRedraw();
-                ESP_LOGI(TAG, "Face: %s", face);
+                ESP_LOGI(TAG, "Face: neutral (static)");
             }
         }
 
