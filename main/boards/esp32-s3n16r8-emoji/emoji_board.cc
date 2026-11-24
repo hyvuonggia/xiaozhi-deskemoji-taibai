@@ -760,7 +760,7 @@ private:
         // Static face: no blink loop, no random glances, no mood cycling. The eyes
         // change ONLY when the state changes (one paint each), which is all the
         // boss asked for and keeps the fragile I2C bus idle.
-        eyes_->SetIdleBehaviors(false);
+        eyes_->SetIdleBehaviors(true);   // allow occasional idle blinking (glances stay off)
         eyes_->SetIdleGlances(false);
         // No status icons: the boss wants the eyes only, which also means one less
         // label to repaint over the fragile bus.
