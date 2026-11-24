@@ -1383,17 +1383,25 @@ static void StateMonitorTask(void* arg) {
             }
         }
 
-        // Headless with a flaky panel: one init attempt at boot is not enough when
-        // the module answers only sometimes.
-        if (board != nullptr && !board->display_available_) {
-            static TickType_t last_retry = 0;
-            if (last_retry == 0) last_retry = xTaskGetTickCount();
-            if (xTaskGetTickCount() - last_retry > pdMS_TO_TICKS(20000)) {
-                last_retry = xTaskGetTickCount();
-                ESP_LOGW(TAG, "Headless: retrying the display");
-                board->RecoverDisplay();
-                board->BringUpEyes();
-                board->BringUpSupervisor();
+        // THREE STATIC FACES: idle = sleepy, listening/thinking = curious,
+        // speaking = neutral. Switched in one paint, no interpolation, because every
+        // extra frame costs ~0.9 s of bus time at 10 kHz.
+        if (board != nullptr && board->eyes_ != nullptr) {
+            static int last_face_state = -1;
+            const int st = (int)current_state;
+            bool wanted = current_state == kDeviceStateIdle ||
+                          current_state == kDeviceStateListening ||
+                          current_state == kDeviceStateConnecting ||
+                          current_state == kDeviceStateSpeaking;
+            if (wanted && st != last_face_state) {
+                last_face_state = st;
+                const char* face = "sleepy";
+                if (current_state == kDeviceStateSpeaking) face = "neutral";
+                else if (current_state == kDeviceStateListening ||
+                         current_state == kDeviceStateConnecting) face = "curious";
+                board->eyes_->SetStaticFace(face);
+                board->eyes_->ForceRedraw();
+                ESP_LOGI(TAG, "Face: %s", face);
             }
         }
 
