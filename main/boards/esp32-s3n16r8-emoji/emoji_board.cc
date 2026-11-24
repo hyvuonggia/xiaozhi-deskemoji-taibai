@@ -1373,6 +1373,17 @@ static void StateMonitorTask(void* arg) {
             }
         }
 
+        // Audible cue: the session needs ~2 s after the wake word before the mic is
+        // live, and the boss kept speaking inside that dead window. A short local
+        // pop at the moment listening actually starts tells him when to talk.
+        {
+            static DeviceState last_pop_state = kDeviceStateUnknown;
+            if (current_state == kDeviceStateListening && last_pop_state != kDeviceStateListening) {
+                Application::GetInstance().GetAudioService().PlaySound(Lang::Sounds::OGG_POPUP);
+            }
+            last_pop_state = current_state;
+        }
+
         // THINKING state: the device stays "listening" while the server thinks,
         // so the boss saw the microphone icon for the whole wait. Detect the
         // silence AFTER his sentence and show an explicit thinking face.
