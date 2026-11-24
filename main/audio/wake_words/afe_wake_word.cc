@@ -76,12 +76,6 @@ bool AfeWakeWord::Initialize(AudioCodec* codec) {
     // still below audio_input (8).
     afe_config->afe_perferred_priority = 4;
     afe_config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
-    // The INMP441 in this room hits full scale constantly, which starves WakeNet.
-    // AGC keeps the level in range instead of hard clipping.
-    afe_config->agc_init = true;
-    afe_config->agc_mode = AFE_AGC_MODE_WEBRTC;
-    afe_config->agc_compression_gain_db = 9;
-    afe_config->agc_target_level_dbfs = 3;
     
     afe_iface_ = esp_afe_handle_from_config(afe_config);
     afe_data_ = afe_iface_->create_from_config(afe_config);
@@ -131,22 +125,8 @@ void AfeWakeWord::AudioDetectionTask() {
     ESP_LOGI(TAG, "Audio detection task started, feed size: %d fetch size: %d",
         feed_size, fetch_size);
 
-    int rearm_log = 0;
     while (true) {
-        // Never wait forever: a turn that dies before the session restarts the
-        // detector used to leave the robot deaf until a reboot (exactly what
-        // happened overnight). Re-arm ourselves when the device is idle.
-        EventBits_t bits = xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT,
-                                               pdFALSE, pdTRUE, pdMS_TO_TICKS(10000));
-        if (!(bits & DETECTION_RUNNING_EVENT)) {
-            if (Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
-                xEventGroupSetBits(event_group_, DETECTION_RUNNING_EVENT);
-                if (++rearm_log % 6 == 1) {
-                    ESP_LOGW(TAG, "Detection was stopped while idle - re-armed");
-                }
-            }
-            continue;
-        }
+        xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT, pdFALSE, pdTRUE, portMAX_DELAY);
 
         auto res = afe_iface_->fetch_with_delay(afe_data_, portMAX_DELAY);
         if (res == nullptr || res->ret_value == ESP_FAIL) {
