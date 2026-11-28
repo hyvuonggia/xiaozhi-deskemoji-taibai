@@ -251,7 +251,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 25 * 1000;  // 50 kHz throws bus errors in a session; 25 kHz stayed clean
+        io_config.scl_speed_hz = 10 * 1000;  // 10 kHz is rock solid on un-pulled SH1106 panel
 
         // Use the new I2C panel IO API
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
@@ -691,7 +691,7 @@ private:
         // 50 kHz. Measured: 100 kHz and 25 kHz both throw MORE bus errors than 50 kHz,
         // so this is not a rise-time problem - the errors are noise bursts, and the
         // longer a transfer stays on the wire the more of them it eats.
-        io_config.scl_speed_hz = 25 * 1000;  // 50 kHz throws bus errors in a session; 25 kHz stayed clean
+        io_config.scl_speed_hz = 10 * 1000;  // 10 kHz is rock solid on un-pulled SH1106 panel
         if (esp_lcd_new_panel_io_i2c_v2(display_i2c_bus_, &io_config, &panel_io_) != ESP_OK) {
             return false;
         }
@@ -931,9 +931,7 @@ private:
                 if (recovery_due) {
                     last_recovery = xTaskGetTickCount();
                     ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
-                    esp_err_t err = i2c_master_bus_reset(self->display_i2c_bus_);
-                    ESP_LOGW(TAG, "i2c_master_bus_reset -> %s", esp_err_to_name(err));
-                    self->ClockOutDisplayBus();
+                    i2c_master_bus_reset(self->display_i2c_bus_);
                     if (self->eyes_ != nullptr) {
                         self->eyes_->ForceRedraw();
                     }
