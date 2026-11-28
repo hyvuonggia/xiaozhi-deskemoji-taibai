@@ -345,9 +345,6 @@ void RobotEyes::UpdateBlink(uint32_t now) {
     // Blinking is back on purpose: two repaints every 15-30 s is cheap on the bus
     // and it is what makes the face look alive while idle.
     int min_int = 15000, max_int = 30000;  // every frame is one I2C write; keep it rare
-    if (mood_ == M_SLEEPY || mood_ == M_BORED) { min_int = 1500; max_int = 3200; }
-    if (mood_ == M_SURPRISED || mood_ == M_SCARED) { min_int = 4200; max_int = 8500; }
-    if (mood_ == M_EXCITED) { min_int = 900; max_int = 2000; }
 
     if (blink_requested_ && blink_phase_ == 0) {
         blink_requested_ = false;

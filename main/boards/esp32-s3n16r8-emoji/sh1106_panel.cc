@@ -75,7 +75,7 @@ static std::atomic<bool> frame_dirty{false};
 static std::atomic<uint32_t> draw_req{0}, draw_ok{0}, draw_err{0};
 uint32_t sh1106_draw_counters(uint32_t* req) {
     *req = draw_req.load();
-    return draw_ok.load();
+    return draw_ok.load() + draw_err.load();
 }
 uint32_t sh1106_error_count() { return draw_err.load(); }
 bool sh1106_take_dirty() { return frame_dirty.exchange(false); }

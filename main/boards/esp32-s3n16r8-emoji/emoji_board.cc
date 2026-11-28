@@ -915,11 +915,12 @@ private:
                     dead_since = xTaskGetTickCount();
                 } else if (xTaskGetTickCount() - dead_since > pdMS_TO_TICKS(300000) &&
                            Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
-                    // 5 minutes of a dead glass and nobody is talking: one clean restart
-                    // is cheaper than carrying a broken display for the rest of the day.
-                    ESP_LOGE(TAG, "Display dead for 5 min - restarting");
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    esp_restart();
+                    // Do not reboot: keeping audio/mic alive is higher priority than a dead glass.
+                    static uint32_t last_dead_log = 0;
+                    if (xTaskGetTickCount() - last_dead_log > pdMS_TO_TICKS(60000)) {
+                        last_dead_log = xTaskGetTickCount();
+                        ESP_LOGW(TAG, "Display stalled for 5+ min - not restarting");
+                    }
                 }
                 // Retry forever, every 30 s. One attempt was not enough: a failed
                 // reset left the glass frozen until the 90 s reboot (or minutes of
