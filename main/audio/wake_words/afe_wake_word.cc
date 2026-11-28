@@ -126,7 +126,14 @@ void AfeWakeWord::AudioDetectionTask() {
         feed_size, fetch_size);
 
     while (true) {
-        xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT, pdFALSE, pdTRUE, portMAX_DELAY);
+        EventBits_t bits = xEventGroupWaitBits(event_group_, DETECTION_RUNNING_EVENT, pdFALSE, pdTRUE, pdMS_TO_TICKS(10000));
+        if ((bits & DETECTION_RUNNING_EVENT) == 0) {
+            if (Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
+                ESP_LOGW(TAG, "AudioDetectionTask: detection was paused while idle - re-arming");
+                Start();
+            }
+            continue;
+        }
 
         auto res = afe_iface_->fetch_with_delay(afe_data_, portMAX_DELAY);
         if (res == nullptr || res->ret_value == ESP_FAIL) {
