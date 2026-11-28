@@ -307,6 +307,17 @@ def extract_action(text):
     return None
 
 
+_LAST_TURN_AT = 0.0
+_SESSION_SLOT = 0
+
+def _current_session_slot():
+    global _LAST_TURN_AT, _SESSION_SLOT
+    now = time.monotonic()
+    if _LAST_TURN_AT and (now - _LAST_TURN_AT) > 900:  # 15 min idle -> fresh fast session
+        _SESSION_SLOT += 1
+    _LAST_TURN_AT = now
+    return _SESSION_SLOT
+
 async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta=None, tools=None):
     # The robot must think before it answers: the server does not send an effort
     # level, so without this default every reply is a reflex answer.
@@ -317,7 +328,7 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
             "tại sao", "so sánh", "giải thích", "phân tích", "nếu ", "kế hoạch", "tính "))
         # Simple turns: no thinking budget at all (the provider default was 10 s
         # slower than a bare call once tools were attached).
-        reasoning_effort = "medium" if long_or_hard else None
+        reasoning_effort = "medium" if long_or_hard else "low"
     """Goi Hermes agent. Neu co on_delta: goi ham do voi tung manh text ngay khi sinh ra.
     Neu co tools: chuyen tiep cho model (native function calling) va tra ve (text, tool_calls)."""
     url = HERMES_BASE.rstrip("/") + "/chat/completions"
@@ -341,7 +352,9 @@ async def call_hermes(messages, reasoning_effort=None, max_tokens=None, on_delta
         # also bounds context growth -> stable 3-5 s answers instead of slower nights.
         # SESSION_GEN: bump when the agent gains new tools (MCP) so the robot picks up
         # a fresh tool surface immediately instead of waiting for tomorrow.
-        "X-Hermes-Session-Id": "%s-%s-g%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), 6),
+        # Rotate session after 15 min of silence so context never bloats (25 s turns -> 3-5 s),
+        # while keeping follow-up questions in the same 15 min window coherent.
+        "X-Hermes-Session-Id": "%s-%s-g7-%d" % (HERMES_SESSION, time.strftime("%Y%m%d"), _current_session_slot()),
     }
     if HERMES_KEY:
         headers["Authorization"] = "Bearer " + HERMES_KEY
@@ -691,6 +704,22 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         "dấu chấm: 'Một. Hai. Ba.' - giọng đọc sẽ ngắt nghỉ rõ. KHÔNG viết liền một dãy "
         "'một, hai, ba, bốn...' vì loa nhỏ đọc nhanh sẽ dính chữ, nghe không ra."})
 
+    # Clock fast lane: "mấy giờ" used to cost two LLM rounds (~14 s). Answer it
+    # here from the box clock instead.
+    # ASR mangles this a lot ("mới giờ ruột", "hết giờ rồi"), so match any short
+    # phrase that mentions the clock rather than exact wording.
+    if not tool_results and len(user_text) < 45 and re.search(
+            r"giờ|thứ mấy|ngày mấy|ngày bao nhiêu|hôm nay là", user_text, re.I):
+        import datetime as _dt
+        _now = _dt.datetime.now()
+        _wd = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"][_now.weekday()]
+        _h, _m = _now.hour, _now.minute
+        _ap = "sáng" if 5 <= _h < 12 else "chiều" if 12 <= _h < 18 else "tối" if 18 <= _h < 23 else "đêm"
+        _h12 = _h if 1 <= _h <= 12 else (_h - 12 if _h > 12 else 12)
+        _ans = f"Dạ {_h12} giờ {_m:02d} phút {_ap}, {_wd} ngày {_now.day} tháng {_now.month} ạ."
+        log.info("clock fast lane: %s", _ans)
+        return await respond_text_only(request, cid, model, stream, _ans)
+
     if not tool_results and _CURRENT_FACT_RE.search(user_text):
         try:
             fresh = _web_lookup(user_text)
@@ -706,15 +735,16 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         except Exception as exc:  # noqa: BLE001
             log.warning("web lookup failed: %s", exc)
 
-    # Misheard wake word: ASR turns "Alexa" into "alexan / alex sao / alex rằng / a".
+    # Misheard wake word: ASR turns "Alexa" into "alexan / alex sao / alex rằng / a / alex à".
     # Answering those with a full LLM turn makes the robot babble nonsense at its own
     # name, so treat them as "you called me" and stop there.
+    _norm_u = _vn_norm(user_text)
     if not tool_results and re.fullmatch(
-            r"\s*(a|à|ạ|alex|alexa|alexan|alexa\s*ơi|alex\s*(sao|rằng|nhé|ơi)?|"
-            r"ơi\s*alexa|hey\s*alexa)\s*[.!?]*\s*", user_text.strip(), re.I):
-        log.info("wake-word misfire <- %r", user_text)
-        return await respond_text_only(request, cid, model, stream, random.choice([
-            "Dạ em nghe đây ạ.", "Dạ em đây, sếp nói đi ạ.", "Dạ!"]))
+            r"(a|alex|alexa|alexan|alexa\s*oi|alex\s*(a|sao|rang|nhe|oi)?|"
+            r"oi\s*alexa|hey\s*alexa)[.!?]*", _norm_u):
+        log.info("wake-word misfire <- %r (norm=%r)", user_text, _norm_u)
+        log.info("wake-word greeting suppressed (mic opens immediately)")
+        return await respond_text_only(request, cid, model, stream, "")
     # Gibberish guard: ASR sometimes returns a stub ("alle", "a", "ừ ừ") for noise.
     # Answering "sếp cần gì ạ?" to noise teaches the boss nothing; ask again instead.
     _t = user_text.strip().lower()
@@ -732,26 +762,8 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     _ut = user_text.strip().lower()
     _is_bare_wake = _ut == "" or re.fullmatch(r"alexa[\s!.,?]*", _ut) is not None
     if not tool_results and _is_bare_wake:
-        log.info("fast greeting (no LLM round-trip)")
-        # Instant but not robotic: rotate a few short blips (all <1 s of speech).
-        text = random.choice(["Dạ!", "Dạ sếp!", "Em nghe đây!", "Dạ, sếp gọi em?"])
-        if not stream:
-            return web.json_response({
-                "id": cid, "object": "chat.completion", "created": int(time.time()), "model": model,
-                "choices": [{"index": 0, "message": {"role": "assistant", "content": text},
-                             "finish_reason": "stop"}],
-            })
-        resp = web.StreamResponse(status=200, headers={
-            "Content-Type": "text/event-stream", "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        })
-        await resp.prepare(request)
-        await resp.write(chunk_frame(cid, model, {"role": "assistant"}))
-        await resp.write(chunk_frame(cid, model, {"content": text}))
-        await resp.write(chunk_frame(cid, model, {}, finish="stop"))
-        await resp.write(b"data: [DONE]\n\n")
-        await resp.write_eof()
-        return resp
+        log.info("bare wake greeting suppressed (mic opens immediately without TTS dead window)")
+        return await respond_text_only(request, cid, model, stream, "")
 
     # Robot commands: handled immediately without waiting for the model (fast + the servo really moves).
     # Debounce: the same motion re-arriving within 3 s (VAD re-segments, or the user
