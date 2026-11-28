@@ -933,33 +933,10 @@ private:
                     ESP_LOGW(TAG, "Resetting the display I2C bus to recover");
                     esp_err_t err = i2c_master_bus_reset(self->display_i2c_bus_);
                     ESP_LOGW(TAG, "i2c_master_bus_reset -> %s", esp_err_to_name(err));
-                    // A bus reset only fixes the master side. If the SH1106 itself
-                    // crashed (controller hung mid-byte holding SDA), only a fresh
-                    // init sequence revives it - so re-run one, fire-and-forget: these
-                    // calls can block on the wedged bus too, and the supervisor must
-                    // keep watching instead of hanging with them.
-                    xTaskCreate([](void* arg) {
-                        EmojiBoard* self = static_cast<EmojiBoard*>(arg);
-                        if (self->panel_ == nullptr) {
-                            vTaskDelete(nullptr);
-                        }
-                        ESP_LOGW(TAG, "Re-init worker: resetting the panel");
-                        if (esp_lcd_panel_reset(self->panel_) != ESP_OK ||
-                            esp_lcd_panel_init(self->panel_) != ESP_OK ||
-                            esp_lcd_panel_disp_on_off(self->panel_, true) != ESP_OK) {
-                            ESP_LOGE(TAG, "Re-init worker: panel did not come back");
-                        } else {
-                            ESP_LOGW(TAG, "Re-init worker: panel back on");
-                            // The glass was re-initialised: its RAM no longer matches the
-                            // frame cache, so force one real paint or the face stays blank.
-                            if (self->eyes_ != nullptr) {
-                                self->eyes_->ForceRedraw();
-                            }
-                        }
-                        vTaskDelete(nullptr);
-                    }, "panel_reinit", 4096, self, 1, nullptr);
-                    // A reset aborts the in-flight transfer, so the flush should return
-                    // and the heartbeat resume within a few seconds.
+                    self->ClockOutDisplayBus();
+                    if (self->eyes_ != nullptr) {
+                        self->eyes_->ForceRedraw();
+                    }
                     vTaskDelay(pdMS_TO_TICKS(6000));
                     continue;
                 }
@@ -1362,15 +1339,25 @@ static void StateMonitorTask(void* arg) {
         // Get the current device state
         DeviceState current_state = Application::GetInstance().GetDeviceState();
 
-        // ONE FACE, PERMANENTLY: drawn once at startup and never repainted, so the
-        // fragile I2C bus carries no traffic at all after boot.
+        // THREE STATIC FACES: idle = sleepy, listening/thinking = curious,
+        // speaking = neutral. Switched in one paint, no interpolation, because every
+        // extra frame costs bus time.
         if (board != nullptr && board->eyes_ != nullptr) {
-            static bool face_drawn = false;
-            if (!face_drawn) {
-                face_drawn = true;
-                board->eyes_->SetStaticFace("neutral");
+            static int last_face_state = -1;
+            const int st = (int)current_state;
+            bool wanted = current_state == kDeviceStateIdle ||
+                          current_state == kDeviceStateListening ||
+                          current_state == kDeviceStateConnecting ||
+                          current_state == kDeviceStateSpeaking;
+            if (wanted && st != last_face_state) {
+                last_face_state = st;
+                const char* face = "sleepy";
+                if (current_state == kDeviceStateSpeaking) face = "neutral";
+                else if (current_state == kDeviceStateListening ||
+                         current_state == kDeviceStateConnecting) face = "curious";
+                board->eyes_->SetStaticFace(face);
                 board->eyes_->ForceRedraw();
-                ESP_LOGI(TAG, "Face: neutral (static)");
+                ESP_LOGI(TAG, "Face: %s", face);
             }
         }
 

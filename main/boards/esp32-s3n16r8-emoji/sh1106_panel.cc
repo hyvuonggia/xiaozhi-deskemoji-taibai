@@ -93,6 +93,7 @@ static esp_err_t panel_draw_bitmap(esp_lcd_panel_t *panel, int xs, int ys, int x
         if (++held_drops % 50 == 1) {
             ESP_LOGW(TAG, "bus held, dropping frame (x%d)", held_drops);
         }
+        draw_err.fetch_add(1);
         frame_dirty.store(true);
         lv_display_t *disp = lv_display_get_default();
         if (disp != nullptr) {
