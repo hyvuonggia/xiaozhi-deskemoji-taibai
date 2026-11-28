@@ -342,39 +342,27 @@ void RobotEyes::UpdateWinks(uint32_t now) {
 }
 
 void RobotEyes::UpdateBlink(uint32_t now) {
-    // Blinking is back on purpose: two repaints every 15-30 s is cheap on the bus
-    // and it is what makes the face look alive while idle.
-    int min_int = 15000, max_int = 30000;  // every frame is one I2C write; keep it rare
+    // 2-frame snap blink every 15-30s: 1 frame closed, 1 frame open.
+    // Extremely cheap on the bus, zero interpolation, rock solid.
+    int min_int = 15000, max_int = 30000;
 
     if (blink_requested_ && blink_phase_ == 0) {
         blink_requested_ = false;
         blink_phase_ = 1;
         blink_phase_start_ = now;
+        blink_ = 1.0f;
     }
-    if (blink_phase_ == 0 && idle_ && now - last_blink_ > next_blink_interval_) {
-        if (rand_int(0, 99) < 18) {              // 18%: nhay 1 mat thay vi chop ca 2
-            if (rand_int(0, 1)) TriggerWinkRight(now); else TriggerWinkLeft(now);
-            last_blink_ = now;
-            next_blink_interval_ = rand_int(min_int, max_int);
-        } else {
-            blink_phase_ = 1;
-            blink_phase_start_ = now;
-            last_blink_ = now;
-            double_blink_armed_ = (rand_int(0, 99) < 18);   // 18%: chop them 1 cai nua
-            next_blink_interval_ = rand_int(min_int, max_int);
-        }
+    if (blink_phase_ == 0 && now - last_blink_ > next_blink_interval_) {
+        blink_phase_ = 1;
+        blink_phase_start_ = now;
+        last_blink_ = now;
+        blink_ = 1.0f;
+        next_blink_interval_ = rand_int(min_int, max_int);
     }
     if (blink_phase_ == 1) {
-        float t = (now - blink_phase_start_) / 90.0f;
-        blink_ = std::min(1.0f, t);
-        if (t >= 1.0f) { blink_phase_ = 2; blink_phase_start_ = now; }
-    } else if (blink_phase_ == 2) {
-        float t = (now - blink_phase_start_) / 140.0f;
-        blink_ = std::max(0.0f, 1.0f - t);
-        if (t >= 1.0f) {
+        if (now - blink_phase_start_ >= 250) {
             blink_phase_ = 0;
-            blink_ = 0;
-            if (double_blink_armed_) { double_blink_armed_ = false; blink_requested_ = true; }
+            blink_ = 0.0f;
         }
     }
 }
